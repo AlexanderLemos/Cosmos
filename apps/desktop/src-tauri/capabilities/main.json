@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "main",
+  "description": "F0 shell; no filesystem, shell, network or daemon grants.",
+  "windows": ["main"],
+  "permissions": []
+}

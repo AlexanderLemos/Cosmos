@@ -1,0 +1,37 @@
+:root {
+  --nyx: #07060b;
+  --erebus: #121019;
+  --aether: #ede6d6;
+  --h-alpha: #e2483d;
+  --oiii: #3fc1b0;
+  --sii: #9b2335;
+  --orichalcum: #b8864b;
+  --font-display: Georgia, "Times New Roman", serif;
+  --font-body: system-ui, sans-serif;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+button,
+select {
+  font: inherit;
+}
+:focus-visible {
+  outline: 2px solid var(--oiii);
+  outline-offset: 4px;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    /* biome-ignore lint/complexity/noImportantStyles: Respect reduced motion over component animation. */
+    animation: none !important;
+    /* biome-ignore lint/complexity/noImportantStyles: Respect reduced motion over component transition. */
+    transition: none !important;
+    /* biome-ignore lint/complexity/noImportantStyles: Respect reduced motion over smooth scrolling. */
+    scroll-behavior: auto !important;
+  }
+}

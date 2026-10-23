@@ -1,0 +1,325 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "EventEnvelope",
+  "type": "object",
+  "properties": {
+    "agent": {
+      "$ref": "#/$defs/Agent"
+    },
+    "base_rev": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "created_at": {
+      "type": "string"
+    },
+    "event": {
+      "$ref": "#/$defs/Event"
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Evidence"
+      }
+    },
+    "id": {
+      "type": "string"
+    },
+    "idempotency_key": {
+      "type": "string"
+    },
+    "project_id": {
+      "type": "string"
+    },
+    "schema_version": {
+      "$ref": "#/$defs/Version1"
+    },
+    "session_id": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "idempotency_key",
+    "project_id",
+    "session_id",
+    "agent",
+    "event",
+    "evidence",
+    "created_at"
+  ],
+  "$defs": {
+    "Agent": {
+      "type": "object",
+      "properties": {
+        "harness": {
+          "$ref": "#/$defs/Harness"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "harness",
+        "version"
+      ]
+    },
+    "Event": {
+      "description": "First contract slice. Further event types from §14.2 are added with fixtures in F1/F2.",
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "payload": {
+              "type": "object",
+              "properties": {
+                "harness_session_id": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "harness_session_id"
+              ]
+            },
+            "type": {
+              "type": "string",
+              "const": "session.started"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "payload"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "payload": {
+              "type": "object",
+              "properties": {
+                "initial": {
+                  "type": "boolean"
+                },
+                "redacted_text": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "redacted_text",
+                "initial"
+              ]
+            },
+            "type": {
+              "type": "string",
+              "const": "prompt.submitted"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "payload"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "payload": {
+              "type": "object",
+              "properties": {
+                "paths": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "paths"
+              ]
+            },
+            "type": {
+              "type": "string",
+              "const": "file.changed"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "payload"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "payload": {
+              "type": "object",
+              "properties": {
+                "command": {
+                  "type": "string"
+                },
+                "exit_code": {
+                  "type": "integer",
+                  "format": "int32"
+                },
+                "summary": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "command",
+                "exit_code",
+                "summary"
+              ]
+            },
+            "type": {
+              "type": "string",
+              "const": "test.run"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "payload"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "payload": {
+              "type": "object",
+              "properties": {
+                "summary": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "summary"
+              ]
+            },
+            "type": {
+              "type": "string",
+              "const": "checkpoint"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "payload"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "payload": {
+              "type": "object",
+              "additionalProperties": false
+            },
+            "type": {
+              "type": "string",
+              "const": "turn.completed"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "payload"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "payload": {
+              "type": "object",
+              "additionalProperties": false
+            },
+            "type": {
+              "type": "string",
+              "const": "session.ended"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "payload"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "payload": {
+              "type": "object",
+              "properties": {
+                "reason": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "reason"
+              ]
+            },
+            "type": {
+              "type": "string",
+              "const": "session.interrupted"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "payload"
+          ]
+        }
+      ]
+    },
+    "Evidence": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/EvidenceKind"
+        },
+        "ref": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "ref"
+      ]
+    },
+    "EvidenceKind": {
+      "type": "string",
+      "enum": [
+        "file",
+        "command",
+        "commit",
+        "event"
+      ]
+    },
+    "Harness": {
+      "type": "string",
+      "enum": [
+        "claude-code",
+        "codex",
+        "hermes-agent",
+        "generic-mcp",
+        "user"
+      ]
+    },
+    "Version1": {
+      "type": "integer",
+      "const": 1
+    }
+  }
+}

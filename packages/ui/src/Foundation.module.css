@@ -1,0 +1,109 @@
+.root {
+  color-scheme: dark;
+  --surface: var(--nyx);
+  --text: var(--aether);
+  --muted: #b5afbe;
+  --line: #302b37;
+  min-height: 100vh;
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-body);
+}
+.root[data-theme="hemera"] {
+  color-scheme: light;
+  --surface: #f3eddf;
+  --text: #241d28;
+  --muted: #605465;
+  --line: #ccc1af;
+}
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  padding: 2rem clamp(1.5rem, 6vw, 6rem);
+  border-bottom: 1px solid var(--line);
+}
+.wordmark {
+  letter-spacing: 0.35em;
+  font-size: 1.1rem;
+}
+.controls {
+  display: flex;
+  gap: 1.25rem;
+}
+.controls label {
+  display: grid;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+.controls select {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--line);
+  padding: 0.5rem;
+  border-radius: 3px;
+}
+.main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: clamp(4rem, 10vw, 8rem) 1.5rem 4rem;
+}
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+.main h1 {
+  font-family: var(--font-display);
+  font-size: clamp(2.5rem, 5.4vw, 4.8rem);
+  font-weight: 400;
+  line-height: 1.12;
+  letter-spacing: -0.025em;
+  margin: 1.5rem 0;
+}
+.main h1 span {
+  color: var(--muted);
+}
+.description {
+  max-width: 35rem;
+  font-size: 1.1rem;
+  line-height: 1.7;
+}
+.pillars {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3rem;
+  margin-top: 5rem;
+  border-top: 1px solid var(--line);
+  padding-top: 2rem;
+}
+.pillars section > span {
+  color: var(--orichalcum);
+}
+.pillars h2 {
+  font-weight: 400;
+  font-size: 1.2rem;
+}
+.pillars p {
+  color: var(--muted);
+  line-height: 1.6;
+}
+.footer {
+  padding: 2rem clamp(1.5rem, 6vw, 6rem);
+  color: var(--muted);
+  border-top: 1px solid var(--line);
+  font-size: 0.85rem;
+}
+@media (max-width: 600px) {
+  .header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .pillars {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+}

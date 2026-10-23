@@ -1,0 +1,37 @@
+{
+  "name": "cosmos",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "packageManager": "pnpm@11.25.0",
+  "engines": {
+    "node": ">=24.19.0 <25"
+  },
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm --filter web dev",
+    "dev:desktop": "pnpm --filter desktop tauri dev",
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "lint": "biome check .",
+    "format": "biome check --write .",
+    "test": "turbo run test",
+    "test:e2e": "playwright test",
+    "test:a11y": "playwright test --grep accessibility",
+    "schemas:generate": "cargo run -p cosmos-core --example export_schemas --locked && node scripts/generate-types.mjs",
+    "schemas:check": "node scripts/check-schemas.mjs",
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm schemas:check"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.11.1",
+    "@biomejs/biome": "2.6.2",
+    "@playwright/test": "1.64.1",
+    "@types/node": "24.10.1",
+    "ajv": "8.17.1",
+    "json-schema-to-typescript": "16.0.0",
+    "turbo": "2.11.10",
+    "typescript": "5.9.3",
+    "vite": "8.3.5",
+    "vitest": "5.0.5"
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PrivacyDefaults",
+  "description": "These defaults are configuration only. No grant is conferred by deserializing them.",
+  "type": "object",
+  "properties": {
+    "autostart_enabled": {
+      "type": "boolean",
+      "default": false
+    },
+    "capture_authorized": {
+      "type": "boolean",
+      "default": false
+    },
+    "capture_full_transcript": {
+      "type": "boolean",
+      "default": false
+    },
+    "http_enabled": {
+      "type": "boolean",
+      "default": false
+    },
+    "local_ai_enabled": {
+      "type": "boolean",
+      "default": false
+    },
+    "mirror_enabled": {
+      "type": "boolean",
+      "default": false
+    },
+    "repo_manifest_enabled": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "additionalProperties": false
+}

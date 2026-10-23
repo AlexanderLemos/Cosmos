@@ -1,0 +1,15 @@
+node_modules/
+dist/
+target/
+.turbo/
+coverage/
+playwright-report/
+test-results/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+__pycache__/
+*.pyc
+apps/desktop/src-tauri/gen/

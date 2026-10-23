@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RuntimeInfo",
+  "type": "object",
+  "properties": {
+    "application_version": {
+      "type": "string"
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "protocol_version": {
+      "$ref": "#/$defs/Version1"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "protocol_version",
+    "application_version",
+    "capabilities"
+  ],
+  "$defs": {
+    "Version1": {
+      "type": "integer",
+      "const": 1
+    }
+  }
+}

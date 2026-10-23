@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <title>COSMOS — ícone provisório da fundação</title>
+  <rect width="256" height="256" rx="48" fill="#07060b"/>
+  <circle cx="128" cy="128" r="78" fill="none" stroke="#b8864b" stroke-width="6"/>
+  <circle cx="128" cy="128" r="48" fill="none" stroke="#ede6d6" stroke-width="4"/>
+  <circle cx="128" cy="128" r="12" fill="#3fc1b0"/>
+</svg>

@@ -1,0 +1,22 @@
+[workspace]
+resolver = "3"
+members = ["crates/cosmos-core", "apps/desktop/src-tauri"]
+default-members = ["crates/cosmos-core"]
+
+[workspace.package]
+version = "0.0.0"
+edition = "2024"
+license = "MIT"
+rust-version = "1.99.1"
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+schemars = "1"
+comrak = { version = "0.48", default-features = false }
+
+[profile.dev]
+debug = 0
+
+[profile.test]
+debug = 0

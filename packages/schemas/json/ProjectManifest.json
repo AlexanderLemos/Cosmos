@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ProjectManifest",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "project_id": {
+      "type": "string"
+    },
+    "schema_version": {
+      "$ref": "#/$defs/Version1"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "project_id"
+  ],
+  "$defs": {
+    "Version1": {
+      "type": "integer",
+      "const": 1
+    }
+  }
+}

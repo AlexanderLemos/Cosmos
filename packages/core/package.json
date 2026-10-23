@@ -1,0 +1,23 @@
+{
+  "name": "@cosmos/core",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:conformance": "vitest run src/conformance.test.ts"
+  },
+  "dependencies": {
+    "unified": "11.0.5",
+    "remark-parse": "11.0.0",
+    "remark-gfm": "4.0.1",
+    "remark-frontmatter": "5.0.0",
+    "unist-util-visit": "5.0.0",
+    "mdast-util-to-string": "4.0.0"
+  }
+}
