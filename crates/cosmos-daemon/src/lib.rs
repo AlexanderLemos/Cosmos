@@ -43,7 +43,7 @@ pub fn endpoint(data: &Path) -> String {
 pub fn listener(data: &Path) -> io::Result<interprocess::local_socket::Listener> {
     let endpoint = endpoint(data);
     let options = ListenerOptions::new()
-        .name(endpoint.to_fs_name::<GenericFilePath>()?)
+        .name(endpoint.as_str().to_fs_name::<GenericFilePath>()?)
         .try_overwrite(true);
     #[cfg(windows)]
     let options = {
