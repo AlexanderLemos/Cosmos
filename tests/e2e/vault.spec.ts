@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page } from '@playwright/test';
-import { unzipSync } from 'fflate';
+import { unzipSync, zipSync } from 'fflate';
 import { test } from './storage-fixture';
 
 async function open(page: Page) {
@@ -116,7 +116,7 @@ test('two tabs preserve both edits and surface revision conflict', async ({
     .click();
   await expect(page.locator('.cm-content')).toHaveText('primeira edição');
 });
-test('Obsidian import/export keeps attachments, canvas, BOM and mixed line endings; memory stays read-only', async ({
+test('Obsidian ZIP import/export keeps attachments, canvas, BOM and mixed line endings; memory stays read-only', async ({
   page,
 }) => {
   const temp = await mkdtemp(join(tmpdir(), 'cosmos-roundtrip-'));
@@ -139,12 +139,30 @@ test('Obsidian import/export keeps attachments, canvas, BOM and mixed line endin
       '{"format_version":1,"id":"prj_fixture"}',
     );
     await writeFile(join(folder, 'Projeto', 'context.md'), '# Memória');
+    const archive = join(temp, 'vault.zip');
+    await writeFile(
+      archive,
+      zipSync({
+        'Obsidian/Nota.md': Buffer.from(original),
+        'Obsidian/asset.bin': attachment,
+        'Obsidian/mapa.canvas': await readFile(join(folder, 'mapa.canvas')),
+        'Obsidian/.obsidian/app.json': await readFile(
+          join(folder, '.obsidian', 'app.json'),
+        ),
+        'Obsidian/Projeto/project.cosmos.json': await readFile(
+          join(folder, 'Projeto', 'project.cosmos.json'),
+        ),
+        'Obsidian/Projeto/context.md': await readFile(
+          join(folder, 'Projeto', 'context.md'),
+        ),
+      }),
+    );
     await open(page);
     await page
-      .getByLabel('Importar pasta', { exact: true })
-      .setInputFiles(folder);
+      .getByLabel('Importar ZIP', { exact: true })
+      .setInputFiles(archive);
     await expect(
-      page.getByText('Pasta importada sem alterar os originais.'),
+      page.getByText('Importação concluída sem alterar os originais.'),
     ).toBeVisible();
     await page
       .getByRole('navigation', { name: 'Notas' })
@@ -192,9 +210,36 @@ test('Obsidian import/export keeps attachments, canvas, BOM and mixed line endin
     expect(await readFile(join(folder, 'Nota.md'), 'utf8')).toBe(original);
     // A second import cannot overwrite any existing files.
     await page
+      .getByLabel('Importar ZIP', { exact: true })
+      .setInputFiles(archive);
+    await expect(page.getByRole('alert')).toContainText('DESTINATION_EXISTS');
+  } finally {
+    await rm(temp, { recursive: true, force: true });
+  }
+});
+
+test('folder import preserves ordinary files without modifying the source', async ({
+  page,
+}) => {
+  const temp = await mkdtemp(join(tmpdir(), 'cosmos-folder-'));
+  const folder = join(temp, 'Folder');
+  const original = '\ufeff# Importada\r\n';
+  try {
+    await mkdir(folder);
+    await writeFile(join(folder, 'note.md'), original);
+    await open(page);
+    await page
       .getByLabel('Importar pasta', { exact: true })
       .setInputFiles(folder);
-    await expect(page.getByRole('alert')).toContainText('DESTINATION_EXISTS');
+    await expect(
+      page.getByText('Importação concluída sem alterar os originais.'),
+    ).toBeVisible();
+    await page
+      .getByRole('navigation', { name: 'Notas' })
+      .getByRole('button', { name: 'Folder/note.md', exact: true })
+      .click();
+    await expect(page.locator('.cm-content')).toContainText('# Importada');
+    expect(await readFile(join(folder, 'note.md'), 'utf8')).toBe(original);
   } finally {
     await rm(temp, { recursive: true, force: true });
   }

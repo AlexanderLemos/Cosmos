@@ -12,6 +12,7 @@ export interface OpenVault {
   search(query: string): Promise<string[]>;
   createProject?(name: string, universe: string): Promise<string>;
   importFiles?(files: File[]): Promise<void>;
+  importZip?(file: File): Promise<void>;
   exportZip?(): Promise<Uint8Array>;
 }
 export interface VaultPlatform {

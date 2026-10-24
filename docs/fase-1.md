@@ -8,10 +8,11 @@ foram aprovadas implicitamente pelo avanço da implementação.
 
 - **Web:** escolher o cofre OPFS ou uma pasta real em navegadores com File System
   Access. Criar notas e pastas pelo caminho, editar com CodeMirror 6, salvar,
-  reabrir, buscar e exportar ZIP. Importar uma pasta do Obsidian sem modificar a
+  reabrir, buscar e exportar ZIP. Importar uma pasta ou ZIP do Obsidian sem modificar a
   origem nem sobrescrever arquivos existentes. Anexos, `.canvas`, frontmatter,
   BOM e terminações de linha são preservados. Notas têm limite de 8 MiB; exportação
-  ZIP, 256 MiB descomprimidos. A interface informa falhas, inclusive quota.
+  ZIP, 256 MiB descomprimidos; importação ZIP, até 10 mil entradas.
+  Seletores de pasta podem omitir arquivos ocultos (WebKit); use ZIP para preservar `.obsidian`. A interface informa falhas, inclusive quota.
 - **Desktop:** escolher uma pasta em diálogo nativo; iniciar/reutilizar `cosmosd`;
   listar, editar e salvar notas; buscar; criar projetos manualmente. O backend da
   janela não grava Markdown ou SQLite. O daemon continua ativo após fechar a janela.
@@ -97,8 +98,8 @@ pela política de rede; a execução local cobre Chromium e o WebView GTK nativo
   supervisão automática/reconexão após queda e um endpoint por usuário.
 - UI para revisar intenções retidas no journal e restauração de rascunhos após
   queda do navegador; atualmente há salvamento explícito e download de rascunho.
-- Importação de ZIP na Web, recuperação/rollback de importação interrompida e
-  exportação incremental de cofres maiores; exportação ZIP e importação de pasta
+- Recuperação/rollback de importação interrompida e
+  exportação incremental de cofres maiores; exportação ZIP e importação de pasta/ZIP
   já funcionam. Uma importação interrompida pode deixar arquivos novos parciais,
   mas nunca apaga ou sobrescreve a origem nem arquivos previamente existentes.
 - Separação do projetor de memória em `cosmos-memory`, contratos completos de

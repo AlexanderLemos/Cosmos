@@ -1,5 +1,5 @@
 /// <reference path="./browser-types.d.ts" />
-import { zipSync } from 'fflate';
+import { unzipSync, zipSync } from 'fflate';
 import {
   type Entry,
   type FsEvent,
@@ -28,6 +28,29 @@ export function validatePath(path: string) {
     throw new Error('INVALID_PATH');
   }
   return path.split('/');
+}
+const MAX_ARCHIVE_BYTES = 256 * 1024 * 1024;
+export function decodeVaultZip(bytes: Uint8Array) {
+  if (bytes.length > MAX_ARCHIVE_BYTES) throw new Error('IMPORT_TOO_LARGE');
+  let total = 0;
+  let count = 0;
+  const names = new Set<string>();
+  return unzipSync(bytes, {
+    filter: (entry) => {
+      if (++count > 10_000) throw new Error('TOO_MANY_FILES');
+      const directory = entry.name.endsWith('/');
+      const path = directory ? entry.name.slice(0, -1) : entry.name;
+      validatePath(path);
+      if (path.split('/').includes('.git'))
+        throw new Error('GIT_IMPORT_EXCLUDED');
+      const key = path.toLowerCase();
+      if (names.has(key)) throw new Error('DESTINATION_EXISTS');
+      names.add(key);
+      total += entry.originalSize;
+      if (total > MAX_ARCHIVE_BYTES) throw new Error('IMPORT_TOO_LARGE');
+      return !directory;
+    },
+  });
 }
 async function rev(bytes: Uint8Array<ArrayBuffer>) {
   const hash = await crypto.subtle.digest('SHA-256', bytes);
@@ -226,6 +249,16 @@ export class BrowserVaultFS implements VaultFS {
         await this.put(path, new Uint8Array(await file.arrayBuffer()));
     });
   }
+  async importZip(file: File) {
+    if (file.size > MAX_ARCHIVE_BYTES) throw new Error('IMPORT_TOO_LARGE');
+    const entries = decodeVaultZip(new Uint8Array(await file.arrayBuffer()));
+    await this.importFiles(
+      Object.entries(entries).map(([path, bytes]) => ({
+        path,
+        file: new File([new Uint8Array(bytes)], path),
+      })),
+    );
+  }
   async exportZip() {
     const files: Record<string, Uint8Array<ArrayBuffer>> = {};
     let size = 0;
@@ -246,6 +279,8 @@ export class BrowserVaultFS implements VaultFS {
   }
 }
 export async function openBrowserVault() {
+  if (!navigator.storage?.getDirectory)
+    throw new Error('PERSISTENT_STORAGE_UNAVAILABLE');
   return new BrowserVaultFS(
     await (await navigator.storage.getDirectory()).getDirectoryHandle(
       'cosmos-vault',

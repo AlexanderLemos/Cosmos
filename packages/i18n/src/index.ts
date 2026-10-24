@@ -24,7 +24,10 @@ export const resources = {
       refresh: 'Atualizar lista',
       closeVault: 'Fechar cofre',
       importFolder: 'Importar pasta',
-      imported: 'Pasta importada sem alterar os originais.',
+      importZip: 'Importar ZIP',
+      folderImportHint:
+        'O navegador pode omitir arquivos ocultos. Para preservar .obsidian, use ZIP.',
+      imported: 'Importação concluída sem alterar os originais.',
       exportVault: 'Exportar cofre (.zip)',
       editor: 'Editor Markdown',
       chooseNote: 'Um espaço para pensar',
@@ -87,7 +90,10 @@ export const resources = {
       refresh: 'Refresh list',
       closeVault: 'Close vault',
       importFolder: 'Import folder',
-      imported: 'Folder imported without changing the originals.',
+      importZip: 'Import ZIP',
+      folderImportHint:
+        'Your browser may omit hidden files. Use ZIP to preserve .obsidian.',
+      imported: 'Import complete without changing the originals.',
       exportVault: 'Export vault (.zip)',
       editor: 'Markdown editor',
       chooseNote: 'A space to think',

@@ -276,6 +276,7 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
                 {vault.importFiles && (
                   <label>
                     {t('importFolder')}
+                    <small>{t('folderImportHint')}</small>
                     <input
                       aria-label={t('importFolder')}
                       type="file"
@@ -290,6 +291,27 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
                           await refresh(vault);
                           setStatus(t('imported'));
                         });
+                      }}
+                    />
+                  </label>
+                )}
+                {vault.importZip && (
+                  <label>
+                    {t('importZip')}
+                    <input
+                      aria-label={t('importZip')}
+                      type="file"
+                      accept=".zip,application/zip"
+                      disabled={busy}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        e.target.value = '';
+                        if (file)
+                          void run(async () => {
+                            await vault.importZip?.(file);
+                            await refresh(vault);
+                            setStatus(t('imported'));
+                          });
                       }}
                     />
                   </label>

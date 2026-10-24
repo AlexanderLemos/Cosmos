@@ -24,6 +24,7 @@ function adapt(fs: BrowserVaultFS): OpenVault {
           file,
         })),
       ),
+    importZip: (file) => fs.importZip(file),
     exportZip: () => fs.exportZip(),
   };
 }
