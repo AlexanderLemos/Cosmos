@@ -4,6 +4,9 @@
   --text: var(--aether);
   --muted: #b5afbe;
   --line: #302b37;
+  --syntax-link: #c6b6f7;
+  --syntax-muted: #b5afbe;
+  --syntax-accent: #8acfc5;
   min-height: 100vh;
   background: var(--surface);
   color: var(--text);
@@ -15,6 +18,9 @@
   --text: #241d28;
   --muted: #605465;
   --line: #ccc1af;
+  --syntax-link: #61428a;
+  --syntax-muted: #605465;
+  --syntax-accent: #205d58;
 }
 .header {
   display: flex;
@@ -106,4 +112,8 @@
     grid-template-columns: 1fr;
     gap: 2rem;
   }
+}
+
+.workspace {
+  padding: 1.5rem clamp(1rem, 3vw, 3rem);
 }

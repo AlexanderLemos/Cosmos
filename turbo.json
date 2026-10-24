@@ -1,7 +1,15 @@
 {
   "$schema": "https://turborepo.com/schema.json",
-  "globalEnv": ["PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH"],
-  "globalDependencies": ["tsconfig.base.json", "tests/conformance/**"],
+  "globalEnv": [
+    "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH",
+    "COSMOS_ALL_BROWSERS",
+    "COSMOS_E2E_PREVIEW"
+  ],
+  "globalDependencies": [
+    "tsconfig.base.json",
+    "tests/conformance/**",
+    "crates/cosmos-storage/src/*.sql"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],

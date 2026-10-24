@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/cosmos-core", "apps/desktop/src-tauri"]
+members = ["crates/cosmos-core", "apps/desktop/src-tauri", "crates/cosmos-storage", "crates/cosmos-daemon"]
 default-members = ["crates/cosmos-core"]
 
 [workspace.package]

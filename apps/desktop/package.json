@@ -16,7 +16,9 @@
     "@cosmos/i18n": "workspace:*",
     "react": "19.3.1",
     "react-dom": "19.3.1",
-    "@tauri-apps/api": "2.10.1"
+    "@tauri-apps/api": "2.10.1",
+    "@cosmos/fs": "workspace:*",
+    "@cosmos/schemas": "workspace:*"
   },
   "devDependencies": {
     "@types/react": "19.2.7",

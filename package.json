@@ -20,7 +20,8 @@
     "test:a11y": "playwright test --grep accessibility",
     "schemas:generate": "cargo run -p cosmos-core --example export_schemas --locked && node scripts/generate-types.mjs",
     "schemas:check": "node scripts/check-schemas.mjs",
-    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm schemas:check"
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm schemas:check",
+    "daemon:build": "node scripts/build-daemon.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.11.1",
@@ -28,6 +29,7 @@
     "@playwright/test": "1.64.1",
     "@types/node": "24.10.1",
     "ajv": "8.17.1",
+    "fflate": "0.8.3",
     "json-schema-to-typescript": "16.0.0",
     "turbo": "2.11.10",
     "typescript": "5.9.3",

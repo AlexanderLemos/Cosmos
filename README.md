@@ -5,10 +5,12 @@ Toda ideia nasce no Caos. O Cosmos é a ordem que você dá a ela.
 Projeto local-first de conhecimento em Markdown e memória de projetos compartilhada
 entre agentes. Alvos: **Web e Desktop (Tauri 2)**. Código próprio sob [MIT](LICENSE).
 
-**Estado atual: fundação inicial de F0.** Os shells Web/Desktop executam a base visual
-e os controles de idioma e tema. Editor, vault, daemon, memória, integrações e Local
-Mirror ainda serão implementados. O [plano v2.2 completo](docs/plan/COSMOS_Plano_Mestre_v2.2_Consolidado.md)
-é a referência; o [acompanhamento de F0](docs/fase-0.md) explicita as pendências.
+**Estado atual: núcleo funcional inicial de F1.** Web e Desktop permitem abrir,
+editar, salvar e buscar notas Markdown. O Desktop usa `cosmosd` e cria documentos
+de projeto; a Web oferece cofre local, importação de pasta e exportação ZIP.
+Veja [o que já funciona e os limites de F1](docs/fase-1.md).
+O [plano completo](docs/plan/COSMOS_Plano_Mestre_v2.2_Consolidado.md) continua sendo
+a referência; as [pendências de F0](docs/fase-0.md) permanecem explícitas.
 
 ## Desenvolvimento
 
@@ -18,6 +20,7 @@ No Linux Debian/Ubuntu são necessários GTK 3, WebKitGTK 4.1 e suas bibliotecas
 
 ```bash
 pnpm install --frozen-lockfile
+pnpm daemon:build        # necessário antes de Cargo/Tauri
 pnpm dev                 # Web
 pnpm dev:desktop         # Tauri em desktop com ambiente gráfico e libs nativas
 ```
@@ -42,6 +45,7 @@ pnpm check              # lint, tipos, Vitest e ausência de divergência de sch
 pnpm build              # shells Web e Desktop frontend
 pnpm test:e2e           # Chromium: render, idioma, tema e axe
 cargo test --workspace --locked
+cargo test -p cosmos-daemon --features fault-injection --locked
 cargo clippy --workspace --all-targets --locked -- -D warnings
 pnpm --filter desktop tauri build --debug --no-bundle
 ```

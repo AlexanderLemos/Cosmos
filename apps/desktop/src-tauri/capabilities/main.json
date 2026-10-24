@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "main",
-  "description": "F0 shell; no filesystem, shell, network or daemon grants.",
+  "description": "Local main window: explicit native vault selection and typed daemon commands.",
   "windows": ["main"],
-  "permissions": []
+  "permissions": ["vault-window"]
 }

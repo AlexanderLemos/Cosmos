@@ -1,4 +1,4 @@
-/** Capability contract; adapters follow in F1. remove() means trash, never unlink. */
+/** Vault capabilities. remove() means trash; native move/trash/watch remain pending in F1. */
 export interface Entry {
   path: string;
   kind: 'file' | 'directory';

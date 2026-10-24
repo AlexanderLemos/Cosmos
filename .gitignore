@@ -13,3 +13,4 @@ test-results/
 __pycache__/
 *.pyc
 apps/desktop/src-tauri/gen/
+apps/desktop/src-tauri/binaries/

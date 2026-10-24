@@ -69,7 +69,7 @@ Acquire::Languages "none";
     env = os.environ | {'APT_CONFIG': str(apt / 'apt.conf')}
     run('apt-get', 'update', env=env)
     requested = ['libwebkit2gtk-4.1-dev', 'libayatana-appindicator3-dev', 'librsvg2-dev',
-                 'patchelf', 'xvfb', 'xauth', 'webkitgtk-webdriver']
+                 'patchelf', 'xvfb', 'xauth', 'webkitgtk-webdriver', 'xdotool']
     result = run('apt-get', '-s', 'install', '--no-install-recommends', *requested, env=env, capture_output=True, text=True)
     (apt / 'native-plan.txt').write_text(result.stdout)
     packages = [m.group(1) + '=' + m.group(2) for m in re.finditer(r'^Inst (\S+)(?: \[[^\]]+\])? \((\S+)', result.stdout, re.M)]

@@ -1,4 +1,4 @@
-name: Foundation
+name: Core
 on:
   push:
   pull_request:
@@ -27,14 +27,19 @@ jobs:
       - name: Pinned Rust
         run: rustup toolchain install 1.99.1 --profile minimal --component rustfmt,clippy
       - run: pnpm install --frozen-lockfile
+      - run: pnpm daemon:build
       - run: pnpm check
       - run: cargo fmt --all -- --check
       - run: pnpm build
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - run: cargo test --workspace --locked
+      - run: cargo test -p cosmos-daemon --features fault-injection --locked
       - run: pnpm --filter desktop tauri build --debug --no-bundle
-      - name: Chromium and accessibility
+      - name: Browser vaults and accessibility
         if: runner.os == 'Linux'
+        env:
+          COSMOS_ALL_BROWSERS: 1
+          COSMOS_E2E_PREVIEW: 1
         run: |
-          pnpm exec playwright install --with-deps chromium
+          pnpm exec playwright install --with-deps chromium firefox webkit
           pnpm test:e2e

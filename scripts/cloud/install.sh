@@ -9,6 +9,7 @@ pkg-config --modversion gtk+-3.0 webkit2gtk-4.1
 pnpm install --frozen-lockfile
 cargo fetch --locked
 cargo install tauri-driver --locked --version 2.0.5
+pnpm daemon:build
 pnpm check
 pnpm build
 cargo fmt --all -- --check

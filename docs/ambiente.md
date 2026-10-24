@@ -68,3 +68,35 @@ Encerre somente o driver/Xvfb que você iniciou após o teste.
 - Código novo está no checkout local, ainda sem commit/push. Publicar a configuração
   do ambiente é uma ação distinta de publicar o código no GitHub.
 - A execução em uma nova tarefa restaurada deve ser validada após a publicação do snapshot.
+
+## Atualização F1 (2026-10-24)
+
+O estado atual substitui as limitações históricas do shell F0 acima:
+editor, persistência Web, `cosmosd`, sidecar, IPC, SQLite/FTS5 e projetos manuais
+estão implementados. Leia [fase-1.md](fase-1.md) para os limites restantes.
+
+Antes de verificações Cargo que envolvam o Desktop, rode `pnpm daemon:build`.
+O bootstrap cloud já inclui essa etapa e `xdotool` para testar o seletor GTK.
+O smoke nativo aceita `--exercise-vault`, criando apenas um cofre de teste:
+
+```bash
+python3 scripts/smoke-desktop.py --exercise-vault \
+  --evidence-dir /workspace/.cosmos-tools/evidence/f1
+```
+
+Esse modo deve executar com o mesmo `DISPLAY` e `XAUTHORITY` do Xvfb do driver.
+Essas variáveis são seletores do servidor gráfico; não imprima o conteúdo do
+arquivo de autorização. Use evidências sob `/workspace/.cosmos-tools`, montado
+para escrita no wrapper; o `/tmp` do namespace pode não ser o mesmo do shell.
+A janela precisa de um diálogo nativo real: não há caminho de teste que bypassa
+consentimento no executável de produção. O smoke verificou renderização, IPC,
+idioma, escolha de pasta, edição/salvamento e seis documentos de projeto.
+Daemons de teste continuam ativos ao fechar a janela, como esperado; encerre
+somente processos associados ao cofre temporário que o teste criou.
+
+Localmente passaram `pnpm check`, builds Web/Desktop, seis E2E Chromium (também
+contra o build de produção), Clippy, testes Rust e os dois pontos de interrupção
+forçada do daemon. O download de Firefox/WebKit pelo Playwright recebeu HTTP 403
+`Domain forbidden` para `cdn.playwright.dev` e
+`playwright.download.prss.microsoft.com`; a matriz completa está na CI.
+Nenhuma política de rede foi ampliada automaticamente.

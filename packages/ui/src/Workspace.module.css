@@ -1,0 +1,194 @@
+.launcher {
+  margin-top: 2rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.launcher p {
+  flex-basis: 100%;
+  color: var(--muted);
+  font-size: 0.85rem;
+  max-width: 36rem;
+  line-height: 1.6;
+}
+.launcher button,
+.workspace button {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 0.65rem 0.85rem;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.85rem;
+}
+.launcher button:first-child {
+  background: var(--text);
+  color: var(--surface);
+}
+.workspace button:hover:not(:disabled) {
+  background: #8a729222;
+}
+.workspace button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.workspace button:focus-visible,
+.launcher button:focus-visible,
+.workspace input:focus-visible {
+  outline: 2px solid var(--orichalcum);
+  outline-offset: 3px;
+}
+.workspace {
+  display: grid;
+  grid-template-columns: 270px minmax(0, 1fr);
+  min-height: 70vh;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+.sidebar {
+  padding: 1.25rem;
+  border-right: 1px solid var(--line);
+}
+.sidebar h1 {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 400;
+  overflow-wrap: anywhere;
+  margin: 0.5rem 0 1.5rem;
+}
+.eyebrow {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--muted);
+}
+.workspace form,
+.tools {
+  display: grid;
+  gap: 0.6rem;
+  margin: 1rem 0;
+}
+.workspace label {
+  display: grid;
+  gap: 0.4rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.workspace input,
+.workspace select {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 0.6rem;
+  font: inherit;
+}
+.noteList {
+  display: grid;
+  gap: 0.25rem;
+  max-height: 35vh;
+  overflow: auto;
+  margin: 1.5rem -0.5rem;
+}
+.noteList button {
+  text-align: left;
+  border-color: transparent;
+  overflow-wrap: anywhere;
+  font-size: 0.8rem;
+}
+.noteList button[aria-current] {
+  border-color: var(--line);
+  background: #8a729222;
+}
+.noteList p,
+.links p {
+  font-size: 0.8rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.document {
+  min-width: 0;
+}
+.toolbar {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+.toolbar h2 {
+  margin: 0.5rem 0 0;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 400;
+  overflow-wrap: anywhere;
+}
+.toolbar > div:last-child {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.feedback {
+  min-height: 1.3rem;
+  margin: 0.75rem 1.5rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.error {
+  margin: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--orichalcum);
+  line-height: 1.6;
+}
+.error button {
+  display: block;
+  margin-top: 0.75rem;
+}
+.empty {
+  display: grid;
+  place-content: center;
+  text-align: center;
+  min-height: 420px;
+  color: var(--muted);
+  padding: 1.5rem;
+}
+.empty span {
+  font-size: 4rem;
+  color: var(--orichalcum);
+}
+.links {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  border-top: 1px solid var(--line);
+  padding: 1.5rem;
+}
+.links h3 {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+.links button {
+  display: block;
+  border: none;
+  padding: 0.4rem 0;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 800px) {
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+  .sidebar {
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+  }
+  .toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

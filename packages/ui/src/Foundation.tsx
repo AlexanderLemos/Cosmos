@@ -1,11 +1,17 @@
 import { i18n } from '@cosmos/i18n';
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import styles from './Foundation.module.css';
 import './tokens.css';
 
-/** F0 functional build shell, not the final UI or a working vault. */
-export function Foundation() {
+/** Shared spectral shell. Visual curation and final art direction remain in F0/F3. */
+export function Foundation({
+  launcher,
+  workspace,
+}: {
+  launcher?: ReactNode;
+  workspace?: ReactNode;
+}) {
   const { t } = useTranslation();
   const [theme, setTheme] = useState<'nyx' | 'hemera'>('nyx');
   return (
@@ -41,26 +47,31 @@ export function Foundation() {
           </label>
         </div>
       </header>
-      <main className={styles.main}>
-        <p className={styles.eyebrow}>{t('status')}</p>
-        <h1>
-          {t('tagline')}
-          <br />
-          <span>{t('subtitle')}</span>
-        </h1>
-        <p className={styles.description}>{t('description')}</p>
-        <div className={styles.pillars}>
-          <section>
-            <span aria-hidden="true">Ⅰ</span>
-            <h2>{t('knowledge')}</h2>
-            <p>{t('knowledgeText')}</p>
-          </section>
-          <section>
-            <span aria-hidden="true">Ⅱ</span>
-            <h2>{t('memory')}</h2>
-            <p>{t('memoryText')}</p>
-          </section>
-        </div>
+      <main className={workspace ? styles.workspace : styles.main}>
+        {workspace ?? (
+          <>
+            <p className={styles.eyebrow}>{t('status')}</p>
+            <h1>
+              {t('tagline')}
+              <br />
+              <span>{t('subtitle')}</span>
+            </h1>
+            <p className={styles.description}>{t('description')}</p>
+            {launcher}
+            <div className={styles.pillars}>
+              <section>
+                <span aria-hidden="true">Ⅰ</span>
+                <h2>{t('knowledge')}</h2>
+                <p>{t('knowledgeText')}</p>
+              </section>
+              <section>
+                <span aria-hidden="true">Ⅱ</span>
+                <h2>{t('memory')}</h2>
+                <p>{t('memoryText')}</p>
+              </section>
+            </div>
+          </>
+        )}
       </main>
       <footer className={styles.footer}>{t('footer')}</footer>
     </div>

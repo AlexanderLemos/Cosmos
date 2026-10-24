@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 
 pub mod markdown;
+pub mod vault;
 
 /// The wire version is a literal, not an arbitrary number accepted by deserialization.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -184,11 +185,18 @@ pub struct RuntimeInfo {
     pub capabilities: Vec<String>,
 }
 impl RuntimeInfo {
-    pub fn foundation() -> Self {
+    pub fn desktop() -> Self {
         Self {
             protocol_version: Version1,
             application_version: env!("CARGO_PKG_VERSION").into(),
-            capabilities: vec![],
+            capabilities: [
+                "vault.read",
+                "vault.write",
+                "vault.search",
+                "projects.create",
+            ]
+            .map(String::from)
+            .to_vec(),
         }
     }
 }

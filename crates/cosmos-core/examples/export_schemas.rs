@@ -26,4 +26,6 @@ fn main() {
     export::<Binding>("Binding", &root);
     export::<EventEnvelope>("EventEnvelope", &root);
     export::<RuntimeInfo>("RuntimeInfo", &root);
+    export::<vault::VaultCommand>("VaultCommand", &root);
+    export::<vault::VaultReply>("VaultReply", &root);
 }

@@ -15,9 +15,17 @@ export default defineConfig({
           : {},
       },
     },
+    ...(process.env.COSMOS_ALL_BROWSERS
+      ? [
+          { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
+          { name: 'webkit', use: { ...devices['Desktop Safari'] } },
+        ]
+      : []),
   ],
   webServer: {
-    command: 'pnpm --filter web dev',
+    command: process.env.COSMOS_E2E_PREVIEW
+      ? 'pnpm --filter web preview'
+      : 'pnpm --filter web dev',
     url: 'http://127.0.0.1:5173',
     reuseExistingServer: false,
   },

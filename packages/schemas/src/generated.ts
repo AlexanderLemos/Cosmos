@@ -161,3 +161,51 @@ export interface RuntimeInfo {
 }
 
 }
+export namespace VaultCommandContract {
+export type VaultCommand =
+  | {
+      op: "list";
+    }
+  | {
+      op: "read";
+      path: string;
+    }
+  | {
+      content: string;
+      expected_rev: string;
+      op: "write";
+      path: string;
+    }
+  | {
+      op: "search";
+      query: string;
+    }
+  | {
+      name: string;
+      op: "create_project";
+      universe: string;
+    };
+
+}
+export namespace VaultReplyContract {
+export type VaultReply =
+  | {
+      kind: "paths";
+      paths: string[];
+    }
+  | {
+      content: string;
+      kind: "note";
+      path: string;
+      rev: string;
+    }
+  | {
+      kind: "saved";
+      rev: string;
+    }
+  | {
+      kind: "project";
+      path: string;
+    };
+
+}

@@ -8,6 +8,7 @@
   --orichalcum: #b8864b;
   --font-display: Georgia, "Times New Roman", serif;
   --font-body: system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Consolas, monospace;
 }
 * {
   box-sizing: border-box;

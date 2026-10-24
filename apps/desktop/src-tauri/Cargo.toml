@@ -12,3 +12,6 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = [] }
 cosmos-core = { path = "../../../crates/cosmos-core" }
 serde.workspace = true
+cosmos-daemon = { path = "../../../crates/cosmos-daemon" }
+tauri-plugin-dialog = "2"
+blake3 = "1"
