@@ -1,0 +1,6 @@
+# Keep source files and generated contracts identical on every platform.
+* text=auto eol=lf
+
+*.png binary
+*.ico binary
+*.icns binary
