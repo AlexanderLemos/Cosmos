@@ -83,7 +83,7 @@ segundo daemon, traversal, symlinks, schema futuro e mudanças externas.
 `fault-injection` não faz parte do sidecar preparado para o app.
 
 Playwright verifica persistência após recarregar, conflito entre abas, busca real,
-links/backlinks, acessibilidade nos dois temas e round-trip de pasta Obsidian
+links/backlinks, acessibilidade nos dois temas e round-trip de ZIP Obsidian
 incluindo anexos e terminações mistas. A CI executa os testes Rust nos três SOs e
 os três engines Web no Linux. A instalação local de Firefox/WebKit foi bloqueada
 pela política de rede; a execução local cobre Chromium e o WebView GTK nativo.

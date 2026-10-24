@@ -104,14 +104,17 @@ fn read_all(stream: &mut Stream, mut bytes: &mut [u8], deadline: Instant) -> io:
 }
 #[cfg(windows)]
 fn windows_read_ready(stream: &Stream) -> io::Result<()> {
-    use std::{os::windows::io::AsRawHandle, ptr};
+    use std::{
+        os::windows::io::{AsHandle, AsRawHandle},
+        ptr,
+    };
     use windows_sys::Win32::System::Pipes::PeekNamedPipe;
     let Stream::NamedPipe(pipe) = stream;
     let mut available = 0;
     // The borrowed pipe handle and output pointer remain valid for this call.
     if unsafe {
         PeekNamedPipe(
-            pipe.as_raw_handle(),
+            pipe.as_handle().as_raw_handle(),
             ptr::null_mut(),
             0,
             ptr::null_mut(),
