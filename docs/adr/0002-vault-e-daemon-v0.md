@@ -30,3 +30,8 @@ O editor CodeMirror aplica alterações ao texto original, preservando bytes que
 não foram editados, inclusive BOM e quebras de linha mistas. O parser serve à
 navegação, sem reformatar o documento na gravação. A interface salva explicitamente,
 mostra conflitos e permite baixar rascunho antes de recarregar.
+
+Em Unix, o socket é criado dentro de um diretório 0700 e recebe 0600 antes de
+aceitar requisições. Isso funciona no macOS, que não suporta o `fchmod` no socket
+ainda não vinculado usado por `ListenerOptionsExt::mode`. O diretório privado
+protege o intervalo de criação sem alterar o umask global do processo.

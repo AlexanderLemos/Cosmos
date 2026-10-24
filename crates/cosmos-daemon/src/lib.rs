@@ -45,11 +45,6 @@ pub fn listener(data: &Path) -> io::Result<interprocess::local_socket::Listener>
     let options = ListenerOptions::new()
         .name(endpoint.to_fs_name::<GenericFilePath>()?)
         .try_overwrite(true);
-    #[cfg(unix)]
-    let options = {
-        use interprocess::os::unix::local_socket::ListenerOptionsExt;
-        options.mode(0o600)
-    };
     #[cfg(windows)]
     let options = {
         use interprocess::os::windows::{
@@ -58,7 +53,20 @@ pub fn listener(data: &Path) -> io::Result<interprocess::local_socket::Listener>
         let sddl = widestring::U16CString::from_str("D:P(A;;GA;;;OW)").map_err(io::Error::other)?;
         options.security_descriptor(SecurityDescriptor::deserialize(&sddl)?)
     };
-    options.create_sync()
+    // macOS does not support fchmod on an unbound socket. A private parent
+    // directory prevents other users reaching the endpoint while it is created.
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(data, std::fs::Permissions::from_mode(0o700))?;
+    }
+    let listener = options.create_sync()?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&endpoint, std::fs::Permissions::from_mode(0o600))?;
+    }
+    Ok(listener)
 }
 fn retry<T>(mut operation: impl FnMut() -> io::Result<T>, deadline: Instant) -> io::Result<T> {
     loop {

@@ -39,6 +39,22 @@ fn real_process_serializes_writes_rejects_versions_and_survives_kill() {
     let root = temp.path().join("v");
     let data = temp.path().join("d");
     let daemon = start(&root, &data);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        assert_eq!(
+            std::fs::metadata(&data).unwrap().permissions().mode() & 0o777,
+            0o700
+        );
+        assert_eq!(
+            std::fs::metadata(cosmos_daemon::endpoint(&data))
+                .unwrap()
+                .permissions()
+                .mode()
+                & 0o777,
+            0o600
+        );
+    }
     let write = |content: &str, rev: &str| VaultCommand::Write {
         path: "note.md".into(),
         content: content.into(),
