@@ -90,11 +90,40 @@ fn retry<T>(mut operation: impl FnMut() -> io::Result<T>, deadline: Instant) -> 
 }
 fn read_all(stream: &mut Stream, mut bytes: &mut [u8], deadline: Instant) -> io::Result<()> {
     while !bytes.is_empty() {
+        // PIPE_NOWAIT reports ERROR_NO_DATA when idle, which Rust/interprocess
+        // normalize to EOF. Peek first to distinguish idle from a closed peer.
+        #[cfg(windows)]
+        retry(|| windows_read_ready(stream), deadline)?;
         let count = retry(|| stream.read(bytes), deadline)?;
         if count == 0 {
             return Err(io::Error::from(io::ErrorKind::UnexpectedEof));
         }
         bytes = &mut bytes[count..];
+    }
+    Ok(())
+}
+#[cfg(windows)]
+fn windows_read_ready(stream: &Stream) -> io::Result<()> {
+    use std::{os::windows::io::AsRawHandle, ptr};
+    use windows_sys::Win32::System::Pipes::PeekNamedPipe;
+    let Stream::NamedPipe(pipe) = stream;
+    let mut available = 0;
+    // The borrowed pipe handle and output pointer remain valid for this call.
+    if unsafe {
+        PeekNamedPipe(
+            pipe.as_raw_handle(),
+            ptr::null_mut(),
+            0,
+            ptr::null_mut(),
+            &mut available,
+            ptr::null_mut(),
+        )
+    } == 0
+    {
+        return Err(io::Error::last_os_error());
+    }
+    if available == 0 {
+        return Err(io::ErrorKind::WouldBlock.into());
     }
     Ok(())
 }
@@ -128,7 +157,18 @@ pub fn send(stream: &mut Stream, value: &serde_json::Value) -> io::Result<()> {
     let deadline = Instant::now() + Duration::from_secs(30);
     let mut remaining = frame.as_slice();
     while !remaining.is_empty() {
-        let count = retry(|| stream.write(remaining), deadline)?;
+        let count = retry(
+            || {
+                let count = stream.write(remaining)?;
+                // Nonblocking byte-mode pipes may accept zero bytes while full.
+                #[cfg(windows)]
+                if count == 0 {
+                    return Err(io::ErrorKind::WouldBlock.into());
+                }
+                Ok(count)
+            },
+            deadline,
+        )?;
         if count == 0 {
             return Err(io::Error::from(io::ErrorKind::WriteZero));
         }

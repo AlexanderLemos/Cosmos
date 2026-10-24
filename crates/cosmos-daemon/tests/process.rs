@@ -155,3 +155,25 @@ fn kill_during_projection_replays_the_durable_journal() {
         );
     }
 }
+
+#[test]
+fn transport_waits_for_delayed_peers_and_transfers_large_frames() {
+    use interprocess::local_socket::prelude::*;
+    let temp = tempfile::tempdir().unwrap();
+    let listener = cosmos_daemon::listener(temp.path()).unwrap();
+    let payload = serde_json::json!({"text": "órbita".repeat(200_000)});
+    thread::scope(|scope| {
+        let server = scope.spawn(|| {
+            let mut stream = listener.accept().unwrap();
+            let received = cosmos_daemon::receive(&mut stream).unwrap();
+            assert_eq!(received, payload);
+            thread::sleep(Duration::from_millis(100));
+            cosmos_daemon::send(&mut stream, &received).unwrap();
+        });
+        let mut stream = cosmos_daemon::connect(temp.path()).unwrap();
+        thread::sleep(Duration::from_millis(100));
+        cosmos_daemon::send(&mut stream, &payload).unwrap();
+        assert_eq!(cosmos_daemon::receive(&mut stream).unwrap(), payload);
+        server.join().unwrap();
+    });
+}
