@@ -6,13 +6,18 @@ use cosmos_core::{
 use interprocess::local_socket::{GenericFilePath, ListenerOptions, Stream, prelude::*};
 use serde::{Deserialize, Serialize};
 use std::{
-    io::{self, Read, Write},
+    io,
     path::Path,
     time::{Duration, Instant},
 };
 
+#[cfg(unix)]
+use std::io::{Read, Write};
+
 #[cfg(windows)]
 mod windows_security;
+#[cfg(windows)]
+mod windows_transport;
 
 pub const MAX_FRAME: usize = 50 * 1024 * 1024;
 #[derive(Serialize, Deserialize)]
@@ -75,6 +80,7 @@ pub fn listener(data: &Path) -> io::Result<interprocess::local_socket::Listener>
     }
     Ok(listener)
 }
+#[cfg(unix)]
 fn retry<T>(mut operation: impl FnMut() -> io::Result<T>, deadline: Instant) -> io::Result<T> {
     loop {
         match operation() {
@@ -90,10 +96,9 @@ fn retry<T>(mut operation: impl FnMut() -> io::Result<T>, deadline: Instant) -> 
 }
 fn read_all(stream: &mut Stream, mut bytes: &mut [u8], deadline: Instant) -> io::Result<()> {
     while !bytes.is_empty() {
-        // PIPE_NOWAIT reports ERROR_NO_DATA when idle, which Rust/interprocess
-        // normalize to EOF. Peek first to distinguish idle from a closed peer.
         #[cfg(windows)]
-        retry(|| windows_read_ready(stream), deadline)?;
+        let count = windows_transport::read(stream, bytes, deadline)?;
+        #[cfg(unix)]
         let count = retry(|| stream.read(bytes), deadline)?;
         if count == 0 {
             return Err(io::Error::from(io::ErrorKind::UnexpectedEof));
@@ -102,36 +107,8 @@ fn read_all(stream: &mut Stream, mut bytes: &mut [u8], deadline: Instant) -> io:
     }
     Ok(())
 }
-#[cfg(windows)]
-fn windows_read_ready(stream: &Stream) -> io::Result<()> {
-    use std::{
-        os::windows::io::{AsHandle, AsRawHandle},
-        ptr,
-    };
-    use windows_sys::Win32::System::Pipes::PeekNamedPipe;
-    let Stream::NamedPipe(pipe) = stream;
-    let mut available = 0;
-    // The borrowed pipe handle and output pointer remain valid for this call.
-    if unsafe {
-        PeekNamedPipe(
-            pipe.as_handle().as_raw_handle(),
-            ptr::null_mut(),
-            0,
-            ptr::null_mut(),
-            &mut available,
-            ptr::null_mut(),
-        )
-    } == 0
-    {
-        return Err(io::Error::last_os_error());
-    }
-    if available == 0 {
-        return Err(io::ErrorKind::WouldBlock.into());
-    }
-    Ok(())
-}
 pub fn receive(stream: &mut Stream) -> io::Result<serde_json::Value> {
-    stream.set_nonblocking(true)?;
+    stream.set_nonblocking(cfg!(unix))?;
     let deadline = Instant::now() + Duration::from_secs(30);
     let mut header = [0; 4];
     read_all(stream, &mut header, deadline)?;
@@ -147,7 +124,7 @@ pub fn receive(stream: &mut Stream) -> io::Result<serde_json::Value> {
     serde_json::from_slice(&bytes).map_err(io::Error::other)
 }
 pub fn send(stream: &mut Stream, value: &serde_json::Value) -> io::Result<()> {
-    stream.set_nonblocking(true)?;
+    stream.set_nonblocking(cfg!(unix))?;
     let mut bytes = serde_json::to_vec(value)?;
     if bytes.len() > MAX_FRAME {
         return Err(io::Error::new(
@@ -160,18 +137,10 @@ pub fn send(stream: &mut Stream, value: &serde_json::Value) -> io::Result<()> {
     let deadline = Instant::now() + Duration::from_secs(30);
     let mut remaining = frame.as_slice();
     while !remaining.is_empty() {
-        let count = retry(
-            || {
-                let count = stream.write(remaining)?;
-                // Nonblocking byte-mode pipes may accept zero bytes while full.
-                #[cfg(windows)]
-                if count == 0 {
-                    return Err(io::ErrorKind::WouldBlock.into());
-                }
-                Ok(count)
-            },
-            deadline,
-        )?;
+        #[cfg(windows)]
+        let count = windows_transport::write(stream, remaining, deadline)?;
+        #[cfg(unix)]
+        let count = retry(|| stream.write(remaining), deadline)?;
         if count == 0 {
             return Err(io::Error::from(io::ErrorKind::WriteZero));
         }
