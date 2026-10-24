@@ -19,9 +19,11 @@ fn start(root: &Path, data: &Path) -> Daemon {
         .stdout(Stdio::null())
         .spawn()
         .unwrap();
+    let mut last_error = String::new();
     for _ in 0..200 {
-        if cosmos_daemon::handshake(data).is_ok() {
-            return Daemon(child);
+        match cosmos_daemon::handshake(data) {
+            Ok(()) => return Daemon(child),
+            Err(error) => last_error = error.to_string(),
         }
         assert!(
             child.try_wait().unwrap().is_none(),
@@ -31,7 +33,7 @@ fn start(root: &Path, data: &Path) -> Daemon {
     }
     let _ = child.kill();
     let _ = child.wait();
-    panic!("daemon did not start");
+    panic!("daemon did not start: {last_error}");
 }
 #[test]
 fn real_process_serializes_writes_rejects_versions_and_survives_kill() {

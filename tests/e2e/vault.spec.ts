@@ -14,7 +14,7 @@ async function open(page: Page) {
     ).toBeVisible();
   } catch (error) {
     throw new Error(
-      `${String(error)}\nApplication state: ${await page.locator('body').innerText()}`,
+      `${String(error)}\nApplication state: ${await page.locator('body').textContent()}`,
     );
   }
 }

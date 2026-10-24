@@ -11,6 +11,9 @@ use std::{
     time::{Duration, Instant},
 };
 
+#[cfg(windows)]
+mod windows_security;
+
 pub const MAX_FRAME: usize = 50 * 1024 * 1024;
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -50,7 +53,11 @@ pub fn listener(data: &Path) -> io::Result<interprocess::local_socket::Listener>
         use interprocess::os::windows::{
             local_socket::ListenerOptionsExt, security_descriptor::SecurityDescriptor,
         };
-        let sddl = widestring::U16CString::from_str("D:P(A;;GA;;;OW)").map_err(io::Error::other)?;
+        let sddl = widestring::U16CString::from_str(format!(
+            "D:P(A;;GA;;;{})",
+            windows_security::current_user_sid()?
+        ))
+        .map_err(io::Error::other)?;
         options.security_descriptor(SecurityDescriptor::deserialize(&sddl)?)
     };
     // macOS does not support fchmod on an unbound socket. A private parent
