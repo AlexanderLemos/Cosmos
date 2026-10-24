@@ -7,7 +7,7 @@ entre agentes. Alvos: **Web e Desktop (Tauri 2)**. Código próprio sob [MIT](LI
 
 **Estado atual: núcleo funcional inicial de F1.** Web e Desktop permitem abrir,
 editar, salvar e buscar notas Markdown. O Desktop usa `cosmosd` e cria documentos
-de projeto; a Web oferece cofre local, importação de pasta/ZIP e exportação ZIP.
+de projeto, permite mover notas e oferece lixeira com restauração; a Web oferece cofre local, importação de pasta/ZIP e exportação ZIP.
 Veja [o que já funciona e os limites de F1](docs/fase-1.md).
 O [plano completo](docs/plan/COSMOS_Plano_Mestre_v2.2_Consolidado.md) continua sendo
 a referência; as [pendências de F0](docs/fase-0.md) permanecem explícitas.

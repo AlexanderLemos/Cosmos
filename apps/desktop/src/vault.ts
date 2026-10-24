@@ -20,7 +20,7 @@ export const platform: VaultPlatform = {
       read: async (path) => {
         const result = await command({ op: 'read', path });
         if (result.kind !== 'note') throw new Error('INVALID_RESPONSE');
-        return result;
+        return { ...result, canOrganize: result.can_organize };
       },
       write: async (path, content, opts) => {
         const result = await command({
@@ -31,6 +31,38 @@ export const platform: VaultPlatform = {
         });
         if (result.kind !== 'saved') throw new Error('INVALID_RESPONSE');
         return result;
+      },
+      move: async (from, to, expectedRev) => {
+        const result = await command({
+          op: 'move',
+          from,
+          to,
+          expected_rev: expectedRev,
+        });
+        if (result.kind !== 'moved') throw new Error('INVALID_RESPONSE');
+      },
+      trash: async (path, expectedRev) => {
+        const result = await command({
+          op: 'trash',
+          path,
+          expected_rev: expectedRev,
+        });
+        if (result.kind !== 'trashed') throw new Error('INVALID_RESPONSE');
+      },
+      listTrash: async () => {
+        const result = await command({ op: 'list_trash' });
+        if (result.kind !== 'trash_entries')
+          throw new Error('INVALID_RESPONSE');
+        return result.entries;
+      },
+      restore: async (id, to, expectedRev) => {
+        const result = await command({
+          op: 'restore',
+          id,
+          to,
+          expected_rev: expectedRev,
+        });
+        if (result.kind !== 'moved') throw new Error('INVALID_RESPONSE');
       },
       isReadOnly: async () => false,
       search: async (query) => {

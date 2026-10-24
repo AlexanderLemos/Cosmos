@@ -177,6 +177,26 @@ export type VaultCommand =
       path: string;
     }
   | {
+      expected_rev: string;
+      from: string;
+      op: "move";
+      to: string;
+    }
+  | {
+      expected_rev: string;
+      op: "trash";
+      path: string;
+    }
+  | {
+      op: "list_trash";
+    }
+  | {
+      expected_rev: string;
+      id: string;
+      op: "restore";
+      to: string;
+    }
+  | {
       op: "search";
       query: string;
     }
@@ -194,6 +214,7 @@ export type VaultReply =
       paths: string[];
     }
   | {
+      can_organize: boolean;
       content: string;
       kind: "note";
       path: string;
@@ -206,6 +227,24 @@ export type VaultReply =
   | {
       kind: "project";
       path: string;
+    }
+  | {
+      kind: "moved";
+      path: string;
+    }
+  | {
+      id: string;
+      kind: "trashed";
+    }
+  | {
+      entries: TrashEntry[];
+      kind: "trash_entries";
     };
+
+export interface TrashEntry {
+  id: string;
+  path: string;
+  rev: string;
+}
 
 }

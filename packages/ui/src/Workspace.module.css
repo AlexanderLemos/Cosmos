@@ -138,6 +138,15 @@
   color: var(--muted);
   font-size: 0.8rem;
 }
+.workspace .fileAction {
+  margin: 1rem 1.5rem;
+  padding: 1rem;
+  border: 1px solid var(--line);
+}
+.fileAction > div {
+  display: flex;
+  gap: 0.5rem;
+}
 .error {
   margin: 1rem;
   padding: 1rem;

@@ -25,6 +25,9 @@
     {
       "type": "object",
       "properties": {
+        "can_organize": {
+          "type": "boolean"
+        },
         "content": {
           "type": "string"
         },
@@ -44,7 +47,8 @@
         "kind",
         "path",
         "content",
-        "rev"
+        "rev",
+        "can_organize"
       ]
     },
     {
@@ -80,6 +84,82 @@
         "kind",
         "path"
       ]
+    },
+    {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "const": "moved"
+        },
+        "path": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "path"
+      ]
+    },
+    {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string",
+          "const": "trashed"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "id"
+      ]
+    },
+    {
+      "type": "object",
+      "properties": {
+        "entries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TrashEntry"
+          }
+        },
+        "kind": {
+          "type": "string",
+          "const": "trash_entries"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "entries"
+      ]
     }
-  ]
+  ],
+  "$defs": {
+    "TrashEntry": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "rev": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "path",
+        "rev"
+      ]
+    }
+  }
 }

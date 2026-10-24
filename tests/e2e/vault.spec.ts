@@ -212,7 +212,9 @@ test('Obsidian ZIP import/export keeps attachments, canvas, BOM and mixed line e
     await page
       .getByLabel('Importar ZIP', { exact: true })
       .setInputFiles(archive);
-    await expect(page.getByRole('alert')).toContainText('DESTINATION_EXISTS');
+    await expect(page.getByRole('alert')).toContainText(
+      'Já existe um arquivo ou pasta nesse destino.',
+    );
   } finally {
     await rm(temp, { recursive: true, force: true });
   }

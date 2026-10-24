@@ -60,6 +60,90 @@
     {
       "type": "object",
       "properties": {
+        "expected_rev": {
+          "type": "string"
+        },
+        "from": {
+          "type": "string"
+        },
+        "op": {
+          "type": "string",
+          "const": "move"
+        },
+        "to": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "op",
+        "from",
+        "to",
+        "expected_rev"
+      ]
+    },
+    {
+      "type": "object",
+      "properties": {
+        "expected_rev": {
+          "type": "string"
+        },
+        "op": {
+          "type": "string",
+          "const": "trash"
+        },
+        "path": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "op",
+        "path",
+        "expected_rev"
+      ]
+    },
+    {
+      "type": "object",
+      "properties": {
+        "op": {
+          "type": "string",
+          "const": "list_trash"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "op"
+      ]
+    },
+    {
+      "type": "object",
+      "properties": {
+        "expected_rev": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "op": {
+          "type": "string",
+          "const": "restore"
+        },
+        "to": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "op",
+        "id",
+        "to",
+        "expected_rev"
+      ]
+    },
+    {
+      "type": "object",
+      "properties": {
         "op": {
           "type": "string",
           "const": "search"

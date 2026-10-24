@@ -49,6 +49,28 @@ export const resources = {
         'O arquivo mudou desde que foi aberto. Sua edição foi preservada aqui. Baixe uma cópia antes de recarregar e comparar as versões.',
       reloadNote: 'Recarregar do cofre',
       operationFailed: 'Não foi possível concluir.',
+      moveNote: 'Mover nota',
+      trashNote: 'Enviar à lixeira',
+      trashTitle: 'Lixeira',
+      emptyTrash: 'A lixeira está vazia.',
+      destinationPath: 'Caminho de destino',
+      restorePath: 'Restaurar para',
+      restoreNote: 'Restaurar nota',
+      confirmMove: 'Confirmar mudança',
+      confirmTrash: 'Confirmar envio à lixeira',
+      trashPrompt:
+        'Enviar “{{path}}” à lixeira? Você poderá restaurar a nota depois.',
+      moved: 'Nota movida.',
+      trashed: 'Nota enviada à lixeira.',
+      restored: 'Nota restaurada.',
+      destinationExists:
+        'Já existe um arquivo ou pasta nesse destino. Escolha outro caminho.',
+      structureProtected:
+        'Os documentos de um projeto podem ser editados, mas sua estrutura é protegida contra mudanças de caminho e exclusão.',
+      saveBeforeOrganizing:
+        'Salve suas alterações antes de mover a nota ou enviá-la à lixeira.',
+      moveLinksHint:
+        'Mover uma nota preserva seu conteúdo. Os links escritos em outras notas não são alterados automaticamente.',
       cancel: 'Cancelar',
 
       tagline: 'Toda ideia nasce no Caos.',
@@ -115,6 +137,27 @@ export const resources = {
         'The file changed since it was opened. Your edit is still here. Download a copy before reloading and comparing versions.',
       reloadNote: 'Reload from vault',
       operationFailed: 'Could not complete the operation.',
+      moveNote: 'Move note',
+      trashNote: 'Move to trash',
+      trashTitle: 'Trash',
+      emptyTrash: 'The trash is empty.',
+      destinationPath: 'Destination path',
+      restorePath: 'Restore to',
+      restoreNote: 'Restore note',
+      confirmMove: 'Confirm move',
+      confirmTrash: 'Confirm move to trash',
+      trashPrompt: 'Move “{{path}}” to the trash? You can restore it later.',
+      moved: 'Note moved.',
+      trashed: 'Note moved to trash.',
+      restored: 'Note restored.',
+      destinationExists:
+        'A file or folder already exists at that destination. Choose another path.',
+      structureProtected:
+        'Project documents can be edited, but their structure is protected against moving and deletion.',
+      saveBeforeOrganizing:
+        'Save your changes before moving this note or sending it to the trash.',
+      moveLinksHint:
+        'Moving a note preserves its contents. Links written in other notes are not updated automatically.',
       cancel: 'Cancel',
 
       tagline: 'Every idea begins in Chaos.',

@@ -14,7 +14,11 @@ foram aprovadas implicitamente pelo avanço da implementação.
   ZIP, 256 MiB descomprimidos; importação ZIP, até 10 mil entradas.
   Seletores de pasta podem omitir arquivos ocultos (WebKit); use ZIP para preservar `.obsidian`. A interface informa falhas, inclusive quota.
 - **Desktop:** escolher uma pasta em diálogo nativo; iniciar/reutilizar `cosmosd`;
-  listar, editar e salvar notas; buscar; criar projetos manualmente. O backend da
+  listar, editar e salvar notas; buscar; criar projetos manualmente; mover notas,
+  enviá-las à lixeira e restaurá-las para o caminho original ou outro destino.
+  Lixeira e movimentação exigem a revisão atual e não sobrescrevem destinos.
+  Salve o rascunho antes de organizar a nota. Notas dentro de projetos são protegidas
+  contra mudança de caminho e exclusão; continuam editáveis no Desktop. O backend da
   janela não grava Markdown ou SQLite. O daemon continua ativo após fechar a janela.
 - **Editor:** Markdown/GFM, histórico, busca interna, Ctrl/Cmd+S, proteção de rascunhos
   ao trocar de nota/cofre, download da versão em edição e aviso de conflito com
@@ -48,10 +52,35 @@ humano permanece e a intenção é retida como `conflict`. Não existe sobrescri
 forçada na interface. Em uma falha durante criação de projeto, documentos já
 projetados podem ficar visíveis até a recuperação terminar.
 
+A organização de notas no Desktop tem um journal próprio: registra a intenção,
+publica uma cópia durável **sem substituir o destino**, confirma a cópia no banco,
+confere novamente as revisões e só então remove a origem. A recuperação repete
+as etapas confirmadas. Se o processo cair entre a publicação da cópia e sua
+confirmação no banco, preserva os dois arquivos e marca conflito, sem presumir que
+um arquivo já existente pode ser substituído. Intenções em conflito permanecem
+no banco; a tela para revisá-las ainda está pendente. Falhas de acesso durante a
+remoção têm retry limitado; se persistirem, novas mutações ficam bloqueadas até
+reiniciar o daemon e recuperar a intenção. Leituras continuam disponíveis.
+
+A lixeira básica usa `.cosmos/trash/<id>/<caminho-original>` no cofre; não é a
+lixeira do sistema operacional e não esvazia automaticamente. A lista e as
+revisões são reconstruídas dos registros do journal e dos arquivos existentes.
+Restaurar preserva bytes e exige um destino livre. Não implementa ainda a
+experiência completa do Buraco Negro de F4. Mover uma nota **não reescreve links**
+em outras notas; busca e backlinks passam a refletir os caminhos atuais.
+
+O banco local está na versão 2. Ao abrir um banco v1, cria primeiro uma cópia
+SQLite consistente `cosmos-before-v2-<id>.db` nos dados internos da aplicação,
+incluindo o WAL, e migra a estrutura em uma transação. As intenções de escrita
+anteriores continuam recuperáveis. A cópia é do banco, não um backup completo
+do cofre. Binários antigos recusam v2; o handshake verifica a versão de banco.
+Após atualizar uma instalação em uso, encerre o daemon antigo antes de iniciar
+o novo. Supervisão/atualização automática e rollback coordenado continuam pendentes.
+
 A Web usa `createWritable`/`close`, revisão SHA-256 opaca e Web Locks entre abas.
 Alterações externas são detectadas pela revisão ao salvar. APIs de arquivos não
 oferecem compare-and-swap contra outros programas: ainda existe uma janela entre
-a última checagem e a substituição. Não prometemos exclusão mútua com Obsidian ou
+a última checagem e a substituição ou remoção de um arquivo. Não prometemos exclusão mútua com Obsidian ou
 com software de sincronização. Evite editar o mesmo arquivo em dois programas.
 
 IPC: JSON-RPC 2.0, versão 1, sobre socket Unix 0600 ou named pipe com ACL do
@@ -79,7 +108,11 @@ pnpm --filter desktop tauri build --debug --no-bundle
 Os testes de processo matam o daemon depois da confirmação do journal e depois da
 substituição do arquivo, antes da confirmação final. Reabrem o cofre e verificam o
 texto exato. Também verificam dois clientes concorrentes, versão incompatível,
-segundo daemon, traversal, symlinks, schema futuro e mudanças externas.
+segundo daemon, traversal, symlinks, schema futuro e mudanças externas. A movimentação
+é interrompida em quatro pontos (journal, publicação, confirmação da cópia e remoção).
+Os testes também cobrem restauração, destinos ocupados, alterações externas nas duas
+pontas, proteção de projetos e migração v1→v2 com backup. O smoke Desktop completo
+verifica os botões de mover, lixeira e restauração através do daemon real.
 `fault-injection` não faz parte do sidecar preparado para o app.
 
 Playwright verifica persistência após recarregar, conflito entre abas, busca real,
@@ -92,8 +125,11 @@ pela política de rede; a execução local cobre Chromium e o WebView GTK nativo
 
 - Preview/live preview completo, embeds, navegação de headings/block IDs e
   inventário maior de fixtures Obsidian. O editor atual opera em texto Markdown.
-- Adaptador Tauri do contrato `VaultFS` completo (mover, lixeira, watch). A UI usa
-  o subconjunto de leitura/escrita/busca; não expõe remoção no Desktop.
+- Concluir o adaptador Tauri do contrato `VaultFS`, especialmente `watch` e listagem
+  de diretórios. A UI Desktop já expõe mover, lixeira e restauração via IPC; a Web
+  ainda não expõe esses fluxos e seus métodos internos precisam da mesma proteção
+  de revisão/recuperação antes de serem disponibilizados. Atualização automática
+  de links após mover notas e revisão de conflitos de movimentação também pendem.
 - Watcher `notify`, indexação incremental, atores independentes por projeto,
   supervisão automática/reconexão após queda e um endpoint por usuário.
 - UI para revisar intenções retidas no journal e restauração de rascunhos após

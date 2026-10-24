@@ -177,3 +177,97 @@ fn transport_waits_for_delayed_peers_and_transfers_large_frames() {
         server.join().unwrap();
     });
 }
+
+#[cfg(feature = "fault-injection")]
+#[test]
+fn kill_during_move_recovers_without_losing_either_file() {
+    for stage in [
+        "relocation_journal",
+        "relocation_published",
+        "relocation_copied",
+        "relocation_removed",
+    ] {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("v");
+        let data = temp.path().join("d");
+        let marker = temp.path().join("paused");
+        std::fs::create_dir_all(&root).unwrap();
+        let content = "\u{feff}recover\r\nexactly\n";
+        std::fs::write(root.join("source.md"), content).unwrap();
+        let daemon = Daemon(
+            Command::new(env!("CARGO_BIN_EXE_cosmosd"))
+                .arg(&root)
+                .arg(&data)
+                .env("COSMOS_TEST_PAUSE", stage)
+                .env("COSMOS_TEST_MARKER", &marker)
+                .spawn()
+                .unwrap(),
+        );
+        for _ in 0..200 {
+            if cosmos_daemon::handshake(&data).is_ok() {
+                break;
+            }
+            thread::sleep(Duration::from_millis(10));
+        }
+        cosmos_daemon::handshake(&data).unwrap();
+        thread::scope(|scope| {
+            let client = scope.spawn(|| {
+                cosmos_daemon::call(
+                    &data,
+                    VaultCommand::Move {
+                        from: "source.md".into(),
+                        to: "Folder/destination.md".into(),
+                        expected_rev: cosmos_storage::revision(content.as_bytes()),
+                    },
+                )
+            });
+            for _ in 0..500 {
+                if marker.exists() {
+                    break;
+                }
+                thread::sleep(Duration::from_millis(10));
+            }
+            assert!(marker.exists(), "fault point not reached: {stage}");
+            drop(daemon);
+            assert!(client.join().unwrap().is_err());
+        });
+        let _daemon = start(&root, &data);
+        assert_eq!(
+            std::fs::read(root.join("Folder/destination.md")).unwrap(),
+            content.as_bytes()
+        );
+        assert_eq!(
+            root.join("source.md").exists(),
+            stage == "relocation_published"
+        );
+        if stage == "relocation_published" {
+            assert_eq!(
+                std::fs::read(root.join("source.md")).unwrap(),
+                content.as_bytes()
+            );
+        }
+        let VaultReply::Trashed { id } = cosmos_daemon::call(
+            &data,
+            VaultCommand::Trash {
+                path: "Folder/destination.md".into(),
+                expected_rev: cosmos_storage::revision(content.as_bytes()),
+            },
+        )
+        .unwrap() else {
+            panic!()
+        };
+        cosmos_daemon::call(
+            &data,
+            VaultCommand::Restore {
+                id,
+                to: "restored.md".into(),
+                expected_rev: cosmos_storage::revision(content.as_bytes()),
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            std::fs::read(root.join("restored.md")).unwrap(),
+            content.as_bytes()
+        );
+    }
+}

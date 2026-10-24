@@ -3,7 +3,7 @@ import { MarkdownEditor } from '@cosmos/editor';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Foundation } from './Foundation';
-import type { OpenVault, VaultPlatform } from './vault';
+import type { OpenVault, TrashItem, VaultPlatform } from './vault';
 import styles from './Workspace.module.css';
 
 type Document = {
@@ -12,6 +12,7 @@ type Document = {
   saved: string;
   rev: string;
   readOnly: boolean;
+  canOrganize?: boolean;
   generation: number;
 };
 export function Workspace({ platform }: { platform: VaultPlatform }) {
@@ -27,6 +28,11 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
   const [links, setLinks] = useState<string[]>([]);
   const [backlinks, setBacklinks] = useState<string[]>([]);
   const [name, setName] = useState('');
+  const [fileAction, setFileAction] = useState<'move' | 'trash' | null>(null);
+  const [destination, setDestination] = useState('');
+  const [trashItems, setTrashItems] = useState<TrashItem[] | null>(null);
+  const [restoreItem, setRestoreItem] = useState<TrashItem | null>(null);
+  const [restorePath, setRestorePath] = useState('');
   const [universe, setUniverse] = useState('Pessoal');
   const [form, setForm] = useState<'note' | 'project'>('note');
   const pending = useRef(false);
@@ -53,7 +59,11 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
       setError(
         message.includes('CONFLICT') || message.includes('Revision conflict')
           ? t('conflict')
-          : `${t('operationFailed')} ${message}`,
+          : message.includes('DESTINATION_EXISTS')
+            ? t('destinationExists')
+            : message.includes('PROJECT_STRUCTURE_PROTECTED')
+              ? t('structureProtected')
+              : `${t('operationFailed')} ${message}`,
       );
     } finally {
       setBusy(false);
@@ -75,6 +85,9 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
       if (!current) return;
       await refresh(current);
       setVault(current);
+      setTrashItems(null);
+      setRestoreItem(null);
+      setFileAction(null);
       setDoc(null);
       setLinks([]);
       setBacklinks([]);
@@ -82,6 +95,8 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
   const load = async (path: string, current = vault) => {
     if (!current) return;
     const note = await current.read(path);
+    setFileAction(null);
+    setDestination(path);
     setDoc({
       path,
       ...note,
@@ -253,6 +268,81 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
                   {t(form === 'project' ? 'createProject' : 'createNote')}
                 </button>
               </form>
+              {vault.listTrash && (
+                <section aria-label={t('trashTitle')}>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() =>
+                      void run(async () => {
+                        setTrashItems(
+                          trashItems
+                            ? null
+                            : ((await vault.listTrash?.()) ?? []),
+                        );
+                        setRestoreItem(null);
+                      })
+                    }
+                  >
+                    {t('trashTitle')}
+                  </button>
+                  {trashItems && (
+                    <>
+                      {!trashItems.length && <p>{t('emptyTrash')}</p>}
+                      <ul>
+                        {trashItems.map((item) => (
+                          <li key={item.id}>
+                            <button
+                              type="button"
+                              disabled={busy}
+                              onClick={() => {
+                                setRestoreItem(item);
+                                setRestorePath(item.path);
+                              }}
+                            >
+                              {item.path}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                      {restoreItem && (
+                        <form
+                          onSubmit={(event) => {
+                            event.preventDefault();
+                            void run(async () => {
+                              await vault.restore?.(
+                                restoreItem.id,
+                                restorePath.trim(),
+                                restoreItem.rev,
+                              );
+                              setRestoreItem(null);
+                              setTrashItems((await vault.listTrash?.()) ?? []);
+                              await refresh(vault);
+                              setStatus(t('restored'));
+                            });
+                          }}
+                        >
+                          <label>
+                            {t('restorePath')}
+                            <input
+                              aria-label={t('restorePath')}
+                              required
+                              value={restorePath}
+                              onChange={(e) => setRestorePath(e.target.value)}
+                            />
+                          </label>
+                          <button
+                            type="submit"
+                            disabled={busy || !restorePath.trim()}
+                          >
+                            {t('restoreNote')}
+                          </button>
+                        </form>
+                      )}
+                    </>
+                  )}
+                </section>
+              )}
               <div className={styles.tools}>
                 <button
                   type="button"
@@ -351,6 +441,27 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
                   >
                     {t('save')}
                   </button>
+                  {doc && vault.move && (
+                    <button
+                      type="button"
+                      disabled={busy || dirty || !doc.canOrganize}
+                      onClick={() => {
+                        setDestination(doc.path);
+                        setFileAction('move');
+                      }}
+                    >
+                      {t('moveNote')}
+                    </button>
+                  )}
+                  {doc && vault.trash && (
+                    <button
+                      type="button"
+                      disabled={busy || dirty || !doc.canOrganize}
+                      onClick={() => setFileAction('trash')}
+                    >
+                      {t('trashNote')}
+                    </button>
+                  )}
                   {doc && (
                     <button type="button" onClick={downloadDraft}>
                       {t('downloadNote')}
@@ -378,6 +489,75 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
                     </button>
                   )}
                 </div>
+              )}
+              {doc && vault.move && (
+                <p className={styles.feedback}>
+                  {!doc.canOrganize
+                    ? t('structureProtected')
+                    : dirty
+                      ? t('saveBeforeOrganizing')
+                      : t('moveLinksHint')}
+                </p>
+              )}
+              {doc && fileAction && (
+                <form
+                  className={styles.fileAction}
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void run(async () => {
+                      if (dirty || !doc.canOrganize) return;
+                      if (fileAction === 'move') {
+                        const target = destination.trim();
+                        await vault.move?.(doc.path, target, doc.rev);
+                        await refresh(vault);
+                        await load(target);
+                        setStatus(t('moved'));
+                      } else {
+                        await vault.trash?.(doc.path, doc.rev);
+                        setDoc(null);
+                        setFileAction(null);
+                        await refresh(vault);
+                        setTrashItems((await vault.listTrash?.()) ?? []);
+                        setStatus(t('trashed'));
+                      }
+                    });
+                  }}
+                >
+                  {fileAction === 'move' ? (
+                    <label>
+                      {t('destinationPath')}
+                      <input
+                        aria-label={t('destinationPath')}
+                        required
+                        value={destination}
+                        onChange={(e) => setDestination(e.target.value)}
+                      />
+                    </label>
+                  ) : (
+                    <p>{t('trashPrompt', { path: doc.path })}</p>
+                  )}
+                  <div>
+                    <button
+                      type="submit"
+                      disabled={
+                        busy ||
+                        dirty ||
+                        (fileAction === 'move' && !destination.trim())
+                      }
+                    >
+                      {t(
+                        fileAction === 'move' ? 'confirmMove' : 'confirmTrash',
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => setFileAction(null)}
+                    >
+                      {t('cancel')}
+                    </button>
+                  </div>
+                </form>
               )}
               {doc ? (
                 <>

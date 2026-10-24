@@ -11,6 +11,8 @@ use std::{
 };
 
 pub const MAX_NOTE_BYTES: usize = 8 * 1024 * 1024;
+pub const SCHEMA_VERSION: i64 = 2;
+mod relocate;
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("CONFLICT: {0}")]
@@ -23,6 +25,12 @@ pub enum Error {
     Version,
     #[error("NOTE_TOO_LARGE")]
     TooLarge,
+    #[error("DESTINATION_EXISTS")]
+    DestinationExists,
+    #[error("PROJECT_STRUCTURE_PROTECTED")]
+    Protected,
+    #[error("RECOVERY_REQUIRED")]
+    RecoveryRequired,
     #[error("{0}")]
     Io(#[from] std::io::Error),
     #[error("{0}")]
@@ -68,12 +76,27 @@ impl Vault {
         let db = Connection::open(data.join("cosmos.db"))?;
         db.busy_timeout(Duration::from_secs(5))?;
         let version: i64 = db.query_row("PRAGMA user_version", [], |r| r.get(0))?;
-        if version > 1 {
+        if version > SCHEMA_VERSION {
             return Err(Error::Version);
         }
+        if version == 1 {
+            // A consistent SQLite backup includes committed WAL content. An old
+            // binary refuses v2 instead of ignoring pending relocation records.
+            let backup = data.join(format!("cosmos-before-v2-{}.db", ulid::Ulid::new()));
+            db.execute("VACUUM INTO ?1", [backup.to_string_lossy().as_ref()])?;
+            OpenOptions::new()
+                .read(true)
+                .write(true)
+                .open(backup)?
+                .sync_all()?;
+            #[cfg(unix)]
+            File::open(&data)?.sync_all()?;
+        }
         db.execute_batch("PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL;
+            BEGIN IMMEDIATE;
             CREATE TABLE IF NOT EXISTS writes(id INTEGER PRIMARY KEY, payload TEXT NOT NULL, state TEXT NOT NULL DEFAULT 'pending');
-            PRAGMA user_version=1;")?;
+            CREATE TABLE IF NOT EXISTS relocations(id TEXT PRIMARY KEY, payload TEXT NOT NULL, state TEXT NOT NULL DEFAULT 'pending');
+            PRAGMA user_version=2; COMMIT;")?;
         db.execute_batch(include_str!("search-schema.sql"))?;
         let mut vault = Self {
             root,
@@ -81,9 +104,13 @@ impl Vault {
             _lock: lock,
         };
         vault.recover()?;
+        vault.recover_relocations()?;
         Ok(vault)
     }
     fn resolve(&self, path: &str) -> Result<PathBuf> {
+        self.resolve_path(path, false)
+    }
+    fn resolve_path(&self, path: &str, trash: bool) -> Result<PathBuf> {
         // Use the same portable path grammar on every OS, rejecting ADS and device names.
         if path.is_empty()
             || path
@@ -94,13 +121,14 @@ impl Vault {
             return Err(Error::InvalidPath);
         }
         let mut target = self.root.clone();
-        for part in path.split('/') {
+        for (index, part) in path.split('/').enumerate() {
             let stem = part.split('.').next().unwrap_or("").to_ascii_uppercase();
             if part.is_empty()
                 || part == "."
                 || part == ".."
                 || part.ends_with(['.', ' '])
-                || part.starts_with(".cosmos")
+                || (part.starts_with(".cosmos")
+                    && !(trash && index == 0 && path.starts_with(".cosmos/trash/")))
                 || matches!(part, ".git" | ".obsidian")
                 || matches!(stem.as_str(), "CON" | "PRN" | "AUX" | "NUL")
                 || (stem.len() == 4
@@ -131,6 +159,7 @@ impl Vault {
             path: path.into(),
             rev: revision(content.as_bytes()),
             content,
+            can_organize: !self.in_project(path)?,
         })
     }
     fn current_rev(&self, path: &str) -> Result<String> {
@@ -292,11 +321,34 @@ impl Vault {
             .collect::<std::result::Result<_, _>>()?)
     }
     pub fn execute(&mut self, command: VaultCommand) -> Result<VaultReply> {
+        if !matches!(
+            &command,
+            VaultCommand::List
+                | VaultCommand::Read { .. }
+                | VaultCommand::Search { .. }
+                | VaultCommand::ListTrash
+        ) {
+            self.ensure_no_pending_relocations()?;
+        }
         match command {
             VaultCommand::List => Ok(VaultReply::Paths {
                 paths: self.list()?,
             }),
             VaultCommand::Read { path } => Ok(VaultReply::Note(self.read(&path)?)),
+            VaultCommand::Move {
+                from,
+                to,
+                expected_rev,
+            } => self.move_note(from, to, expected_rev),
+            VaultCommand::Trash { path, expected_rev } => self.trash_note(path, expected_rev),
+            VaultCommand::ListTrash => Ok(VaultReply::TrashEntries {
+                entries: self.list_trash()?,
+            }),
+            VaultCommand::Restore {
+                id,
+                to,
+                expected_rev,
+            } => self.restore_note(id, to, expected_rev),
             VaultCommand::Write {
                 path,
                 content,

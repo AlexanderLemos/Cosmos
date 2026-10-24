@@ -1,4 +1,4 @@
-/** Vault capabilities. remove() means trash; native move/trash/watch remain pending in F1. */
+/** Vault capabilities. remove() means trash; native organization is exposed via typed IPC; the full watch adapter remains pending. */
 export interface Entry {
   path: string;
   kind: 'file' | 'directory';

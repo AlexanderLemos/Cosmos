@@ -46,7 +46,7 @@ def main():
             const done = arguments[arguments.length - 1];
             window.__TAURI_INTERNALS__.invoke('runtime_info').then(done).catch(error => done({error:String(error)}));
         ''', 'args': []})
-        assert runtime == {'protocol_version': 1, 'application_version': '0.0.0', 'capabilities': ['vault.read', 'vault.write', 'vault.search', 'projects.create']}, runtime
+        assert runtime == {'protocol_version': 1, 'application_version': '0.0.0', 'capabilities': ['vault.read', 'vault.write', 'vault.search', 'vault.move', 'vault.trash', 'vault.restore', 'projects.create']}, runtime
         if args.evidence_dir:
             args.evidence_dir.mkdir(parents=True, exist_ok=True)
             (args.evidence_dir / 'desktop.png').write_bytes(base64.b64decode(request('GET', session + '/screenshot')))
@@ -90,21 +90,42 @@ def main():
             click('Create note')
             wait('return document.querySelector(".cm-content")?.contentEditable === "true"')
             type_into('.cm-content', '# Native note\nWritten through cosmosd.')
+            wait('return document.body.innerText.includes("Unsaved changes")')
+            assert execute('return [...document.querySelectorAll("button")].find(b => b.textContent === "Move note").disabled;')
             click('Save')
             wait('return document.body.innerText.includes("Saved to vault.")')
             assert (vault / 'Native.md').read_text() == '# Native note\nWritten through cosmosd.'
+            click('Move note')
+            element = request('POST', session + '/element', {'using': 'css selector', 'value': 'input[aria-label="Destination path"]'})
+            request('POST', session + '/element/' + element['element-6066-11e4-a52e-4f735466cecf'] + '/clear', {})
+            type_into('input[aria-label="Destination path"]', 'Folder/Moved.md')
+            click('Confirm move')
+            wait('return document.body.innerText.includes("Note moved.")')
+            assert not (vault / 'Native.md').exists()
+            original = (vault / 'Folder/Moved.md').read_bytes()
+            click('Move to trash')
+            click('Confirm move to trash')
+            wait('return document.body.innerText.includes("Note moved to trash.")')
+            assert not (vault / 'Folder/Moved.md').exists()
+            click('Folder/Moved.md')
+            click('Restore note')
+            wait('return document.body.innerText.includes("Note restored.")')
+            assert (vault / 'Folder/Moved.md').read_bytes() == original
+            assert execute('return document.body.innerText.includes("The trash is empty.");')
             # Create a real project with the same native transport.
             execute('const select = [...document.querySelectorAll("select")].find(s => [...s.options].some(o => o.value === "project")); select.value = "project"; select.dispatchEvent(new Event("change", {bubbles:true}));')
             wait('return document.body.innerText.includes("Project name")')
             type_into('input[placeholder]', 'Native project')
             click('Create project')
             wait('return document.querySelector("h2")?.textContent === "context.md"')
+            wait('return ![...document.querySelectorAll("button")].find(b => b.textContent === "Refresh list").disabled')
             project = vault / 'Universos/Pessoal/Native project'
             assert len(list(project.glob('*.md'))) == 6
             metadata = json.loads((project / 'project.cosmos.json').read_text())
             assert metadata['format_version'] == 1 and metadata['bindings'] == []
             assert not (vault / 'cosmos.db').exists()
-            checks += ['native folder consent', 'CodeMirror save via daemon', 'project documents on disk']
+            assert execute('return [...document.querySelectorAll("button")].find(b => b.textContent === "Move note").disabled;')
+            checks += ['native folder consent', 'CodeMirror save via daemon', 'move, trash and restore via daemon', 'protected project structure', 'project documents on disk']
             if args.evidence_dir:
                 (args.evidence_dir / 'desktop-vault.png').write_bytes(base64.b64decode(request('GET', session + '/screenshot')))
         result = {'result': 'passed', 'checks': checks, 'runtime': runtime}
