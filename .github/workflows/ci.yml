@@ -32,8 +32,8 @@ jobs:
       - run: cargo fmt --all -- --check
       - run: pnpm build
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
-      - run: cargo test --workspace --locked
-      - run: cargo test -p cosmos-daemon --features fault-injection --locked
+      - run: node scripts/ci-rust-tests.mjs --workspace --locked
+      - run: node scripts/ci-rust-tests.mjs -p cosmos-daemon --features fault-injection --locked
       - run: pnpm --filter desktop tauri build --debug --no-bundle
       - name: Browser vaults and accessibility
         if: runner.os == 'Linux'
@@ -42,4 +42,4 @@ jobs:
           COSMOS_E2E_PREVIEW: 1
         run: |
           pnpm exec playwright install --with-deps chromium firefox webkit
-          pnpm test:e2e
+          pnpm exec playwright test --reporter=github,list
