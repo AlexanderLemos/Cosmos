@@ -8,9 +8,15 @@ import { unzipSync } from 'fflate';
 async function open(page: Page) {
   await page.goto('/');
   await page.getByRole('button', { name: 'Usar cofre no navegador' }).click();
-  await expect(
-    page.getByRole('heading', { name: 'COSMOS', exact: true }),
-  ).toBeVisible();
+  try {
+    await expect(
+      page.getByRole('heading', { name: 'COSMOS', exact: true }),
+    ).toBeVisible();
+  } catch (error) {
+    throw new Error(
+      `${String(error)}\nApplication state: ${await page.locator('body').innerText()}`,
+    );
+  }
 }
 async function create(page: Page, path: string, content: string) {
   await page.getByLabel('Caminho da nota').fill(path);

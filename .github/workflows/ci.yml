@@ -28,6 +28,8 @@ jobs:
         run: rustup toolchain install 1.99.1 --profile minimal --component rustfmt,clippy
       - run: pnpm install --frozen-lockfile
       - run: pnpm daemon:build
+      - name: Vault protocol and persistence
+        run: node scripts/ci-rust-tests.mjs -p cosmos-daemon -p cosmos-storage --locked
       - run: pnpm check
       - run: cargo fmt --all -- --check
       - run: pnpm build

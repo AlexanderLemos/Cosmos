@@ -22,6 +22,7 @@ child.on('error', (error) => {
 child.on('close', (code) => {
   if (code !== 0) {
     const message = tail
+      .slice(-3500)
       .replaceAll('%', '%25')
       .replaceAll('\r', '%0D')
       .replaceAll('\n', '%0A');
