@@ -92,6 +92,13 @@ def main():
             type_into('.cm-content', '# Native note\nWritten through cosmosd.')
             wait('return document.body.innerText.includes("Unsaved changes")')
             assert execute('return [...document.querySelectorAll("button")].find(b => b.textContent === "Move note").disabled;')
+            execute('window.smokeEditor = document.querySelector(".cm-content");')
+            click('Edit and read')
+            wait("""return document.querySelector('section[aria-label="Markdown preview"] h1')?.textContent === 'Native note'""")
+            click('Read')
+            assert execute('return document.querySelector(".cm-content").getClientRects().length === 0;')
+            click('Edit and read')
+            assert execute('return document.querySelector(".cm-content") === window.smokeEditor;')
             click('Save')
             wait('return document.body.innerText.includes("Saved to vault.")')
             assert (vault / 'Native.md').read_text() == '# Native note\nWritten through cosmosd.'
@@ -118,6 +125,7 @@ def main():
             external = b'# External note\r\nUpdated outside COSMOS.\r\n'
             (vault / 'Folder/Moved.md').write_bytes(external)
             wait('return document.querySelector(".cm-content")?.textContent.includes("Updated outside COSMOS.")')
+            wait("""return document.querySelector('section[aria-label="Markdown preview"] h1')?.textContent === 'External note'""")
             clean = execute('return document.querySelector(".cm-content").textContent;')
             (vault / 'Folder/Moved.md').write_bytes(bytes([255]))
             wait('return document.body.innerText.includes("The current version of this note could not be read.")')
@@ -164,7 +172,8 @@ def main():
             assert metadata['format_version'] == 1 and metadata['bindings'] == []
             assert not (vault / 'cosmos.db').exists()
             assert execute('return [...document.querySelectorAll("button")].find(b => b.textContent === "Move note").disabled;')
-            checks += ['native folder consent', 'CodeMirror save via daemon', 'move, trash and restore via daemon', 'external changes, search, backlinks and draft preservation', 'protected project structure', 'project documents on disk']
+            checks += ['native folder consent', 'Markdown reading and split views preserve editor and follow disk changes', 'CodeMirror save via daemon', 'move, trash and restore via daemon', 'external changes, search, backlinks and draft preservation', 'protected project structure', 'project documents on disk']
+            assert execute("""return !document.querySelector('section[aria-label="Markdown preview"]').textContent.includes('cosmos:begin');""")
             if args.evidence_dir:
                 (args.evidence_dir / 'desktop-vault.png').write_bytes(base64.b64decode(request('GET', session + '/screenshot')))
         result = {'result': 'passed', 'checks': checks, 'runtime': runtime}

@@ -3,6 +3,7 @@ import { MarkdownEditor } from '@cosmos/editor';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Foundation } from './Foundation';
+import { MarkdownPreview, type PreviewLocation } from './MarkdownPreview';
 import { type DocumentState, observeVault, reconcileDocument } from './monitor';
 import type { OpenVault, TrashItem, VaultPlatform } from './vault';
 import styles from './Workspace.module.css';
@@ -12,6 +13,10 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
   const [vault, setVault] = useState<OpenVault | null>(null);
   const [paths, setPaths] = useState<string[]>([]);
   const [doc, setDoc] = useState<DocumentState | null>(null);
+  const [viewMode, setViewMode] = useState<'edit' | 'read' | 'split'>('edit');
+  const [previewLocation, setPreviewLocation] =
+    useState<PreviewLocation | null>(null);
+  const navigationRequest = useRef(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
@@ -98,6 +103,7 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
   const load = async (path: string, current = vault) => {
     if (!current) return;
     const note = await current.read(path);
+    setPreviewLocation(null);
     setFileAction(null);
     setDestination(path);
     setDoc({
@@ -681,17 +687,69 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
                   {doc.readOnly && (
                     <p className={styles.feedback}>{t('memoryReadOnly')}</p>
                   )}
-                  <MarkdownEditor
-                    key={`${doc.path}:${doc.generation}`}
-                    initialValue={doc.content}
-                    label={t('editor')}
-                    readOnly={doc.readOnly || busy}
-                    onSave={save}
-                    onChange={(content) => {
-                      setDoc((d) => (d ? { ...d, content } : d));
-                      setStatus('');
-                    }}
-                  />
+                  <fieldset className={styles.viewModes}>
+                    <legend>{t('viewMode')}</legend>
+                    {(['edit', 'read', 'split'] as const).map((mode) => (
+                      <button
+                        key={mode}
+                        type="button"
+                        aria-pressed={viewMode === mode}
+                        onClick={() => setViewMode(mode)}
+                      >
+                        {t(`view_${mode}`)}
+                      </button>
+                    ))}
+                  </fieldset>
+                  <div
+                    className={
+                      viewMode === 'split' ? styles.splitView : undefined
+                    }
+                  >
+                    <div
+                      hidden={viewMode === 'read'}
+                      className={styles.editorPane}
+                    >
+                      <MarkdownEditor
+                        key={`${doc.path}:${doc.generation}`}
+                        initialValue={doc.content}
+                        label={t('editor')}
+                        readOnly={doc.readOnly || busy}
+                        onSave={save}
+                        onChange={(content) => {
+                          setDoc((d) => (d ? { ...d, content } : d));
+                          setStatus('');
+                        }}
+                      />
+                    </div>
+                    {viewMode !== 'edit' && (
+                      <MarkdownPreview
+                        content={doc.content}
+                        path={doc.path}
+                        paths={paths}
+                        busy={busy}
+                        externalLinks={platform.kind === 'web'}
+                        location={previewLocation}
+                        onNavigate={(path, fragment) => {
+                          if (path === doc.path) {
+                            setPreviewLocation({
+                              path,
+                              fragment,
+                              request: ++navigationRequest.current,
+                            });
+                          } else
+                            void run(async () => {
+                              if (!mayLeave()) return;
+                              await load(path);
+                              setPreviewLocation({
+                                path,
+                                fragment,
+                                request: ++navigationRequest.current,
+                              });
+                            });
+                        }}
+                      />
+                    )}
+                  </div>
                   <section
                     className={styles.links}
                     aria-label={t('connections')}

@@ -1,0 +1,82 @@
+.preview {
+  padding: 1.5rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.7;
+  color: var(--text);
+}
+.preview > :first-child {
+  margin-top: 0;
+}
+.preview h1,
+.preview h2,
+.preview h3,
+.preview h4,
+.preview h5,
+.preview h6 {
+  line-height: 1.3;
+  scroll-margin-top: 1rem;
+}
+.preview h1 {
+  font-size: 2rem;
+}
+.preview h2 {
+  font-size: 1.5rem;
+}
+.preview h3 {
+  font-size: 1.25rem;
+}
+.preview a,
+.preview .noteLink {
+  color: var(--syntax-link);
+  text-decoration: underline;
+}
+.preview .noteLink {
+  display: inline;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  text-align: inherit;
+}
+.preview .noteLink:disabled {
+  opacity: 1;
+  color: var(--muted);
+}
+.preview a:focus-visible {
+  outline: 2px solid var(--orichalcum);
+  outline-offset: 3px;
+}
+.preview code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+.preview pre {
+  overflow: auto;
+  padding: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+.preview blockquote {
+  margin-inline: 0;
+  border-left: 3px solid var(--orichalcum);
+  padding-left: 1rem;
+}
+.preview table {
+  display: block;
+  max-width: 100%;
+  overflow: auto;
+  border-collapse: collapse;
+}
+.preview th,
+.preview td {
+  border: 1px solid var(--line);
+  padding: 0.5rem 0.75rem;
+}
+.preview hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+}
+.attachment {
+  color: var(--muted);
+  font-size: 0.85em;
+}

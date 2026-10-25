@@ -6,7 +6,8 @@ Projeto local-first de conhecimento em Markdown e memória de projetos compartil
 entre agentes. Alvos: **Web e Desktop (Tauri 2)**. Código próprio sob [MIT](LICENSE).
 
 **Estado atual: núcleo funcional inicial de F1.** Web e Desktop permitem abrir,
-editar, salvar e buscar notas Markdown. O Desktop usa `cosmosd` e cria documentos
+editar, salvar e buscar notas Markdown, com modos de leitura e edição dividida.
+O Desktop usa `cosmosd` e cria documentos
 de projeto, permite mover notas, oferece lixeira com restauração e acompanha
 alterações externas preservando rascunhos; a Web oferece cofre local, importação de pasta/ZIP e exportação ZIP.
 Veja [o que já funciona e os limites de F1](docs/fase-1.md).

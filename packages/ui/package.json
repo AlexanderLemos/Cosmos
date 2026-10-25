@@ -13,12 +13,13 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@cosmos/core": "workspace:*",
+    "@cosmos/editor": "workspace:*",
+    "@cosmos/fs": "workspace:*",
     "@cosmos/i18n": "workspace:*",
     "react": "19.3.1",
     "react-i18next": "16.3.5",
-    "@cosmos/editor": "workspace:*",
-    "@cosmos/fs": "workspace:*",
-    "@cosmos/core": "workspace:*"
+    "react-markdown": "10.1.0"
   },
   "devDependencies": {
     "@types/react": "19.2.7"

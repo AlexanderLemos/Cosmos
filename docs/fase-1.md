@@ -25,6 +25,14 @@ foram aprovadas implicitamente pelo avanço da implementação.
   recarga explícita. Alterar idioma ou tema preserva a edição. Texto não é
   serializado de volta de uma AST. Links de notas e backlinks ignoram código e
   frontmatter; alvos ambíguos não são escolhidos automaticamente.
+- **Leitura:** modos Editar, Ler e Edição e leitura no Web e Desktop, com Markdown/GFM,
+  tabelas, listas de tarefas, citações e blocos de código. A leitura acompanha o
+  rascunho e as recargas externas aceitas. Alternar o modo mantém a instância do
+  editor, seu histórico e o texto bruto. Wikilinks simples com aliases e links
+  Markdown abrem notas do cofre; fragmentos navegam por títulos, inclusive em outra
+  nota. Trocar de nota com rascunho exige confirmação; navegar dentro dela não
+  descarta a edição. Um destino ausente/ambíguo fica desabilitado e uma seção não
+  encontrada é informada. A visão dividida se empilha em janelas estreitas.
 - **Organização:** caminhos `Universos/<universo>/<galáxia>/nota.md`; criação de
   pastas sob demanda. A navegação inicial é uma lista de caminhos, não o Firmamento.
 - **Projetos Desktop:** seis documentos (`context`, `requirements`, `architecture`,
@@ -36,6 +44,25 @@ foram aprovadas implicitamente pelo avanço da implementação.
   Compartilham os arquivos SQL, FTS5 `unicode61 remove_diacritics 2`, consulta de
   frase literal e BM25. O índice é reconstruído dos arquivos a cada busca nesta
   versão. Web Locks serializam o VFS entre abas; o worker libera os handles.
+
+## Limites da leitura Markdown
+
+A árvore de renderização nunca é gravada sobre o Markdown. Frontmatter YAML fica
+preservado no editor e não aparece na leitura; tags/blocos HTML e comentários são
+omitidos, sem execução. Imagens aparecem como referências e `![[embeds]]` permanecem literais:
+não há carregamento automático de recursos locais ou remotos. Links ativos têm
+alvos restritos a notas listadas ou HTTP/HTTPS/mailto explícitos. Na Web, links
+externos abrem uma aba sem acesso à janela de origem; no Desktop, o endereço é
+exibido como texto até existir abertura pelo navegador com permissão específica.
+
+Títulos recebem IDs com prefixo, normalização Unicode e sufixos para duplicatas.
+Isso cobre navegação básica, sem prometer equivalência a todos os identificadores
+do Obsidian. Wikilinks com formatação Markdown dentro do nome/alias, block IDs,
+transclusões, callouts especiais, matemática, diagramas e plugins ainda não têm
+suporte completo. A pré-visualização é limitada a 262.144 unidades de texto UTF-16;
+notas maiores continuam editáveis dentro do limite geral de 8 MiB. Não é ainda o
+live preview dentro do próprio CodeMirror nem uma garantia de performance para
+cofres grandes.
 
 ## Alterações externas no Desktop
 
@@ -148,14 +175,19 @@ atômica, renomeação, remoção, subpastas e marcador de projeto nos três SOs
 
 Playwright verifica persistência após recarregar, conflito entre abas, busca real,
 links/backlinks, acessibilidade nos dois temas e round-trip de ZIP Obsidian
-incluindo anexos e terminações mistas. A CI executa os testes Rust nos três SOs e
+incluindo anexos e terminações mistas. Os testes de leitura verificam navegação
+por títulos, rascunho/undo ao alternar modos e preferências, bytes inalterados na
+exportação e notas com scripts, HTML e imagens remotas sem execução/requisições.
+O smoke nativo também verifica os modos de leitura e a atualização da leitura após
+alteração no disco. A CI executa os testes Rust nos três SOs e
 os três engines Web no Linux. A instalação local de Firefox/WebKit foi bloqueada
 pela política de rede; a execução local cobre Chromium e o WebView GTK nativo.
 
 ## Fechamento ainda necessário
 
-- Preview/live preview completo, embeds, navegação de headings/block IDs e
-  inventário maior de fixtures Obsidian. O editor atual opera em texto Markdown.
+- Live preview no CodeMirror, embeds/anexos, block IDs, compatibilidade avançada de
+  títulos/wikilinks e inventário maior de fixtures Obsidian. A leitura separada e
+  a visão dividida já funcionam; não equivalem a todos os recursos do Obsidian.
 - Concluir o adaptador Tauri do contrato `VaultFS`, especialmente `watch` e listagem
   de diretórios. A observação nativa já chega à UI por token IPC, mas ainda precisa
   ser unificada com a assinatura de callbacks `VaultFS.watch`. A UI Desktop já
