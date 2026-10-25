@@ -42,8 +42,41 @@ foram aprovadas implicitamente pelo avanço da implementação.
   marcador (incluindo descendentes) é somente leitura para edição de notas.
 - **Busca:** SQLite nativo e SQLite-WASM oficial no worker Web com VFS OPFS SAH Pool.
   Compartilham os arquivos SQL, FTS5 `unicode61 remove_diacritics 2`, consulta de
-  frase literal e BM25. O índice é reconstruído dos arquivos a cada busca nesta
-  versão. Web Locks serializam o VFS entre abas; o worker libera os handles.
+  frase literal e BM25, com desempate por caminho. A reconciliação por revisão
+  atualiza somente documentos novos/alterados e remove os que saíram do cofre.
+  Web Locks serializam o VFS entre abas; o worker libera os handles.
+
+## Busca incremental por revisão
+
+O índice guarda caminho, revisão do conteúdo e texto. Triggers atualizam o FTS5
+na mesma transação em que um documento muda. Uma consulta com o cofre inalterado
+não reinsere documentos nem retokeniza o FTS; repetir a consulta, mudar o termo
+ou reabrir o aplicativo reutiliza as entradas persistidas. O primeiro uso constrói
+o índice a partir dos arquivos. Renomear, mover para a lixeira, restaurar e remover
+notas passam a ser refletidos na próxima busca; o monitor Desktop também atualiza
+a busca ativa quando observa alterações.
+
+Cada busca não vazia ainda lista e lê os Markdown para conferir suas revisões
+(BLAKE3 no Desktop, SHA-256 na Web). Assim, uma edição externa é detectada mesmo
+com o mesmo tamanho/mtime ou antes da entrega de um evento nativo. A redução é do
+trabalho no índice; **a leitura dos arquivos ainda não é incremental**. O Desktop
+processa uma nota por vez na transação; a Web ainda prepara o snapshot completo
+em memória e o envia ao worker. Leituras de backlinks também continuam completas.
+Otimizar essas leituras, limitar trabalho em cofres grandes e medir latência são
+pendências explícitas.
+
+Uma falha de leitura, decodificação ou SQL impede publicar resultados parciais.
+No Desktop, a transação desfaz atualizações já feitas; na Web, todas as leituras
+precedem o worker e a reconciliação SQL é transacional. Notas originais e journals
+não são modificados pela indexação. A lista temporária de caminhos vistos serve
+para remover entradas antigas somente depois de uma varredura completa.
+
+O cache Web fica em `/cosmos-search-index-v1` no OPFS da origem, separado do cofre.
+Abas antigas usam outro diretório e não podem alterar o novo formato. Cada pedido
+reconcilia todos os caminhos/revisões do cofre selecionado **antes** de consultar;
+trocar de pasta não retorna notas deixadas no cache por outra pasta. Web Locks
+continuam serializando o acesso entre abas. O cache anterior não é apagado
+automaticamente; limpeza seletiva/diagnóstico do índice ainda não tem interface.
 
 ## Limites da leitura Markdown
 
@@ -85,8 +118,8 @@ Falha de observação/IPC aparece na interface, com atualização manual dispon�
 Uma falha do backend de observação exige reiniciar o daemon para restabelecer sua
 cobertura; receber outro evento não é tratado como prova de recuperação completa.
 Não há supervisão ou reinicialização automática do processo nesta entrega.
-A observação notifica mudanças; **a indexação ainda não é incremental**. A atualização
-pode reler notas para backlinks e reconstruir a busca. Cofres grandes e diretórios
+A observação notifica mudanças; a busca reconcilia o índice por revisão. A atualização
+ainda relê notas para backlinks e para conferir revisões. Cofres grandes e diretórios
 sincronizados/em rede ainda exigem os ensaios de performance e compatibilidade.
 A Web continua com atualização manual e checagem de revisão ao salvar; este
 acompanhamento automático está disponível somente no Desktop.
@@ -123,11 +156,13 @@ Restaurar preserva bytes e exige um destino livre. Não implementa ainda a
 experiência completa do Buraco Negro de F4. Mover uma nota **não reescreve links**
 em outras notas; busca e backlinks passam a refletir os caminhos atuais.
 
-O banco local está na versão 2. Ao abrir um banco v1, cria primeiro uma cópia
-SQLite consistente `cosmos-before-v2-<id>.db` nos dados internos da aplicação,
-incluindo o WAL, e migra a estrutura em uma transação. As intenções de escrita
-anteriores continuam recuperáveis. A cópia é do banco, não um backup completo
-do cofre. Binários antigos recusam v2; o handshake verifica a versão de banco.
+O banco local está na versão 3. Ao abrir um banco v1 ou v2, cria primeiro uma cópia
+SQLite consistente `cosmos-before-v3-<id>.db` nos dados internos da aplicação,
+incluindo o WAL, e migra a estrutura em uma transação. A migração substitui somente
+as tabelas reconstruíveis de busca; as intenções de escrita e movimentação
+continuam preservadas e recuperáveis. O índice novo é preenchido na primeira busca.
+A cópia é do banco, não um backup completo do cofre. Binários antigos recusam v3;
+o handshake verifica a versão de banco.
 Após atualizar uma instalação em uso, encerre o daemon antigo antes de iniciar
 o novo. Supervisão/atualização automática e rollback coordenado continuam pendentes.
 
@@ -165,7 +200,11 @@ texto exato. Também verificam dois clientes concorrentes, versão incompatível
 segundo daemon, traversal, symlinks, schema futuro e mudanças externas. A movimentação
 é interrompida em quatro pontos (journal, publicação, confirmação da cópia e remoção).
 Os testes também cobrem restauração, destinos ocupados, alterações externas nas duas
-pontas, proteção de projetos e migração v1→v2 com backup. O smoke Desktop completo
+pontas, proteção de projetos e migrações v1/v2→v3 com backup. Os testes de índice
+verificam zero atualizações em notas inalteradas, uma alteração entre 32 notas,
+edição externa com mesmo tamanho/mtime, reinício, remoção, lixeira/restauração,
+rollback de leitura inválida e processo morto antes de confirmar o índice.
+O smoke Desktop completo
 verifica os botões de mover, lixeira e restauração através do daemon real. Também
 altera arquivos diretamente no disco, verificando recarga automática, rascunho
 preservado, busca/backlinks atualizados, conteúdo ilegível e remoção externa.
@@ -179,7 +218,9 @@ incluindo anexos e terminações mistas. Os testes de leitura verificam navegaç
 por títulos, rascunho/undo ao alternar modos e preferências, bytes inalterados na
 exportação e notas com scripts, HTML e imagens remotas sem execução/requisições.
 O smoke nativo também verifica os modos de leitura e a atualização da leitura após
-alteração no disco. A CI executa os testes Rust nos três SOs e
+alteração no disco. Os testes Web verificam contadores de documentos realmente
+alterados no SQLite-WASM, persistência do índice, remoções, falhas de leitura e
+troca entre cofres sem resultados misturados. A CI executa os testes Rust nos três SOs e
 os três engines Web no Linux. A instalação local de Firefox/WebKit foi bloqueada
 pela política de rede; a execução local cobre Chromium e o WebView GTK nativo.
 
@@ -195,7 +236,9 @@ pela política de rede; a execução local cobre Chromium e o WebView GTK nativo
   ainda não expõe esses fluxos e seus métodos internos precisam da mesma proteção
   de revisão/recuperação antes de serem disponibilizados. Atualização automática
   de links após mover notas e revisão de conflitos de movimentação também pendem.
-- Indexação incremental, atores independentes por projeto,
+- Leitura incremental por eventos com reconciliação de segurança, cache de backlinks
+  e ensaios de performance em cofres grandes. A atualização incremental do FTS por
+  revisão já funciona no Web e Desktop. Atores independentes por projeto,
   supervisão automática/reconexão após queda e um endpoint por usuário.
 - UI para revisar intenções retidas no journal e restauração de rascunhos após
   queda do navegador; atualmente há salvamento explícito e download de rascunho.

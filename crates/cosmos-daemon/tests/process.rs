@@ -352,3 +352,87 @@ fn filesystem_changes_reach_the_daemon_watch_token() {
         }
     }
 }
+
+#[cfg(feature = "fault-injection")]
+#[test]
+fn kill_during_index_update_keeps_markdown_and_recovers_search() {
+    let temp = tempfile::tempdir().unwrap();
+    let root = temp.path().join("v");
+    let data = temp.path().join("d");
+    let marker = temp.path().join("paused");
+    std::fs::create_dir_all(&root).unwrap();
+    std::fs::write(root.join("note.md"), "oldtoken").unwrap();
+    std::fs::write(root.join("removed.md"), "oldtoken").unwrap();
+    let initial = start(&root, &data);
+    cosmos_daemon::call(
+        &data,
+        VaultCommand::Search {
+            query: "oldtoken".into(),
+        },
+    )
+    .unwrap();
+    drop(initial);
+    let content = "\u{feff}newtoken\r\n";
+    std::fs::write(root.join("note.md"), content).unwrap();
+    std::fs::remove_file(root.join("removed.md")).unwrap();
+    let daemon = Daemon(
+        Command::new(env!("CARGO_BIN_EXE_cosmosd"))
+            .arg(&root)
+            .arg(&data)
+            .env("COSMOS_TEST_PAUSE", "search_before_commit")
+            .env("COSMOS_TEST_MARKER", &marker)
+            .spawn()
+            .unwrap(),
+    );
+    for _ in 0..200 {
+        if cosmos_daemon::handshake(&data).is_ok() {
+            break;
+        }
+        thread::sleep(Duration::from_millis(10));
+    }
+    cosmos_daemon::handshake(&data).unwrap();
+    thread::scope(|scope| {
+        let client = scope.spawn(|| {
+            cosmos_daemon::call(
+                &data,
+                VaultCommand::Search {
+                    query: "newtoken".into(),
+                },
+            )
+        });
+        for _ in 0..500 {
+            if marker.exists() {
+                break;
+            }
+            thread::sleep(Duration::from_millis(10));
+        }
+        assert!(marker.exists(), "search fault point not reached");
+        drop(daemon);
+        assert!(client.join().unwrap().is_err());
+    });
+    let _daemon = start(&root, &data);
+    assert_eq!(
+        std::fs::read(root.join("note.md")).unwrap(),
+        content.as_bytes()
+    );
+    let VaultReply::Paths { paths } = cosmos_daemon::call(
+        &data,
+        VaultCommand::Search {
+            query: "newtoken".into(),
+        },
+    )
+    .unwrap() else {
+        panic!()
+    };
+    assert_eq!(paths, ["note.md"]);
+    let VaultReply::Paths { paths } = cosmos_daemon::call(
+        &data,
+        VaultCommand::Search {
+            query: "oldtoken".into(),
+        },
+    )
+    .unwrap() else {
+        panic!()
+    };
+    assert!(paths.is_empty());
+}

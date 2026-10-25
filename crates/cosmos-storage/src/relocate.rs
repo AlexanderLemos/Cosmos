@@ -534,7 +534,7 @@ mod tests {
                 p.file_name()
                     .unwrap()
                     .to_string_lossy()
-                    .starts_with("cosmos-before-v2-")
+                    .starts_with("cosmos-before-v3-")
             })
             .collect();
         assert_eq!(backups.len(), 1);
@@ -556,7 +556,7 @@ mod tests {
                 .db
                 .query_row("PRAGMA user_version", [], |r| r.get::<_, i64>(0))
                 .unwrap(),
-            2
+            crate::SCHEMA_VERSION
         );
     }
 }

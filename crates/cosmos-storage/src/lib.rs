@@ -11,8 +11,9 @@ use std::{
 };
 
 pub const MAX_NOTE_BYTES: usize = 8 * 1024 * 1024;
-pub const SCHEMA_VERSION: i64 = 2;
+pub const SCHEMA_VERSION: i64 = 3;
 mod relocate;
+mod search;
 mod watch;
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -81,10 +82,13 @@ impl Vault {
         if version > SCHEMA_VERSION {
             return Err(Error::Version);
         }
-        if version == 1 {
+        if version > 0 && version < SCHEMA_VERSION {
             // A consistent SQLite backup includes committed WAL content. An old
-            // binary refuses v2 instead of ignoring pending relocation records.
-            let backup = data.join(format!("cosmos-before-v2-{}.db", ulid::Ulid::new()));
+            // binary refuses the new version instead of using an incompatible index.
+            let backup = data.join(format!(
+                "cosmos-before-v{SCHEMA_VERSION}-{}.db",
+                ulid::Ulid::new()
+            ));
             db.execute("VACUUM INTO ?1", [backup.to_string_lossy().as_ref()])?;
             OpenOptions::new()
                 .read(true)
@@ -97,9 +101,13 @@ impl Vault {
         db.execute_batch("PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL;
             BEGIN IMMEDIATE;
             CREATE TABLE IF NOT EXISTS writes(id INTEGER PRIMARY KEY, payload TEXT NOT NULL, state TEXT NOT NULL DEFAULT 'pending');
-            CREATE TABLE IF NOT EXISTS relocations(id TEXT PRIMARY KEY, payload TEXT NOT NULL, state TEXT NOT NULL DEFAULT 'pending');
-            PRAGMA user_version=2; COMMIT;")?;
+            CREATE TABLE IF NOT EXISTS relocations(id TEXT PRIMARY KEY, payload TEXT NOT NULL, state TEXT NOT NULL DEFAULT 'pending');")?;
+        if version < SCHEMA_VERSION {
+            // Only the reconstructible search cache changes. Journals are retained.
+            db.execute_batch("DROP TABLE IF EXISTS notes; DROP TABLE IF EXISTS search_documents;")?;
+        }
         db.execute_batch(include_str!("search-schema.sql"))?;
+        db.execute_batch("PRAGMA user_version=3; COMMIT;")?;
         let watcher = watch::VaultWatcher::new(&root);
         let mut vault = Self {
             root,
@@ -298,32 +306,6 @@ impl Vault {
         }
         Ok(())
     }
-    fn search(&mut self, query: &str) -> Result<Vec<String>> {
-        // Rebuild from disk so changes made by Obsidian/other editors are immediately visible.
-        let paths = self.list()?;
-        let notes = paths
-            .iter()
-            .map(|p| self.read(p))
-            .collect::<Result<Vec<_>>>()?;
-        let tx = self.db.transaction()?;
-        tx.execute("DELETE FROM notes", [])?;
-        for note in notes {
-            tx.execute(
-                "INSERT INTO notes(path,body) VALUES (?1,?2)",
-                params![note.path, note.content],
-            )?;
-        }
-        tx.commit()?;
-        if query.trim().is_empty() {
-            return Ok(paths);
-        }
-        let phrase = format!("\"{}\"", query.replace('"', "\"\""));
-        Ok(self
-            .db
-            .prepare(include_str!("search-query.sql"))?
-            .query_map([phrase], |row| row.get(0))?
-            .collect::<std::result::Result<_, _>>()?)
-    }
     pub fn execute(&mut self, command: VaultCommand) -> Result<VaultReply> {
         if !matches!(
             &command,
@@ -441,7 +423,7 @@ fn fault_checkpoint(_stage: &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    fn fixture() -> (tempfile::TempDir, Vault) {
+    pub(super) fn fixture() -> (tempfile::TempDir, Vault) {
         let temp = tempfile::tempdir().unwrap();
         let vault = Vault::open(&temp.path().join("vault"), &temp.path().join("data")).unwrap();
         (temp, vault)

@@ -1,6 +1,6 @@
 /** One bounded worker per search. Web Locks serialize the OPFS VFS across tabs. */
 export async function searchNotes(
-  notes: { path: string; content: string }[],
+  notes: { path: string; content: string; rev: string }[],
   query: string,
 ): Promise<string[]> {
   if (!query.trim()) return Promise.resolve(notes.map((note) => note.path));

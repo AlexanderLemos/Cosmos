@@ -13,8 +13,7 @@ function adapt(fs: BrowserVaultFS): OpenVault {
       const paths = await fs.paths();
       if (!query.trim()) return paths;
       const notes = [];
-      for (const path of paths)
-        notes.push({ path, content: (await fs.read(path)).content });
+      for (const path of paths) notes.push({ path, ...(await fs.read(path)) });
       return searchNotes(notes, query);
     },
     importFiles: (files) =>

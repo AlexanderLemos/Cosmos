@@ -25,6 +25,14 @@ abas e `createWritable` confirma a escrita em `close`. Memória gerenciada fica
 somente leitura. O índice SQLite-WASM usa SAH Pool em worker e libera handles no
 fim da consulta. Os arquivos SQL são compartilhados com `rusqlite`. O índice é
 reconstruível; notas e anexos são a fonte portátil e permanecem fora do VFS SQL.
+A reconciliação incremental mantém uma tabela de documentos com revisão e FTS5
+de conteúdo externo, atualizado por triggers na mesma transação. Os dois backends
+compartilham também o SQL de atualização, remoção e desempate por caminho. A
+revisão vem dos bytes atuais; não se confia apenas em tamanho, mtime ou eventos.
+Na Web, cada consulta reconcilia o snapshot completo do cofre selecionado antes de
+ler o cache compartilhado, e o diretório do VFS tem versão para isolar abas com
+código anterior. Isso evita resultados de outro cofre sem guardar caminhos reais
+da máquina no índice Web. A otimização da leitura por eventos fica para outro incremento.
 
 O editor CodeMirror aplica alterações ao texto original, preservando bytes que
 não foram editados, inclusive BOM e quebras de linha mistas. O parser serve à

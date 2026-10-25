@@ -1,0 +1,2 @@
+CREATE TEMP TABLE IF NOT EXISTS search_seen (path TEXT PRIMARY KEY);
+DELETE FROM search_seen;
