@@ -271,3 +271,84 @@ fn kill_during_move_recovers_without_losing_either_file() {
         );
     }
 }
+
+#[test]
+fn filesystem_changes_reach_the_daemon_watch_token() {
+    use std::io::Write;
+    use std::time::Instant;
+    for action in [
+        "edit",
+        "replace",
+        "create",
+        "rename",
+        "remove",
+        "nested",
+        "project_marker",
+    ] {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("v");
+        let data = temp.path().join("d");
+        std::fs::create_dir_all(&root).unwrap();
+        std::fs::write(root.join("note.md"), "original").unwrap();
+        let _daemon = start(&root, &data);
+        let token = || {
+            let VaultReply::WatchState {
+                revision,
+                available,
+            } = cosmos_daemon::call(&data, VaultCommand::Watch).unwrap()
+            else {
+                panic!()
+            };
+            assert!(available, "native watcher unavailable for {action}");
+            revision
+        };
+        let before = token();
+        match action {
+            "edit" => std::fs::write(root.join("note.md"), "external").unwrap(),
+            "replace" => {
+                let mut file = tempfile::Builder::new()
+                    .prefix(".cosmos-write-")
+                    .tempfile_in(&root)
+                    .unwrap();
+                file.write_all(b"replacement").unwrap();
+                file.persist(root.join("note.md")).unwrap();
+            }
+            "create" => std::fs::write(root.join("new.md"), "new").unwrap(),
+            "rename" => std::fs::rename(root.join("note.md"), root.join("renamed.md")).unwrap(),
+            "remove" => std::fs::remove_file(root.join("note.md")).unwrap(),
+            "nested" => {
+                std::fs::create_dir(root.join("Folder")).unwrap();
+                std::fs::write(root.join("Folder/new.md"), "nested").unwrap();
+            }
+            "project_marker" => std::fs::write(root.join("project.cosmos.json"), "{}").unwrap(),
+            _ => unreachable!(),
+        }
+        let until = Instant::now() + Duration::from_secs(10);
+        while token() == before {
+            assert!(Instant::now() < until, "event not observed: {action}");
+            thread::sleep(Duration::from_millis(30));
+        }
+        let VaultReply::Paths { paths } = cosmos_daemon::call(&data, VaultCommand::List).unwrap()
+        else {
+            panic!()
+        };
+        match action {
+            "remove" => assert!(paths.is_empty()),
+            "rename" => assert_eq!(paths, vec!["renamed.md"]),
+            "nested" => assert!(paths.contains(&"Folder/new.md".into())),
+            "project_marker" => {
+                let VaultReply::Note(note) = cosmos_daemon::call(
+                    &data,
+                    VaultCommand::Read {
+                        path: "note.md".into(),
+                    },
+                )
+                .unwrap() else {
+                    panic!()
+                };
+                assert!(!note.can_organize);
+            }
+            _ => (),
+        }
+    }
+}

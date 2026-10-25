@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 #[serde(tag = "op", rename_all = "snake_case", deny_unknown_fields)]
 pub enum VaultCommand {
     List,
+    Watch,
     Read {
         path: String,
     },
@@ -56,6 +57,7 @@ pub struct TrashEntry {
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum VaultReply {
     Paths { paths: Vec<String> },
+    WatchState { revision: String, available: bool },
     Note(Note),
     Saved { rev: String },
     Project { path: String },

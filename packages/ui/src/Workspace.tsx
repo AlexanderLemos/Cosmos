@@ -1,31 +1,26 @@
 import { noteLinks, resolveNoteLink } from '@cosmos/core';
 import { MarkdownEditor } from '@cosmos/editor';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Foundation } from './Foundation';
+import { type DocumentState, observeVault, reconcileDocument } from './monitor';
 import type { OpenVault, TrashItem, VaultPlatform } from './vault';
 import styles from './Workspace.module.css';
 
-type Document = {
-  path: string;
-  content: string;
-  saved: string;
-  rev: string;
-  readOnly: boolean;
-  canOrganize?: boolean;
-  generation: number;
-};
 export function Workspace({ platform }: { platform: VaultPlatform }) {
   const { t } = useTranslation();
   const [vault, setVault] = useState<OpenVault | null>(null);
   const [paths, setPaths] = useState<string[]>([]);
-  const [doc, setDoc] = useState<Document | null>(null);
+  const [doc, setDoc] = useState<DocumentState | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
   const [query, setQuery] = useState('');
+  const [searchTerm, setSearchTerm] = useState<string | null>(null);
+  const [monitorIssue, setMonitorIssue] = useState('');
   const [results, setResults] = useState<string[] | null>(null);
-  const [links, setLinks] = useState<string[]>([]);
+  const content = doc?.content ?? '';
+  const links = useMemo(() => noteLinks(content), [content]);
   const [backlinks, setBacklinks] = useState<string[]>([]);
   const [name, setName] = useState('');
   const [fileAction, setFileAction] = useState<'move' | 'trash' | null>(null);
@@ -36,6 +31,13 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
   const [universe, setUniverse] = useState('Pessoal');
   const [form, setForm] = useState<'note' | 'project'>('note');
   const pending = useRef(false);
+  const actionGeneration = useRef(0);
+  const monitorRef = useRef({
+    doc,
+    searchTerm,
+    trashOpen: trashItems !== null,
+  });
+  monitorRef.current = { doc, searchTerm, trashOpen: trashItems !== null };
   const dirty = doc !== null && doc.content !== doc.saved;
   const documentRef = useRef(doc);
   documentRef.current = doc;
@@ -48,6 +50,7 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
   }, [dirty]);
   const run = async (action: () => Promise<void>) => {
     if (pending.current) return;
+    actionGeneration.current++;
     pending.current = true;
     setBusy(true);
     setError('');
@@ -75,6 +78,7 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
     setPaths(await current.paths());
     setResults(null);
     setQuery('');
+    setSearchTerm(null);
   };
   const open = (folder = false) =>
     void run(async () => {
@@ -89,7 +93,6 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
       setRestoreItem(null);
       setFileAction(null);
       setDoc(null);
-      setLinks([]);
       setBacklinks([]);
     });
   const load = async (path: string, current = vault) => {
@@ -105,7 +108,6 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
       generation: Date.now(),
     });
     const all = await current.paths();
-    setLinks(noteLinks(note.content));
     const back: string[] = [];
     for (const candidate of all) {
       if (candidate === path) continue;
@@ -126,6 +128,7 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
         !vault ||
         !snapshot ||
         snapshot.readOnly ||
+        snapshot.external ||
         snapshot.content === snapshot.saved
       )
         return;
@@ -141,6 +144,90 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
       setStatus(t('saved'));
       await refresh(vault);
     });
+  useEffect(() => {
+    setMonitorIssue('');
+    if (!vault?.watchState) return;
+    const readState = vault.watchState.bind(vault);
+    let cancelled = false;
+    let inFlight = false;
+    let token: string | undefined;
+    let rescan = true;
+    const poll = async (force = false) => {
+      if (force) rescan = true;
+      if (
+        cancelled ||
+        inFlight ||
+        pending.current ||
+        document.visibilityState === 'hidden'
+      )
+        return;
+      inFlight = true;
+      const action = actionGeneration.current;
+      const observed = monitorRef.current;
+      const stale = () =>
+        cancelled || pending.current || action !== actionGeneration.current;
+      try {
+        const state = await readState();
+        if (stale()) {
+          rescan = true;
+          return;
+        }
+        if (state.revision === token && !rescan) {
+          setMonitorIssue(state.available ? '' : 'monitorUnavailable');
+          return;
+        }
+        rescan = false;
+        const update = await observeVault(
+          vault,
+          observed.doc,
+          observed.searchTerm,
+          observed.trashOpen,
+        );
+        if (stale()) {
+          rescan = true;
+          return;
+        }
+        setPaths(update.paths);
+        setDoc((current) =>
+          reconcileDocument(current, observed.doc, update.incoming),
+        );
+        setBacklinks(update.backlinks);
+        if (monitorRef.current.searchTerm === observed.searchTerm)
+          setResults(update.results);
+        if (observed.trashOpen && monitorRef.current.trashOpen)
+          setTrashItems(update.trash);
+        setMonitorIssue(
+          !state.available
+            ? 'monitorUnavailable'
+            : update.incomplete
+              ? 'monitorUnreadable'
+              : '',
+        );
+        token = state.revision;
+        rescan = rescan || update.incomplete;
+      } catch {
+        if (!stale()) setMonitorIssue('monitorUnavailable');
+        rescan = true;
+      } finally {
+        inFlight = false;
+      }
+    };
+    const resume = () => {
+      void poll(true);
+    };
+    void poll();
+    const timer = setInterval(() => {
+      void poll();
+    }, 1500);
+    window.addEventListener('focus', resume);
+    document.addEventListener('visibilitychange', resume);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+      window.removeEventListener('focus', resume);
+      document.removeEventListener('visibilitychange', resume);
+    };
+  }, [vault]);
   const downloadDraft = () => {
     if (!doc) return;
     download(
@@ -175,7 +262,11 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
               <form
                 onSubmit={(event) => {
                   event.preventDefault();
-                  void run(async () => setResults(await vault.search(query)));
+                  void run(async () => {
+                    const term = query;
+                    setResults(await vault.search(term));
+                    setSearchTerm(term);
+                  });
                 }}
               >
                 <label>
@@ -436,7 +527,9 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
                 <div>
                   <button
                     type="button"
-                    disabled={busy || !dirty || doc?.readOnly}
+                    disabled={
+                      busy || !dirty || doc?.readOnly || !!doc?.external
+                    }
                     onClick={save}
                   >
                     {t('save')}
@@ -444,7 +537,9 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
                   {doc && vault.move && (
                     <button
                       type="button"
-                      disabled={busy || dirty || !doc.canOrganize}
+                      disabled={
+                        busy || dirty || !!doc.external || !doc.canOrganize
+                      }
                       onClick={() => {
                         setDestination(doc.path);
                         setFileAction('move');
@@ -456,7 +551,9 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
                   {doc && vault.trash && (
                     <button
                       type="button"
-                      disabled={busy || dirty || !doc.canOrganize}
+                      disabled={
+                        busy || dirty || !!doc.external || !doc.canOrganize
+                      }
                       onClick={() => setFileAction('trash')}
                     >
                       {t('trashNote')}
@@ -472,6 +569,25 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
               <div className={styles.feedback} aria-live="polite">
                 {busy ? t('working') : dirty ? t('unsaved') : status}
               </div>
+              {(monitorIssue || doc?.external) && (
+                <div role="alert" className={styles.error}>
+                  {monitorIssue && <p>{t(monitorIssue)}</p>}
+                  {doc?.external && <p>{t(`external_${doc.external}`)}</p>}
+                  {doc && (
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() =>
+                        void run(async () => {
+                          if (mayLeave()) await load(doc.path);
+                        })
+                      }
+                    >
+                      {t('reloadNote')}
+                    </button>
+                  )}
+                </div>
+              )}
               {error && (
                 <div role="alert" className={styles.error}>
                   {error}
@@ -505,7 +621,7 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
                   onSubmit={(event) => {
                     event.preventDefault();
                     void run(async () => {
-                      if (dirty || !doc.canOrganize) return;
+                      if (dirty || doc.external || !doc.canOrganize) return;
                       if (fileAction === 'move') {
                         const target = destination.trim();
                         await vault.move?.(doc.path, target, doc.rev);
@@ -542,6 +658,7 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
                       disabled={
                         busy ||
                         dirty ||
+                        !!doc.external ||
                         (fileAction === 'move' && !destination.trim())
                       }
                     >
@@ -572,7 +689,6 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
                     onSave={save}
                     onChange={(content) => {
                       setDoc((d) => (d ? { ...d, content } : d));
-                      setLinks(noteLinks(content));
                       setStatus('');
                     }}
                   />

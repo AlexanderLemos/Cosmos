@@ -25,6 +25,27 @@
     {
       "type": "object",
       "properties": {
+        "available": {
+          "type": "boolean"
+        },
+        "kind": {
+          "type": "string",
+          "const": "watch_state"
+        },
+        "revision": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "revision",
+        "available"
+      ]
+    },
+    {
+      "type": "object",
+      "properties": {
         "can_organize": {
           "type": "boolean"
         },

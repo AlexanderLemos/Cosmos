@@ -167,6 +167,9 @@ export type VaultCommand =
       op: "list";
     }
   | {
+      op: "watch";
+    }
+  | {
       op: "read";
       path: string;
     }
@@ -212,6 +215,11 @@ export type VaultReply =
   | {
       kind: "paths";
       paths: string[];
+    }
+  | {
+      available: boolean;
+      kind: "watch_state";
+      revision: string;
     }
   | {
       can_organize: boolean;

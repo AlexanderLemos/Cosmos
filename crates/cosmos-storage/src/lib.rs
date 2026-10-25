@@ -13,6 +13,7 @@ use std::{
 pub const MAX_NOTE_BYTES: usize = 8 * 1024 * 1024;
 pub const SCHEMA_VERSION: i64 = 2;
 mod relocate;
+mod watch;
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("CONFLICT: {0}")]
@@ -49,6 +50,7 @@ pub struct Vault {
     root: PathBuf,
     db: Connection,
     _lock: File,
+    watcher: watch::VaultWatcher,
 }
 pub fn revision(content: &[u8]) -> String {
     format!("b3:{}", blake3::hash(content).to_hex())
@@ -98,10 +100,12 @@ impl Vault {
             CREATE TABLE IF NOT EXISTS relocations(id TEXT PRIMARY KEY, payload TEXT NOT NULL, state TEXT NOT NULL DEFAULT 'pending');
             PRAGMA user_version=2; COMMIT;")?;
         db.execute_batch(include_str!("search-schema.sql"))?;
+        let watcher = watch::VaultWatcher::new(&root);
         let mut vault = Self {
             root,
             db,
             _lock: lock,
+            watcher,
         };
         vault.recover()?;
         vault.recover_relocations()?;
@@ -323,7 +327,8 @@ impl Vault {
     pub fn execute(&mut self, command: VaultCommand) -> Result<VaultReply> {
         if !matches!(
             &command,
-            VaultCommand::List
+            VaultCommand::Watch
+                | VaultCommand::List
                 | VaultCommand::Read { .. }
                 | VaultCommand::Search { .. }
                 | VaultCommand::ListTrash
@@ -331,6 +336,7 @@ impl Vault {
             self.ensure_no_pending_relocations()?;
         }
         match command {
+            VaultCommand::Watch => Ok(self.watcher.snapshot()),
             VaultCommand::List => Ok(VaultReply::Paths {
                 paths: self.list()?,
             }),

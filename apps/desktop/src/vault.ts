@@ -12,6 +12,11 @@ export const platform: VaultPlatform = {
     if (!name) return null;
     return {
       name,
+      watchState: async () => {
+        const result = await command({ op: 'watch' });
+        if (result.kind !== 'watch_state') throw new Error('INVALID_RESPONSE');
+        return result;
+      },
       paths: async () => {
         const result = await command({ op: 'list' });
         if (result.kind !== 'paths') throw new Error('INVALID_RESPONSE');

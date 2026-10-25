@@ -37,6 +37,33 @@ foram aprovadas implicitamente pelo avanço da implementação.
   frase literal e BM25. O índice é reconstruído dos arquivos a cada busca nesta
   versão. Web Locks serializam o VFS entre abas; o worker libera os handles.
 
+## Alterações externas no Desktop
+
+O daemon usa `notify` para observar recursivamente o cofre. O acompanhamento não
+segue symlinks e ignora eventos de leitura, `.git`, `.obsidian`, `.cosmos` e arquivos
+temporários internos. Cada mudança relevante invalida um token, composto por uma
+identidade da instância e um contador. Não há fila ilimitada nem conteúdo de notas
+nos eventos. Avisos de rescan também invalidam o token.
+
+A janela consulta esse token via IPC a cada 1,5 s enquanto está visível. Quando ele
+muda, atualiza a lista, a busca ativa, backlinks e a lixeira aberta. Também confere
+novamente o cofre ao recuperar foco/visibilidade. O filtro da busca é preservado.
+Notas abertas **sem edição local** são recarregadas; com rascunho, a revisão e o
+texto local são preservados e há um aviso antes de qualquer tentativa de salvar.
+Uma remoção externa ou conteúdo ilegível mantém o texto aberto disponível para
+download. Recarregar um rascunho exige a confirmação de descarte já usada pela UI.
+Respostas iniciadas antes de salvar, mudar de nota ou fechar o cofre são descartadas.
+
+Falha de observação/IPC aparece na interface, com atualização manual disponível.
+Uma falha do backend de observação exige reiniciar o daemon para restabelecer sua
+cobertura; receber outro evento não é tratado como prova de recuperação completa.
+Não há supervisão ou reinicialização automática do processo nesta entrega.
+A observação notifica mudanças; **a indexação ainda não é incremental**. A atualização
+pode reler notas para backlinks e reconstruir a busca. Cofres grandes e diretórios
+sincronizados/em rede ainda exigem os ensaios de performance e compatibilidade.
+A Web continua com atualização manual e checagem de revisão ao salvar; este
+acompanhamento automático está disponível somente no Desktop.
+
 ## Escrita e recuperação
 
 `cosmos-storage` mantém SQLite **fora do cofre**, em dados locais da aplicação.
@@ -112,7 +139,11 @@ segundo daemon, traversal, symlinks, schema futuro e mudanças externas. A movim
 é interrompida em quatro pontos (journal, publicação, confirmação da cópia e remoção).
 Os testes também cobrem restauração, destinos ocupados, alterações externas nas duas
 pontas, proteção de projetos e migração v1→v2 com backup. O smoke Desktop completo
-verifica os botões de mover, lixeira e restauração através do daemon real.
+verifica os botões de mover, lixeira e restauração através do daemon real. Também
+altera arquivos diretamente no disco, verificando recarga automática, rascunho
+preservado, busca/backlinks atualizados, conteúdo ilegível e remoção externa.
+Os testes de processo verificam eventos nativos de criação, edição, substituição
+atômica, renomeação, remoção, subpastas e marcador de projeto nos três SOs.
 `fault-injection` não faz parte do sidecar preparado para o app.
 
 Playwright verifica persistência após recarregar, conflito entre abas, busca real,
@@ -126,11 +157,13 @@ pela política de rede; a execução local cobre Chromium e o WebView GTK nativo
 - Preview/live preview completo, embeds, navegação de headings/block IDs e
   inventário maior de fixtures Obsidian. O editor atual opera em texto Markdown.
 - Concluir o adaptador Tauri do contrato `VaultFS`, especialmente `watch` e listagem
-  de diretórios. A UI Desktop já expõe mover, lixeira e restauração via IPC; a Web
+  de diretórios. A observação nativa já chega à UI por token IPC, mas ainda precisa
+  ser unificada com a assinatura de callbacks `VaultFS.watch`. A UI Desktop já
+  expõe mover, lixeira e restauração via IPC; a Web
   ainda não expõe esses fluxos e seus métodos internos precisam da mesma proteção
   de revisão/recuperação antes de serem disponibilizados. Atualização automática
   de links após mover notas e revisão de conflitos de movimentação também pendem.
-- Watcher `notify`, indexação incremental, atores independentes por projeto,
+- Indexação incremental, atores independentes por projeto,
   supervisão automática/reconexão após queda e um endpoint por usuário.
 - UI para revisar intenções retidas no journal e restauração de rascunhos após
   queda do navegador; atualmente há salvamento explícito e download de rascunho.

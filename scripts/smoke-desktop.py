@@ -46,7 +46,7 @@ def main():
             const done = arguments[arguments.length - 1];
             window.__TAURI_INTERNALS__.invoke('runtime_info').then(done).catch(error => done({error:String(error)}));
         ''', 'args': []})
-        assert runtime == {'protocol_version': 1, 'application_version': '0.0.0', 'capabilities': ['vault.read', 'vault.write', 'vault.search', 'vault.move', 'vault.trash', 'vault.restore', 'projects.create']}, runtime
+        assert runtime == {'protocol_version': 1, 'application_version': '0.0.0', 'capabilities': ['vault.read', 'vault.write', 'vault.search', 'vault.move', 'vault.trash', 'vault.restore', 'vault.watch', 'projects.create']}, runtime
         if args.evidence_dir:
             args.evidence_dir.mkdir(parents=True, exist_ok=True)
             (args.evidence_dir / 'desktop.png').write_bytes(base64.b64decode(request('GET', session + '/screenshot')))
@@ -112,6 +112,45 @@ def main():
             wait('return document.body.innerText.includes("Note restored.")')
             assert (vault / 'Folder/Moved.md').read_bytes() == original
             assert execute('return document.body.innerText.includes("The trash is empty.");')
+            # Real disk changes, independent of the daemon's write commands.
+            click('Folder/Moved.md')
+            wait('return document.querySelector(".cm-content")?.contentEditable === "true"')
+            external = b'# External note\r\nUpdated outside COSMOS.\r\n'
+            (vault / 'Folder/Moved.md').write_bytes(external)
+            wait('return document.querySelector(".cm-content")?.textContent.includes("Updated outside COSMOS.")')
+            clean = execute('return document.querySelector(".cm-content").textContent;')
+            (vault / 'Folder/Moved.md').write_bytes(bytes([255]))
+            wait('return document.body.innerText.includes("The current version of this note could not be read.")')
+            assert execute('return document.querySelector(".cm-content").textContent;') == clean
+            (vault / 'Folder/Moved.md').write_bytes(external)
+            wait('return !document.body.innerText.includes("The current version of this note could not be read.")')
+            (vault / 'Reference.md').write_text('[[Folder/Moved]]')
+            wait("""return [...document.querySelectorAll('section[aria-label="Connections"] button')].some(b => b.textContent === "Reference.md")""")
+            type_into('aside form input', 'external')
+            click('Search')
+            wait("""return document.querySelectorAll('nav[aria-label="Notes"] button').length === 1""")
+            (vault / 'Found.md').write_text('external search match')
+            wait("""return document.querySelectorAll('nav[aria-label="Notes"] button').length === 2""")
+            assert execute('return document.querySelector("aside form input").value;') == 'external'
+            click('Refresh list')
+            wait('return document.querySelector(".cm-content")?.contentEditable === "true"')
+            type_into('.cm-content', '\nMy local draft')
+            wait('return document.body.innerText.includes("Unsaved changes")')
+            draft = execute('return document.querySelector(".cm-content").textContent;')
+            (vault / 'Folder/Moved.md').write_text('another external version')
+            wait('return document.body.innerText.includes("This note changed outside COSMOS.")')
+            assert execute('return document.querySelector(".cm-content").textContent;') == draft
+            assert execute('return [...document.querySelectorAll("button")].find(b => b.textContent === "Save").disabled;')
+            # Returning to the original revision clears the warning, not the draft.
+            (vault / 'Folder/Moved.md').write_bytes(external)
+            wait('return ![...document.querySelectorAll("button")].find(b => b.textContent === "Save").disabled')
+            assert execute('return document.querySelector(".cm-content").textContent;') == draft
+            click('Save')
+            wait('return document.body.innerText.includes("Saved to vault.")')
+            (vault / 'Folder/Moved.md').unlink()
+            wait('return document.body.innerText.includes("This note was removed or moved outside COSMOS.")')
+            assert execute('return document.querySelector(".cm-content").textContent;') == draft
+            assert execute("""return ![...document.querySelectorAll('nav[aria-label="Notes"] button')].some(b => b.textContent === "Folder/Moved.md");""")
             # Create a real project with the same native transport.
             execute('const select = [...document.querySelectorAll("select")].find(s => [...s.options].some(o => o.value === "project")); select.value = "project"; select.dispatchEvent(new Event("change", {bubbles:true}));')
             wait('return document.body.innerText.includes("Project name")')
@@ -125,7 +164,7 @@ def main():
             assert metadata['format_version'] == 1 and metadata['bindings'] == []
             assert not (vault / 'cosmos.db').exists()
             assert execute('return [...document.querySelectorAll("button")].find(b => b.textContent === "Move note").disabled;')
-            checks += ['native folder consent', 'CodeMirror save via daemon', 'move, trash and restore via daemon', 'protected project structure', 'project documents on disk']
+            checks += ['native folder consent', 'CodeMirror save via daemon', 'move, trash and restore via daemon', 'external changes, search, backlinks and draft preservation', 'protected project structure', 'project documents on disk']
             if args.evidence_dir:
                 (args.evidence_dir / 'desktop-vault.png').write_bytes(base64.b64decode(request('GET', session + '/screenshot')))
         result = {'result': 'passed', 'checks': checks, 'runtime': runtime}

@@ -20,6 +20,19 @@
       "properties": {
         "op": {
           "type": "string",
+          "const": "watch"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "op"
+      ]
+    },
+    {
+      "type": "object",
+      "properties": {
+        "op": {
+          "type": "string",
           "const": "read"
         },
         "path": {

@@ -8,6 +8,7 @@ export interface TrashItem {
 export interface OpenVault {
   name: string;
   paths(): Promise<string[]>;
+  watchState?(): Promise<{ revision: string; available: boolean }>;
   read(
     path: string,
   ): Promise<{ content: string; rev: string; canOrganize?: boolean }>;

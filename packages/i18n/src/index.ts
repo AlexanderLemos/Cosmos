@@ -47,6 +47,16 @@ export const resources = {
       discardPrompt: 'Há alterações não salvas. Descartar e continuar?',
       conflict:
         'O arquivo mudou desde que foi aberto. Sua edição foi preservada aqui. Baixe uma cópia antes de recarregar e comparar as versões.',
+      external_changed:
+        'Esta nota foi alterada fora do COSMOS. Seu rascunho foi preservado. Baixe uma cópia antes de recarregar e comparar.',
+      external_missing:
+        'Esta nota foi removida ou movida fora do COSMOS. O texto continua aqui para você baixar uma cópia.',
+      external_unreadable:
+        'Não foi possível ler a versão atual desta nota. O texto aberto foi preservado.',
+      monitorUnavailable:
+        'A atualização automática está indisponível. Você ainda pode atualizar a lista e recarregar notas manualmente.',
+      monitorUnreadable:
+        'Algumas notas não puderam ser lidas. A atualização automática tentará novamente.',
       reloadNote: 'Recarregar do cofre',
       operationFailed: 'Não foi possível concluir.',
       moveNote: 'Mover nota',
@@ -135,6 +145,16 @@ export const resources = {
       discardPrompt: 'There are unsaved changes. Discard and continue?',
       conflict:
         'The file changed since it was opened. Your edit is still here. Download a copy before reloading and comparing versions.',
+      external_changed:
+        'This note changed outside COSMOS. Your draft was preserved. Download a copy before reloading and comparing.',
+      external_missing:
+        'This note was removed or moved outside COSMOS. Its text is still here so you can download a copy.',
+      external_unreadable:
+        'The current version of this note could not be read. The open text was preserved.',
+      monitorUnavailable:
+        'Automatic updates are unavailable. You can still refresh the list and reload notes manually.',
+      monitorUnreadable:
+        'Some notes could not be read. Automatic updates will retry.',
       reloadNote: 'Reload from vault',
       operationFailed: 'Could not complete the operation.',
       moveNote: 'Move note',
