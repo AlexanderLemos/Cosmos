@@ -70,6 +70,13 @@ async function search(
   );
   await page.getByLabel('Buscar', { exact: true }).fill(query);
   await page.getByRole('button', { name: 'Buscar', exact: true }).click();
+  // Initial SQLite-WASM startup can exceed the default assertion timeout on CI.
+  // Check the finished operation first; errors must fail rather than look like
+  // a missing worker commit or an unchanged list of paths.
+  await expect(
+    page.getByRole('button', { name: 'Buscar', exact: true }),
+  ).toBeEnabled({ timeout: 35_000 });
+  await expect(page.getByRole('alert')).toHaveCount(0);
   await expect
     .poll(() =>
       page.evaluate(
@@ -77,9 +84,6 @@ async function search(
       ),
     )
     .toBe(count + 1);
-  await expect(
-    page.getByRole('button', { name: 'Buscar', exact: true }),
-  ).toBeEnabled();
   await expect(
     page.getByRole('navigation', { name: 'Notas' }).getByRole('button'),
   ).toHaveText(results);
