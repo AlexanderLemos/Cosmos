@@ -3,7 +3,7 @@ use std::{
     path::Path,
     process::{Child, Command, Stdio},
     thread,
-    time::Duration,
+    time::{Duration, Instant},
 };
 struct Daemon(Child);
 impl Drop for Daemon {
@@ -12,28 +12,30 @@ impl Drop for Daemon {
         let _ = self.0.wait();
     }
 }
+// Process startup includes SQLite recovery, watcher setup and OS security checks.
+// A wall-clock deadline tolerates loaded runners while still detecting child exit.
+fn wait_ready(mut daemon: Daemon, data: &Path) -> Daemon {
+    let deadline = Instant::now() + Duration::from_secs(15);
+    loop {
+        let error = match cosmos_daemon::handshake(data) {
+            Ok(()) => return daemon,
+            Err(error) => error,
+        };
+        if let Some(status) = daemon.0.try_wait().unwrap() {
+            panic!("daemon exited during startup: {status}; last handshake: {error}");
+        }
+        assert!(Instant::now() < deadline, "daemon did not start: {error}");
+        thread::sleep(Duration::from_millis(20));
+    }
+}
 fn start(root: &Path, data: &Path) -> Daemon {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_cosmosd"))
+    let child = Command::new(env!("CARGO_BIN_EXE_cosmosd"))
         .arg(root)
         .arg(data)
         .stdout(Stdio::null())
         .spawn()
         .unwrap();
-    let mut last_error = String::new();
-    for _ in 0..200 {
-        match cosmos_daemon::handshake(data) {
-            Ok(()) => return Daemon(child),
-            Err(error) => last_error = error.to_string(),
-        }
-        assert!(
-            child.try_wait().unwrap().is_none(),
-            "daemon exited during startup"
-        );
-        thread::sleep(Duration::from_millis(10));
-    }
-    let _ = child.kill();
-    let _ = child.wait();
-    panic!("daemon did not start: {last_error}");
+    wait_ready(Daemon(child), data)
 }
 #[test]
 fn real_process_serializes_writes_rejects_versions_and_survives_kill() {
@@ -120,13 +122,7 @@ fn kill_during_projection_replays_the_durable_journal() {
                 .spawn()
                 .unwrap(),
         );
-        for _ in 0..200 {
-            if cosmos_daemon::handshake(&data).is_ok() {
-                break;
-            }
-            thread::sleep(Duration::from_millis(10));
-        }
-        cosmos_daemon::handshake(&data).unwrap();
+        let daemon = wait_ready(daemon, &data);
         thread::scope(|scope| {
             let client = scope.spawn(|| {
                 cosmos_daemon::call(
@@ -203,13 +199,7 @@ fn kill_during_move_recovers_without_losing_either_file() {
                 .spawn()
                 .unwrap(),
         );
-        for _ in 0..200 {
-            if cosmos_daemon::handshake(&data).is_ok() {
-                break;
-            }
-            thread::sleep(Duration::from_millis(10));
-        }
-        cosmos_daemon::handshake(&data).unwrap();
+        let daemon = wait_ready(daemon, &data);
         thread::scope(|scope| {
             let client = scope.spawn(|| {
                 cosmos_daemon::call(
@@ -275,7 +265,6 @@ fn kill_during_move_recovers_without_losing_either_file() {
 #[test]
 fn filesystem_changes_reach_the_daemon_watch_token() {
     use std::io::Write;
-    use std::time::Instant;
     for action in [
         "edit",
         "replace",
@@ -384,13 +373,7 @@ fn kill_during_index_update_keeps_markdown_and_recovers_search() {
             .spawn()
             .unwrap(),
     );
-    for _ in 0..200 {
-        if cosmos_daemon::handshake(&data).is_ok() {
-            break;
-        }
-        thread::sleep(Duration::from_millis(10));
-    }
-    cosmos_daemon::handshake(&data).unwrap();
+    let daemon = wait_ready(daemon, &data);
     thread::scope(|scope| {
         let client = scope.spawn(|| {
             cosmos_daemon::call(

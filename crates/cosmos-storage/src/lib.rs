@@ -410,12 +410,12 @@ impl Vault {
 // Only linked by the dedicated fault-injection test build, never the distributed sidecar.
 fn fault_checkpoint(_stage: &str) {
     #[cfg(feature = "fault-injection")]
-    if std::env::var("COSMOS_TEST_PAUSE").as_deref() == Ok(_stage) {
-        if let Some(marker) = std::env::var_os("COSMOS_TEST_MARKER") {
-            std::fs::write(marker, _stage).expect("write test marker");
-            loop {
-                std::thread::park();
-            }
+    if std::env::var("COSMOS_TEST_PAUSE").as_deref() == Ok(_stage)
+        && let Some(marker) = std::env::var_os("COSMOS_TEST_MARKER")
+    {
+        std::fs::write(marker, _stage).expect("write test marker");
+        loop {
+            std::thread::park();
         }
     }
 }
