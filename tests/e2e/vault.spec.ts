@@ -68,6 +68,12 @@ test('create, save, reopen, search and navigate backlinks; preferences preserve 
   await expect(page.locator('.cm-content')).toContainText('Rascunho');
   await page.getByLabel('Buscar', { exact: true }).fill('local');
   await page.getByRole('button', { name: 'Buscar', exact: true }).click();
+  // A cold SQLite-WASM worker has a 30-second operation timeout. Wait for the
+  // action to finish before checking results, especially on loaded WebKit CI.
+  await expect(
+    page.getByRole('button', { name: 'Buscar', exact: true }),
+  ).toBeEnabled({ timeout: 35_000 });
+  await expect(page.getByRole('alert')).toHaveCount(0);
   await expect(
     page.getByRole('navigation', { name: 'Notas' }).getByRole('button'),
   ).toHaveCount(1);

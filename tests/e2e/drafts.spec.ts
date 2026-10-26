@@ -232,11 +232,24 @@ test('unavailable draft storage is explicit and leaves manual saving available',
   page,
 }) => {
   await page.addInitScript(() => {
-    indexedDB.open = () => {
-      throw new DOMException('Storage unavailable', 'QuotaExceededError');
-    };
+    Object.defineProperty(IDBFactory.prototype, 'open', {
+      configurable: true,
+      value: () => {
+        throw new DOMException('Storage unavailable', 'QuotaExceededError');
+      },
+    });
   });
   await open(page);
+  expect(
+    await page.evaluate(() => {
+      try {
+        indexedDB.open('cosmos-drafts');
+        return 'unexpected success';
+      } catch (error) {
+        return error instanceof DOMException ? error.name : String(error);
+      }
+    }),
+  ).toBe('QuotaExceededError');
   await note(page);
   await page.locator('.cm-content').fill('edição ainda disponível');
   await expect(page.getByRole('alert')).toContainText(
