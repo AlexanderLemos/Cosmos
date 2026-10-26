@@ -162,7 +162,8 @@ cofres grandes.
 
 Na leitura Web/Desktop, `Texto do parágrafo. ^meu-bloco` cria um destino para
 `[[#^meu-bloco]]`, `[[Outra#^meu-bloco|alias]]` ou links Markdown com o mesmo
-fragmento, inclusive `%5Emeu-bloco`. O identificador aceita letras ASCII, números
+fragmento, inclusive `%5Emeu-bloco`. O marcador exige espaço ou quebra de linha
+antes do circunflexo; `**texto**^id` permanece literal. O identificador aceita letras ASCII, números
 e hífens e diferencia maiúsculas de minúsculas. Um marcador isolado após linha
 em branco pode identificar o parágrafo, lista, citação ou tabela anterior.
 Marcadores no fim do texto de um item de lista identificam o item inteiro,

@@ -25,6 +25,14 @@ export function remarkBlocks() {
         last.position?.end.offset,
       );
       if (!raw.endsWith(match[0])) return;
+      // A new text node after emphasis/code/link syntax is not a word boundary.
+      // Obsidian requires whitespace before an inline block marker.
+      if (
+        match[0].startsWith('^') &&
+        node.children.length > 1 &&
+        !/\s/.test(source[(last.position?.start.offset ?? 0) - 1] ?? '')
+      )
+        return;
       return { text: last, start: match.index, id: match[1] as string };
     }
 
