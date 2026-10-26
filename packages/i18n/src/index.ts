@@ -39,6 +39,8 @@ export const resources = {
         'Esta nota é grande demais para a pré-visualização. Continue no modo Editar.',
       sectionNotFound:
         'A seção indicada pelo link não foi encontrada nesta nota.',
+      blockNotFound:
+        'O bloco indicado pelo link não foi encontrado ou seu identificador está repetido nesta nota.',
       image: 'Imagem',
       imageNotDisplayed: 'Imagem: {{name}} (visualização de anexos pendente)',
       taskDone: 'Tarefa concluída',
@@ -177,6 +179,8 @@ export const resources = {
       previewTooLarge:
         'This note is too large to preview. Continue in Edit mode.',
       sectionNotFound: 'The linked section was not found in this note.',
+      blockNotFound:
+        'The linked block was not found or its identifier is repeated in this note.',
       image: 'Image',
       imageNotDisplayed: 'Image: {{name}} (attachment preview pending)',
       taskDone: 'Completed task',

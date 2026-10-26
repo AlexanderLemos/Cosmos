@@ -38,6 +38,10 @@ O editor CodeMirror aplica alterações ao texto original, preservando bytes que
 não foram editados, inclusive BOM e quebras de linha mistas. O parser serve à
 navegação, sem reformatar o documento na gravação. A interface salva explicitamente,
 mostra conflitos e permite baixar rascunho antes de recarregar.
+Referências Obsidian a blocos são transformadas somente na árvore de exibição TS,
+compartilhada por Web/Desktop; não são gravadas como HTML nem removidas do texto
+original. IDs de blocos e títulos usam prefixos distintos. IDs ambíguos não
+escolhem um destino automaticamente. Isso não amplia o contrato de arquivos/IPC.
 Rascunhos de edição usam IndexedDB no perfil do frontend, como estado local da
 interface; não são gravações de notas nem parte do journal do daemon. São isolados
 por identidade do cofre e sessão, com atualização transacional e recuperação

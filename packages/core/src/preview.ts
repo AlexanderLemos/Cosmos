@@ -2,6 +2,7 @@ import type { PhrasingContent, Root, RootContent } from 'mdast';
 import { toString as nodeText } from 'mdast-util-to-string';
 import remarkFrontmatter from 'remark-frontmatter';
 import remarkGfm from 'remark-gfm';
+import { blockId, remarkBlocks } from './blocks';
 import { resolveNoteLink } from './index';
 
 export function headingSlug(text: string): string {
@@ -78,7 +79,18 @@ function remarkPreview() {
   };
 }
 
-export const previewPlugins = [remarkGfm, remarkFrontmatter, remarkPreview];
+export function previewFragmentId(fragment: string): string | undefined {
+  return fragment.startsWith('^')
+    ? blockId(fragment.slice(1))
+    : headingId(fragment);
+}
+
+export const previewPlugins = [
+  remarkGfm,
+  remarkFrontmatter,
+  remarkBlocks,
+  remarkPreview,
+];
 
 export type PreviewLink =
   | { kind: 'note'; path: string; fragment: string }
@@ -116,7 +128,7 @@ export function previewLink(
       path.includes('\\') ||
       Array.from(path).some((char) => char.charCodeAt(0) < 32) ||
       path.startsWith('//') ||
-      fragment.startsWith('^')
+      (fragment.startsWith('^') && !blockId(fragment.slice(1)))
     )
       return unresolved;
     if (!path && !fragment) return unresolved;

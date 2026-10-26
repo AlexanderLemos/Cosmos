@@ -5,7 +5,13 @@ import remarkParse from 'remark-parse';
 import { unified } from 'unified';
 import { visit } from 'unist-util-visit';
 
-export { headingId, headingSlug, previewLink, previewPlugins } from './preview';
+export {
+  headingId,
+  headingSlug,
+  previewFragmentId,
+  previewLink,
+  previewPlugins,
+} from './preview';
 
 /** Read-only inspection. Never serialize the AST over the user's Markdown. */
 export function inspectMarkdown(source: string) {

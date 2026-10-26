@@ -1,0 +1,7 @@
+{
+  "headings": [{ "level": 1, "text": "Blocos Obsidian" }],
+  "links": [
+    { "destination": "#^intro", "text": "Bloco local" },
+    { "destination": "Outra.md#%5Edestino", "text": "Bloco externo" }
+  ]
+}

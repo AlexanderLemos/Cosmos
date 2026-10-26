@@ -32,7 +32,9 @@ foram aprovadas implicitamente pelo avanço da implementação.
   Markdown abrem notas do cofre; fragmentos navegam por títulos, inclusive em outra
   nota. Trocar de nota com rascunho exige confirmação; navegar dentro dela não
   descarta a edição. Um destino ausente/ambíguo fica desabilitado e uma seção não
-  encontrada é informada. A visão dividida se empilha em janelas estreitas.
+  encontrada é informada. Referências Obsidian a blocos (`[[Nota#^id|alias]]` e
+  `[texto](Nota.md#^id)`) focam o trecho na mesma nota ou em outra; identificadores
+  ausentes/repetidos são informados. A visão dividida se empilha em janelas estreitas.
 - **Rascunhos locais:** cópias automáticas no perfil do navegador/WebView, com
   confirmação visível da proteção. Reabrir o cofre oferece recuperar, baixar ou
   excluir cada cópia. A recuperação não grava no cofre e mantém o rascunho original.
@@ -149,12 +151,41 @@ exibido como texto até existir abertura pelo navegador com permissão específi
 
 Títulos recebem IDs com prefixo, normalização Unicode e sufixos para duplicatas.
 Isso cobre navegação básica, sem prometer equivalência a todos os identificadores
-do Obsidian. Wikilinks com formatação Markdown dentro do nome/alias, block IDs,
+do Obsidian. Wikilinks com formatação Markdown dentro do nome/alias,
 transclusões, callouts especiais, matemática, diagramas e plugins ainda não têm
 suporte completo. A pré-visualização é limitada a 262.144 unidades de texto UTF-16;
 notas maiores continuam editáveis dentro do limite geral de 8 MiB. Não é ainda o
 live preview dentro do próprio CodeMirror nem uma garantia de performance para
 cofres grandes.
+
+### Referências Obsidian a blocos — 2026-10-26
+
+Na leitura Web/Desktop, `Texto do parágrafo. ^meu-bloco` cria um destino para
+`[[#^meu-bloco]]`, `[[Outra#^meu-bloco|alias]]` ou links Markdown com o mesmo
+fragmento, inclusive `%5Emeu-bloco`. O identificador aceita letras ASCII, números
+e hífens e diferencia maiúsculas de minúsculas. Um marcador isolado após linha
+em branco pode identificar o parágrafo, lista, citação ou tabela anterior.
+Marcadores no fim do texto de um item de lista identificam o item inteiro,
+inclusive em listas compactas sem um elemento de parágrafo na leitura.
+
+Os marcadores reconhecidos são ocultos **apenas na leitura**. O Markdown bruto,
+frontmatter, BOM, quebras de linha, histórico de desfazer e rascunhos permanecem
+intactos. Navegar foca o bloco e rola até ele, com a mesma confirmação de saída
+usada pelos links para títulos quando há edição não salva em outra nota.
+
+IDs repetidos ou vários IDs atribuídos ao mesmo bloco não produzem uma âncora;
+seus marcadores permanecem visíveis. Clicar informa que o bloco está ausente ou
+repetido, sem escolher arbitrariamente um trecho. Código, HTML, YAML, escapes e
+entidades não geram identificadores. Marcadores em títulos, código, sem um bloco
+anterior ou com sintaxe inválida continuam literais. Este incremento não inclui
+autocompletar/criação de IDs nem transclusão de blocos (`![[Nota#^id]]`).
+
+Uma fixture Obsidian adicional participa da inspeção compartilhada TS/Rust de
+títulos e links; a transformação de âncoras pertence somente ao parser de exibição
+TS compartilhado por Web/Desktop. O contrato IPC e o armazenamento não mudaram.
+Anexos continuam preservados na importação/exportação, mas sua visualização
+depende de um próximo incremento de leitura binária restrita ao cofre no daemon
+e nos adaptadores Web, com limites e validação próprios.
 
 ## Alterações externas no Desktop
 
@@ -291,9 +322,18 @@ A CI executa os testes Rust nos três SOs e
 os três engines Web no Linux. A instalação local de Firefox/WebKit foi bloqueada
 pela política de rede; a execução local cobre Chromium e o WebView GTK nativo.
 
+Validação do incremento de referências a blocos (2026-10-26): `pnpm check`
+(27 testes unitários, tipos, lint e schemas), builds Web/Desktop, Rust fmt/Clippy,
+testes do workspace e de fault injection passaram. A fixture compartilhada agora
+cobre três documentos. Passaram 19 E2E Chromium contra o build de produção,
+incluindo foco de blocos locais/entre notas, IDs repetidos/ausentes, acessibilidade
+nos dois temas, rascunho/undo e exportação com bytes exatos. O smoke Tauri Linux
+também passou com foco de blocos no WebView real e verificação dos arquivos no disco.
+A matriz de três sistemas e três engines Web é verificada pela CI após publicar.
+
 ## Fechamento ainda necessário
 
-- Live preview no CodeMirror, embeds/anexos, block IDs, compatibilidade avançada de
+- Live preview no CodeMirror, embeds/anexos, transclusão/autocompletar de blocos, compatibilidade avançada de
   títulos/wikilinks e inventário maior de fixtures Obsidian. A leitura separada e
   a visão dividida já funcionam; não equivalem a todos os recursos do Obsidian.
 - Concluir o adaptador Tauri do contrato `VaultFS`, especialmente `watch` e listagem

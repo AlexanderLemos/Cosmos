@@ -3,7 +3,12 @@ import remarkParse from 'remark-parse';
 import { unified } from 'unified';
 import { visit } from 'unist-util-visit';
 import { describe, expect, it } from 'vitest';
-import { headingId, previewLink, previewPlugins } from './preview';
+import {
+  headingId,
+  previewFragmentId,
+  previewLink,
+  previewPlugins,
+} from './preview';
 
 function preview(source: string): Root {
   const processor = unified().use(remarkParse).use(previewPlugins);
@@ -94,7 +99,9 @@ describe('read-only Markdown preview', () => {
       'java%73cript:alert(1)',
       '%00a',
       'cosmos-note:javascript%3Aalert(1)',
-      '#^block',
+      '#^',
+      '#^invalid_id',
+      '#^invalid%20id',
     ]) {
       expect(previewLink(url, 'a.md', ['a.md'])).toEqual({
         kind: 'unresolved',
@@ -108,5 +115,23 @@ describe('read-only Markdown preview', () => {
       kind: 'external',
       url: 'mailto:hello@example.org',
     });
+  });
+
+  it('resolves block fragments exactly, including encoded Markdown links and same-note wikilinks', () => {
+    for (const url of ['cosmos-note:%23%5EBlock-1', '#%5EBlock-1']) {
+      expect(previewLink(url, 'a.md', ['a.md'])).toEqual({
+        kind: 'note',
+        path: 'a.md',
+        fragment: '^Block-1',
+      });
+    }
+    expect(previewLink('b.md#%5EBlock-1', 'a.md', ['a.md', 'b.md'])).toEqual({
+      kind: 'note',
+      path: 'b.md',
+      fragment: '^Block-1',
+    });
+    expect(previewFragmentId('^Block-1')).toBe('cosmos-block-Block-1');
+    expect(previewFragmentId('Block-1')).toBe('cosmos-heading-block-1');
+    expect(previewFragmentId('^bad id')).toBeUndefined();
   });
 });

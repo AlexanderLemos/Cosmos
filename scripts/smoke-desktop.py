@@ -163,6 +163,25 @@ def main():
             (vault / 'Folder/Moved.md').write_bytes(external)
             wait('return document.querySelector(".cm-content")?.textContent.includes("Updated outside COSMOS.")')
             wait("""return document.querySelector('section[aria-label="Markdown preview"] h1')?.textContent === 'External note'""")
+            # Obsidian anchors use the same display parser in the real native WebView.
+            blocks = b'# External note\r\n\r\nUpdated outside COSMOS. ^native\r\n\r\n[[#^native|Local block]]\r\n\r\n[[Blocks#^target|Other block]]\r\n'
+            block_target = b'Target block. ^target\n\n[Return to block](Folder/Moved.md#%5Enative)'
+            (vault / 'Blocks.md').write_bytes(block_target)
+            (vault / 'Folder/Moved.md').write_bytes(blocks)
+            wait('return !!document.getElementById("cosmos-block-native")')
+            click('Local block')
+            wait('return document.activeElement?.id === "cosmos-block-native"')
+            wait("""return [...document.querySelectorAll('nav[aria-label="Notes"] button')].some(b => b.textContent === "Blocks.md")""")
+            click('Other block')
+            wait('return document.activeElement?.id === "cosmos-block-target"')
+            click('Return to block')
+            wait('return document.activeElement?.id === "cosmos-block-native"')
+            assert (vault / 'Folder/Moved.md').read_bytes() == blocks
+            assert (vault / 'Blocks.md').read_bytes() == block_target
+            (vault / 'Folder/Moved.md').write_bytes(external)
+            (vault / 'Blocks.md').unlink()
+            wait('return !document.getElementById("cosmos-block-native")')
+            checks += ['Obsidian block links focus local and cross-note targets without writing source bytes']
             clean = execute('return document.querySelector(".cm-content").textContent;')
             (vault / 'Folder/Moved.md').write_bytes(bytes([255]))
             wait('return document.body.innerText.includes("The current version of this note could not be read.")')

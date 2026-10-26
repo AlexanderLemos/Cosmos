@@ -1,4 +1,4 @@
-import { headingId, previewLink, previewPlugins } from '@cosmos/core';
+import { previewFragmentId, previewLink, previewPlugins } from '@cosmos/core';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Markdown, { defaultUrlTransform } from 'react-markdown';
@@ -33,15 +33,14 @@ export function MarkdownPreview({
   useEffect(() => {
     setMissing(false);
     if (location?.path !== path || !location.fragment) return;
-    const id = headingId(location.fragment);
-    const heading = Array.from(
-      root.current?.querySelectorAll<HTMLElement>('h1, h2, h3, h4, h5, h6') ??
-        [],
+    const id = previewFragmentId(location.fragment);
+    const target = Array.from(
+      root.current?.querySelectorAll<HTMLElement>('[id]') ?? [],
     ).find((element) => element.id === id);
-    if (heading) {
-      heading.tabIndex = -1;
-      heading.focus({ preventScroll: true });
-      heading.scrollIntoView({ block: 'start' });
+    if (target) {
+      target.tabIndex = -1;
+      target.focus({ preventScroll: true });
+      target.scrollIntoView({ block: 'start' });
     } else setMissing(true);
   }, [location, path]);
   return (
@@ -50,7 +49,15 @@ export function MarkdownPreview({
       ref={root}
       aria-label={t('markdownPreview')}
     >
-      {missing && <p role="status">{t('sectionNotFound')}</p>}
+      {missing && (
+        <p role="status">
+          {t(
+            location?.fragment.startsWith('^')
+              ? 'blockNotFound'
+              : 'sectionNotFound',
+          )}
+        </p>
+      )}
       {content.length > 256 * 1024 ? (
         <p>{t('previewTooLarge')}</p>
       ) : (
