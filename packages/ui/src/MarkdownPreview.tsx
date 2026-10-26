@@ -6,10 +6,37 @@ import {
 } from '@cosmos/core';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import Markdown, { defaultUrlTransform } from 'react-markdown';
+import Markdown, { type Components, defaultUrlTransform } from 'react-markdown';
 import { LocalImage } from './LocalImage';
 import styles from './MarkdownPreview.module.css';
 import type { OpenVault } from './vault';
+
+const CalloutDiv: NonNullable<Components['div']> = ({
+  node,
+  children,
+  ...props
+}) => {
+  const { t } = useTranslation();
+  const kind = node?.properties.dataCalloutDefault;
+  return (
+    <div {...props}>
+      {typeof kind === 'string' ? t(`callout_${kind}`) : children}
+    </div>
+  );
+};
+const CalloutSummary: NonNullable<Components['summary']> = ({
+  node,
+  children,
+  ...props
+}) => {
+  const { t } = useTranslation();
+  const kind = node?.properties.dataCalloutDefault;
+  return (
+    <summary {...props}>
+      {typeof kind === 'string' ? t(`callout_${kind}`) : children}
+    </summary>
+  );
+};
 
 export type PreviewLocation = {
   path: string;
@@ -70,6 +97,13 @@ export function MarkdownPreview({
       root.current?.querySelectorAll<HTMLElement>('[id]') ?? [],
     ).find((element) => element.id === id);
     if (target) {
+      for (
+        let ancestor: HTMLElement | null = target;
+        ancestor && ancestor !== root.current;
+        ancestor = ancestor.parentElement
+      ) {
+        if (ancestor instanceof HTMLDetailsElement) ancestor.open = true;
+      }
       target.tabIndex = -1;
       target.focus({ preventScroll: true });
       target.scrollIntoView({ block: 'start' });
@@ -94,6 +128,7 @@ export function MarkdownPreview({
         <p>{t('previewTooLarge')}</p>
       ) : (
         <Markdown
+          key={path}
           skipHtml
           remarkPlugins={previewPlugins}
           urlTransform={(url) =>
@@ -102,6 +137,8 @@ export function MarkdownPreview({
               : defaultUrlTransform(url)
           }
           components={{
+            div: CalloutDiv,
+            summary: CalloutSummary,
             a: ({ href = '', children }) => {
               const target = previewLink(href, path, paths);
               if (target.kind === 'external' && !externalLinks)

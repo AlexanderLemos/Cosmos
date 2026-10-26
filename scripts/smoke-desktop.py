@@ -197,6 +197,19 @@ def main():
             assert execute("""const img = document.querySelector('section[aria-label="Markdown preview"] img'); return img.getAttribute('width') === '96' && img.getAttribute('height') === '48';""")
             click('Hide image: pixels.png')
             checks += ['local PNG attachment crosses daemon IPC and renders on demand under the native CSP without changing vault bytes']
+            callouts = blocks + b'\r\n> [!note]- Native callout\r\n>\r\n> > [!tip]- Nested callout\r\n> > Hidden native body. ^hidden\r\n\r\n[[#^hidden|Reveal callout]]\r\n'
+            (vault / 'Folder/Moved.md').write_bytes(callouts)
+            wait("""return document.querySelector('summary')?.textContent === 'Native callout'""")
+            assert execute("return document.querySelectorAll('details[open]').length === 0")
+            execute("document.querySelector('summary').click()")
+            wait("return document.querySelector('details').open")
+            execute("document.querySelector('summary').click()")
+            wait("return !document.querySelector('details').open")
+            click('Reveal callout')
+            wait('return document.activeElement?.id === "cosmos-block-hidden"')
+            assert execute("return document.querySelectorAll('details[open]').length === 2")
+            assert (vault / 'Folder/Moved.md').read_bytes() == callouts
+            checks += ['nested Obsidian callouts toggle and reveal linked blocks without changing source bytes']
             (vault / 'Folder/Moved.md').write_bytes(external)
             (vault / 'Blocks.md').unlink()
             wait('return !document.getElementById("cosmos-block-native")')

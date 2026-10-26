@@ -97,3 +97,24 @@
 .localImage [role="status"] {
   color: var(--muted);
 }
+.preview [data-callout] {
+  margin-block: 1rem;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--orichalcum);
+  border-radius: 0.25rem;
+  padding: 0.75rem 1rem;
+  background: var(--surface);
+}
+.preview [data-callout-title] {
+  font-weight: 700;
+}
+.preview summary[data-callout-title] {
+  cursor: pointer;
+}
+.preview summary[data-callout-title]:focus-visible {
+  outline: 2px solid var(--orichalcum);
+  outline-offset: 3px;
+}
+.preview [data-callout] > :last-child {
+  margin-bottom: 0;
+}

@@ -3,6 +3,7 @@ import { toString as nodeText } from 'mdast-util-to-string';
 import remarkFrontmatter from 'remark-frontmatter';
 import remarkGfm from 'remark-gfm';
 import { blockId, remarkBlocks } from './blocks';
+import { remarkCallouts } from './callouts';
 import { imageSize } from './images';
 import { resolveNoteLink } from './index';
 
@@ -29,7 +30,16 @@ function remarkPreview() {
     function walk(node: Root | RootContent, insideLink = false) {
       if (!('children' in node)) return;
       const linked =
-        insideLink || node.type === 'link' || node.type === 'linkReference';
+        insideLink ||
+        node.type === 'link' ||
+        node.type === 'linkReference' ||
+        Boolean(
+          (
+            node.data as
+              | { hProperties?: { dataCalloutTitle?: boolean } }
+              | undefined
+          )?.hProperties?.dataCalloutTitle,
+        );
       node.children = node.children.flatMap((child): RootContent[] => {
         // Linked images remain the link's label, avoiding nested interactive controls.
         if (
@@ -115,6 +125,7 @@ export const previewPlugins = [
   remarkGfm,
   remarkFrontmatter,
   remarkBlocks,
+  remarkCallouts,
   remarkPreview,
 ];
 

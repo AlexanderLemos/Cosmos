@@ -35,6 +35,9 @@ foram aprovadas implicitamente pelo avanço da implementação.
   encontrada é informada. Referências Obsidian a blocos (`[[Nota#^id|alias]]` e
   `[texto](Nota.md#^id)`) focam o trecho na mesma nota ou em outra; identificadores
   ausentes/repetidos são informados. A visão dividida se empilha em janelas estreitas.
+- **Callouts Obsidian:** blocos `> [!note]`, títulos personalizados, tipos/aliases
+  padrão e recolhimento com `+`/`-`, inclusive aninhados. Links para títulos/blocos
+  abrem os callouts ancestrais antes de focar o destino. Ver limites abaixo.
 - **Imagens locais:** na leitura Web/Desktop, PNG, JPEG, GIF e WebP do cofre podem
   ser exibidos pelo botão **Mostrar imagem**, em sintaxe Markdown ou `![[imagem]]`.
   Limite de 8 MiB por arquivo, com validação da extensão e assinatura; imagens
@@ -157,11 +160,38 @@ exibido como texto até existir abertura pelo navegador com permissão específi
 Títulos recebem IDs com prefixo, normalização Unicode e sufixos para duplicatas.
 Isso cobre navegação básica, sem prometer equivalência a todos os identificadores
 do Obsidian. Wikilinks com formatação Markdown dentro do nome/alias,
-transclusões, callouts especiais, matemática, diagramas e plugins ainda não têm
-suporte completo. A pré-visualização é limitada a 262.144 unidades de texto UTF-16;
+transclusões, personalização avançada de callouts, matemática, diagramas e plugins
+ainda não têm suporte completo. A pré-visualização é limitada a 262.144 unidades de texto UTF-16;
 notas maiores continuam editáveis dentro do limite geral de 8 MiB. Não é ainda o
 live preview dentro do próprio CodeMirror nem uma garantia de performance para
 cofres grandes.
+
+### Callouts Obsidian — 2026-10-26
+
+A leitura Web/Desktop reconhece `[!tipo]` no início de uma citação: `note`,
+`abstract`, `info`, `todo`, `tip`, `success`, `question`, `warning`, `failure`,
+`danger`, `bug`, `example` e `quote`, sem distinção de maiúsculas. Os aliases
+padrão (`summary`, `tldr`, `hint`, `important`, `check`, `done`, `help`, `faq`,
+`caution`, `attention`, `fail`, `missing`, `error`, `cite`) também são aceitos.
+Tipos desconhecidos usam a apresentação de nota; todos usam os tokens do tema.
+
+O texto após o marcador é o título. Sem título, há um rótulo traduzido pt/en.
+Nesta entrega, títulos são texto simples: rótulos de links e texto alternativo de
+imagens permanecem visíveis, HTML é omitido e wikilinks ficam literais. Não há
+links ou imagens interativos dentro do controle de recolhimento. O corpo mantém
+Markdown/GFM, links, imagens sob demanda, títulos e referências a blocos.
+
+`[!tipo]+` começa aberto; `[!tipo]-` começa fechado; sem sufixo, o bloco fica
+sempre visível. Callouts podem conter outros callouts. O recolhimento usa
+`details`/`summary` nativos com teclado e não grava preferências nem altera o
+texto. Tema/idioma preservam a abertura atual; trocar de nota reinicia o estado
+conforme a fonte. A navegação por fragmento abre todos os ancestrais necessários.
+
+Código, YAML e marcadores escapados ou codificados como entidades não viram
+callouts. Cabeçalhos com código inline atravessando linhas ou entidades de quebra
+de linha ambíguas permanecem citações comuns. CSS, ícones e metadados de plugins
+Obsidian não são importados. Essa compatibilidade de leitura não encerra a F1.
+A decisão está registrada na [ADR 0004](adr/0004-callouts.md).
 
 ### Referências Obsidian a blocos — 2026-10-26
 
@@ -405,12 +435,22 @@ dimensões verifica largura proporcional, caixa sem distorção, valores inváli
 painel estreito, idioma/modo e ZIP com bytes originais. O smoke Tauri confirmou os
 atributos `96x48` no WebView real. A CI verifica a matriz completa após publicação.
 
+Validação dos callouts (2026-10-26): `pnpm check` passou com 40 testes unitários,
+tipos, lint e schemas; builds Web/Desktop e `cargo test -p cosmos-core --locked`
+passaram, incluindo a quarta fixture compartilhada TS/Rust. Passaram 23 E2E
+Chromium contra o build de produção: teclado, recolhimento aninhado, foco por
+título/bloco, idiomas, acessibilidade nos dois temas, rascunho/undo e bytes exatos
+na exportação. O smoke Tauri Linux confirmou recolhimento, abertura dos ancestrais
+por link e preservação dos arquivos no disco. A matriz de CI é verificada após
+publicação; esses resultados locais não substituem Firefox/WebKit e os três SOs.
+
 ## Fechamento ainda necessário
 
 - Live preview no CodeMirror, anexos além das imagens raster sob demanda, dimensões
-  em imagens Markdown (embeds Obsidian já suportados), transclusão/autocompletar de blocos, compatibilidade avançada de
-  títulos/wikilinks e inventário maior de fixtures Obsidian. A leitura separada e
-  a visão dividida já funcionam; não equivalem a todos os recursos do Obsidian.
+  em imagens Markdown (embeds Obsidian já suportados), transclusão/autocompletar de
+  blocos, compatibilidade avançada de títulos/wikilinks, títulos formatados e
+  personalização de callouts, e inventário maior de fixtures Obsidian. A leitura
+  separada e a visão dividida já funcionam; não equivalem a todos os recursos do Obsidian.
 - Concluir o adaptador Tauri do contrato `VaultFS`, especialmente `watch` e listagem
   de diretórios. A observação nativa já chega à UI por token IPC, mas ainda precisa
   ser unificada com a assinatura de callbacks `VaultFS.watch`. A UI Desktop já
