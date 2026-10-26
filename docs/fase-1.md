@@ -11,7 +11,9 @@ foram aprovadas implicitamente pelo avanço da implementação.
   reabrir, buscar e exportar ZIP. Importar uma pasta ou ZIP do Obsidian sem modificar a
   origem nem sobrescrever arquivos existentes. Anexos, `.canvas`, frontmatter,
   BOM e terminações de linha são preservados. Notas têm limite de 8 MiB; exportação
-  ZIP, 256 MiB descomprimidos; importação ZIP, até 10 mil entradas.
+  ZIP, 256 MiB descomprimidos; importação ZIP, até 10 mil entradas; pasta, até
+  10 mil arquivos e 256 MiB. **Retomar importação** mantém arquivos com bytes
+  idênticos e acrescenta apenas os ausentes, mediante nova seleção da origem.
   Seletores de pasta podem omitir arquivos ocultos (WebKit); use ZIP para preservar `.obsidian`. A interface informa falhas, inclusive quota.
 - **Desktop:** escolher uma pasta em diálogo nativo; iniciar/reutilizar `cosmosd`;
   listar, editar e salvar notas; buscar; criar projetos manualmente; mover notas,
@@ -145,6 +147,40 @@ reconcilia todos os caminhos/revisões do cofre selecionado **antes** de consult
 trocar de pasta não retorna notas deixadas no cache por outra pasta. Web Locks
 continuam serializando o acesso entre abas. O cache anterior não é apagado
 automaticamente; limpeza seletiva/diagnóstico do índice ainda não tem interface.
+
+## Retomada de importação na Web — 2026-10-26
+
+A opção **Retomar importação**, desativada ao abrir cada cofre, vale para ZIP e
+pasta. Selecione novamente a origem: arquivos existentes são comparados byte a
+byte e mantidos somente quando idênticos; arquivos ausentes são acrescentados.
+O resultado informa quantos foram adicionados e quantos foram mantidos, inclusive
+com um rascunho aberto. A edição e seu histórico não são alterados pela retomada.
+A importação normal continua recusando destinos existentes, mesmo idênticos.
+
+A seleção inteira passa por validação antes das gravações: caminhos, duplicatas,
+colisões entre arquivo/diretório, limites, leitura da origem e comparação dos
+destinos. Diferenças encontradas nessa etapa impedem novas gravações e identificam
+o caminho conflitante. BOM, quebras de linha, anexos, `.canvas` e `.obsidian`
+continuam sendo bytes originais, sem reserialização. Uma falha de leitura da
+origem também ocorre antes de criar destinos.
+
+Web Locks serializam importações entre abas do COSMOS; cada destino ausente é
+conferido novamente antes da escrita. Em pasta real, um editor externo ainda
+pode alterar o diretório entre a última checagem e a criação: File System Access
+não oferece criação exclusiva com comparação de revisão. Falhas de quota,
+permissão, fechamento da aba ou conflitos posteriores à validação podem deixar
+uma importação parcial. Use **Atualizar lista** para conferir os arquivos após
+uma falha, ou reabra o cofre.
+
+A retomada não é rollback nem um journal persistente de importação. Não apaga,
+substitui ou presume propriedade de um arquivo divergente, vazio ou parcial. Se
+os bytes divergirem da origem, é necessária conferência manual. Em projetos já
+protegidos por `project.cosmos.json`, arquivos idênticos podem ser mantidos, mas
+não se acrescentam arquivos: uma interrupção após criar esse manifesto ainda
+pode bloquear a continuação do projeto na Web. O tratamento desses casos e o
+rollback com registro de propriedade permanecem pendentes. Não há mudança no
+Desktop, que já adota a pasta original em vez de oferecer cópia por importação.
+Ver [ADR 0005](adr/0005-retomada-importacao-web.md).
 
 ## Limites da leitura Markdown
 
@@ -441,8 +477,17 @@ passaram, incluindo a quarta fixture compartilhada TS/Rust. Passaram 23 E2E
 Chromium contra o build de produção: teclado, recolhimento aninhado, foco por
 título/bloco, idiomas, acessibilidade nos dois temas, rascunho/undo e bytes exatos
 na exportação. O smoke Tauri Linux confirmou recolhimento, abertura dos ancestrais
-por link e preservação dos arquivos no disco. A matriz de CI é verificada após
-publicação; esses resultados locais não substituem Firefox/WebKit e os três SOs.
+por link e preservação dos arquivos no disco. A CI de `0c0d61f` passou nos três
+sistemas, incluindo Chromium, Firefox e WebKit.
+
+Validação da retomada de importação (2026-10-26): `pnpm check` passou com 43 testes
+unitários, tipos, lint e schemas; builds Web/Desktop e Tauri debug passaram.
+Passaram os 27 E2E Chromium da suíte e um novo cenário de destino criado durante
+a validação da origem (28 cenários ao todo). Os testes cobrem interrupção entre
+arquivos, recarga, repetição sem novas gravações, rascunho/undo, bytes exatos,
+conflitos antes de gravar, projetos protegidos, duas abas concorrentes, pasta de
+origem preservada e acessibilidade nos dois temas. A CI verifica os três sistemas
+e navegadores após publicação. Não houve alteração em Rust ou nos schemas.
 
 ## Fechamento ainda necessário
 
@@ -465,10 +510,11 @@ publicação; esses resultados locais não substituem Firefox/WebKit e os três 
 - UI para revisar intenções retidas no journal. A recuperação de rascunhos locais
   confirmados e salvar cópia como outra nota já funcionam; faltam merge, reassociação de
   cofres movidos e exportação global dessas cópias.
-- Recuperação/rollback de importação interrompida e
-  exportação incremental de cofres maiores; exportação ZIP e importação de pasta/ZIP
-  já funcionam. Uma importação interrompida pode deixar arquivos novos parciais,
-  mas nunca apaga ou sobrescreve a origem nem arquivos previamente existentes.
+- Journal e rollback de importação interrompida, tratamento de arquivos parciais
+  ou projetos bloqueados após importar o manifesto, e exportação incremental de
+  cofres maiores. A retomada explícita de pasta/ZIP já mantém arquivos idênticos e
+  acrescenta ausentes; não remove nem substitui destinos divergentes. As limitações
+  de concorrência com editores externos em pasta real estão descritas acima.
 - Separação do projetor de memória em `cosmos-memory`, contratos completos de
   memória, migrações versionadas com backup e exportação do histórico bruto.
 - Ensaios manuais com cofres reais, bloqueio por antivírus no Windows, instalação

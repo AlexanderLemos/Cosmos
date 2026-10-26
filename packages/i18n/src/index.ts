@@ -28,6 +28,15 @@ export const resources = {
       folderImportHint:
         'O navegador pode omitir arquivos ocultos. Para preservar .obsidian, use ZIP.',
       imported: 'Importação concluída sem alterar os originais.',
+      resumeImport: 'Retomar importação',
+      resumeImportHint:
+        'Selecione novamente o ZIP ou a pasta de origem. Arquivos idênticos serão mantidos; diferenças impedem a retomada.',
+      importResumed:
+        'Importação retomada: {{imported}} arquivo(s) adicionado(s), {{skipped}} idêntico(s) mantido(s).',
+      importConflict:
+        'A retomada encontrou um arquivo diferente ou um caminho incompatível: {{path}}. O destino foi preservado. Confira a origem e o cofre antes de tentar novamente.',
+      importLimit:
+        'Importe até 10 mil arquivos e 256 MiB por vez (tamanho descomprimido).',
       exportVault: 'Exportar cofre (.zip)',
       editor: 'Editor Markdown',
       viewMode: 'Modo de visualização',
@@ -191,6 +200,15 @@ export const resources = {
       folderImportHint:
         'Your browser may omit hidden files. Use ZIP to preserve .obsidian.',
       imported: 'Import complete without changing the originals.',
+      resumeImport: 'Resume import',
+      resumeImportHint:
+        'Select the source ZIP or folder again. Identical files will be kept; differences prevent resuming.',
+      importResumed:
+        'Import resumed: {{imported}} file(s) added, {{skipped}} identical file(s) kept.',
+      importConflict:
+        'The retry found a different file or an incompatible path: {{path}}. The destination was preserved. Check the source and vault before trying again.',
+      importLimit:
+        'Import up to 10,000 files and 256 MiB at a time (uncompressed size).',
       exportVault: 'Export vault (.zip)',
       editor: 'Markdown editor',
       viewMode: 'View mode',

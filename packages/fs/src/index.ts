@@ -36,3 +36,18 @@ export class RevisionConflict extends Error {
     super(`Revision conflict: ${path}`);
   }
 }
+
+/** Explicit retry: existing files may only be kept when their bytes match. */
+export interface ImportOptions {
+  resume?: boolean;
+}
+export interface ImportResult {
+  imported: number;
+  skipped: number;
+}
+export class ImportConflict extends Error {
+  readonly code = 'IMPORT_CONFLICT';
+  constructor(readonly path: string) {
+    super(`IMPORT_CONFLICT: ${path}`);
+  }
+}

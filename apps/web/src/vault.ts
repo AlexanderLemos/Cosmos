@@ -23,14 +23,15 @@ function adapt(fs: BrowserVaultFS): OpenVault {
       for (const path of paths) notes.push({ path, ...(await fs.read(path)) });
       return searchNotes(notes, query);
     },
-    importFiles: (files) =>
+    importFiles: (files, options) =>
       fs.importFiles(
         files.map((file) => ({
           path: file.webkitRelativePath || file.name,
           file,
         })),
+        options,
       ),
-    importZip: (file) => fs.importZip(file),
+    importZip: (file, options) => fs.importZip(file, options),
     exportZip: () => fs.exportZip(),
   };
 }

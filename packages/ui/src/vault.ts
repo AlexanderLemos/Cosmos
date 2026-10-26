@@ -1,3 +1,5 @@
+import type { ImportOptions, ImportResult } from '@cosmos/fs';
+
 export interface TrashItem {
   id: string;
   path: string;
@@ -27,8 +29,8 @@ export interface OpenVault {
   listTrash?(): Promise<TrashItem[]>;
   restore?(id: string, to: string, expectedRev: string): Promise<void>;
   createProject?(name: string, universe: string): Promise<string>;
-  importFiles?(files: File[]): Promise<void>;
-  importZip?(file: File): Promise<void>;
+  importFiles?(files: File[], options?: ImportOptions): Promise<ImportResult>;
+  importZip?(file: File, options?: ImportOptions): Promise<ImportResult>;
   exportZip?(): Promise<Uint8Array>;
 }
 export interface VaultPlatform {

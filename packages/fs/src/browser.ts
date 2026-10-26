@@ -9,6 +9,9 @@ import {
 import {
   type Entry,
   type FsEvent,
+  ImportConflict,
+  type ImportOptions,
+  type ImportResult,
   RevisionConflict,
   type VaultFS,
 } from './index';
@@ -259,37 +262,97 @@ export class BrowserVaultFS implements VaultFS {
   private emit(event: FsEvent) {
     for (const cb of this.listeners) cb(event);
   }
-  async importFiles(files: { path: string; file: File }[]) {
+  async importFiles(
+    files: { path: string; file: File }[],
+    options: ImportOptions = {},
+  ): Promise<ImportResult> {
     return this.lock(async () => {
+      if (files.length > 10_000) throw new Error('TOO_MANY_FILES');
       const unique = new Set<string>();
-      for (const { path } of files) {
+      let total = 0;
+      for (const { path, file } of files) {
         validatePath(path);
         if (path.split('/').includes('.git'))
           throw new Error('GIT_IMPORT_EXCLUDED');
-        if (unique.has(path.toLowerCase()))
-          throw new Error('DESTINATION_EXISTS');
-        unique.add(path.toLowerCase());
-        if (await this.isReadOnly(path)) throw new Error('MEMORY_READ_ONLY');
-        try {
-          await this.file(path);
-          throw new Error('DESTINATION_EXISTS');
-        } catch (error) {
-          if (!missing(error)) throw error;
+        const key = path.toLowerCase();
+        if (unique.has(key)) throw new Error('DESTINATION_EXISTS');
+        unique.add(key);
+        total += file.size;
+        if (total > MAX_ARCHIVE_BYTES) throw new Error('IMPORT_TOO_LARGE');
+      }
+      // File/directory collisions must be rejected before any destination is created.
+      for (const path of unique) {
+        const parts = path.split('/');
+        parts.pop();
+        while (parts.length) {
+          if (unique.has(parts.join('/')))
+            throw new Error('DESTINATION_EXISTS');
+          parts.pop();
         }
       }
-      // Never reserialize Markdown, attachments, .canvas or Obsidian configuration.
-      for (const { path, file } of files)
-        await this.put(path, new Uint8Array(await file.arrayBuffer()));
+      const existing = async (path: string) => {
+        try {
+          return await this.file(path);
+        } catch (error) {
+          if (missing(error)) return undefined;
+          if (
+            error instanceof DOMException &&
+            error.name === 'TypeMismatchError'
+          ) {
+            if (options.resume) throw new ImportConflict(path);
+            throw new Error('DESTINATION_EXISTS');
+          }
+          throw error;
+        }
+      };
+      const planned: { path: string; bytes: Uint8Array<ArrayBuffer> }[] = [];
+      let skipped = 0;
+      // Read the complete selected source before writing. No Markdown reserialization,
+      // journal ownership guess or deletion of files from an earlier attempt.
+      for (const { path, file } of files) {
+        const destination = await existing(path);
+        if (destination && !options.resume)
+          throw new Error('DESTINATION_EXISTS');
+        if (!destination && (await this.isReadOnly(path)))
+          throw new Error('MEMORY_READ_ONLY');
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        if (destination) {
+          if (destination.size !== bytes.length) throw new ImportConflict(path);
+          const current = new Uint8Array(await destination.arrayBuffer());
+          if (
+            current.length !== bytes.length ||
+            !current.every((byte, i) => byte === bytes[i])
+          )
+            throw new ImportConflict(path);
+          skipped++;
+        } else planned.push({ path, bytes });
+      }
+      let imported = 0;
+      for (const { path, bytes } of planned) {
+        // Check again after source reads. Web Locks serialize COSMOS tabs; an
+        // external native editor still cannot participate in an atomic create-only CAS.
+        if (await existing(path)) {
+          if (options.resume) throw new ImportConflict(path);
+          throw new Error('DESTINATION_EXISTS');
+        }
+        await this.put(path, bytes);
+        imported++;
+      }
+      return { imported, skipped };
     });
   }
-  async importZip(file: File) {
+  async importZip(
+    file: File,
+    options: ImportOptions = {},
+  ): Promise<ImportResult> {
     if (file.size > MAX_ARCHIVE_BYTES) throw new Error('IMPORT_TOO_LARGE');
     const entries = decodeVaultZip(new Uint8Array(await file.arrayBuffer()));
-    await this.importFiles(
+    return this.importFiles(
       Object.entries(entries).map(([path, bytes]) => ({
         path,
         file: new File([new Uint8Array(bytes)], path),
       })),
+      options,
     );
   }
   async exportZip() {

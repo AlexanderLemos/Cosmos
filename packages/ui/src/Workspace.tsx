@@ -1,5 +1,6 @@
 import { noteLinks, resolveNoteLink } from '@cosmos/core';
 import { MarkdownEditor } from '@cosmos/editor';
+import { ImportConflict, type ImportResult } from '@cosmos/fs';
 import { type DraftHeader, draftStore } from '@cosmos/fs/drafts';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -23,6 +24,10 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
+  const [resumeImport, setResumeImport] = useState(false);
+  const [importResult, setImportResult] = useState<
+    (ImportResult & { resumed: boolean }) | null
+  >(null);
   const [query, setQuery] = useState('');
   const [searchTerm, setSearchTerm] = useState<string | null>(null);
   const [monitorIssue, setMonitorIssue] = useState('');
@@ -66,21 +71,29 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
     setBusy(true);
     setError('');
     setStatus('');
+    setImportResult(null);
     try {
       await action();
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       setError(
-        message.includes('DRAFT_CHANGED')
-          ? t('draftChanged')
-          : message.includes('CONFLICT') ||
-              message.includes('Revision conflict')
-            ? t('conflict')
-            : message.includes('DESTINATION_EXISTS')
-              ? t('destinationExists')
-              : message.includes('PROJECT_STRUCTURE_PROTECTED')
-                ? t('structureProtected')
-                : `${t('operationFailed')} ${message}`,
+        error instanceof ImportConflict
+          ? t('importConflict', { path: error.path })
+          : message.includes('IMPORT_TOO_LARGE') ||
+              message.includes('TOO_MANY_FILES')
+            ? t('importLimit')
+            : message.includes('MEMORY_READ_ONLY')
+              ? t('memoryReadOnly')
+              : message.includes('DRAFT_CHANGED')
+                ? t('draftChanged')
+                : message.includes('CONFLICT') ||
+                    message.includes('Revision conflict')
+                  ? t('conflict')
+                  : message.includes('DESTINATION_EXISTS')
+                    ? t('destinationExists')
+                    : message.includes('PROJECT_STRUCTURE_PROTECTED')
+                      ? t('structureProtected')
+                      : `${t('operationFailed')} ${message}`,
       );
     } finally {
       setBusy(false);
@@ -103,6 +116,7 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
       if (!current) return;
       await refresh(current);
       setVault(current);
+      setResumeImport(false);
       setTrashItems(null);
       setRestoreItem(null);
       setFileAction(null);
@@ -607,6 +621,24 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
                 >
                   {t('closeVault')}
                 </button>
+                {(vault.importFiles || vault.importZip) && (
+                  <label className={styles.importResume}>
+                    <input
+                      type="checkbox"
+                      aria-label={t('resumeImport')}
+                      checked={resumeImport}
+                      disabled={busy}
+                      onChange={(event) =>
+                        setResumeImport(event.target.checked)
+                      }
+                      aria-describedby="resume-import-hint"
+                    />
+                    {t('resumeImport')}
+                    <small id="resume-import-hint">
+                      {t('resumeImportHint')}
+                    </small>
+                  </label>
+                )}
                 {vault.importFiles && (
                   <label>
                     {t('importFolder')}
@@ -621,9 +653,16 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
                         const files = Array.from(e.target.files ?? []);
                         e.target.value = '';
                         void run(async () => {
-                          await vault.importFiles?.(files);
+                          if (!files.length) return;
+                          const result = await vault.importFiles?.(files, {
+                            resume: resumeImport,
+                          });
                           await refresh(vault);
-                          setStatus(t('imported'));
+                          if (result)
+                            setImportResult({
+                              ...result,
+                              resumed: resumeImport,
+                            });
                         });
                       }}
                     />
@@ -642,13 +681,26 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
                         e.target.value = '';
                         if (file)
                           void run(async () => {
-                            await vault.importZip?.(file);
+                            const result = await vault.importZip?.(file, {
+                              resume: resumeImport,
+                            });
                             await refresh(vault);
-                            setStatus(t('imported'));
+                            if (result)
+                              setImportResult({
+                                ...result,
+                                resumed: resumeImport,
+                              });
                           });
                       }}
                     />
                   </label>
+                )}
+                {importResult && (
+                  <p role="status" className={styles.feedback}>
+                    {importResult.resumed
+                      ? t('importResumed', { ...importResult })
+                      : t('imported')}
+                  </p>
                 )}
                 {vault.exportZip && (
                   <button

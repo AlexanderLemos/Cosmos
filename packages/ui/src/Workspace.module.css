@@ -255,3 +255,17 @@
     flex-direction: column;
   }
 }
+
+.workspace .importResume {
+  grid-template-columns: auto 1fr;
+  align-items: center;
+}
+.workspace .importResume input {
+  width: auto;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--orichalcum);
+}
+.importResume small {
+  grid-column: 1 / -1;
+}
