@@ -46,6 +46,16 @@ export const resources = {
       chooseNote: 'Um espaço para pensar',
       save: 'Salvar',
       saved: 'Salvo no cofre.',
+      saveCopy: 'Salvar cópia como…',
+      confirmCopy: 'Criar cópia',
+      copyHint:
+        'Escolha um novo caminho .md dentro do cofre. A cópia guarda o texto atual; a nota original e o rascunho permanecem como estão.',
+      copySaved: 'Cópia salva em {{path}}. A nota em edição foi mantida.',
+      copySamePath: 'Escolha um caminho diferente da nota original.',
+      copyInvalidPath:
+        'Use um caminho .md válido dentro do cofre, fora das pastas reservadas.',
+      copyTooLarge:
+        'O texto excede o limite de 8 MiB por nota. Baixe a edição para preservá-la.',
       downloadNote: 'Baixar nota',
       working: 'Processando…',
       unsaved: 'Alterações não salvas',
@@ -77,11 +87,11 @@ export const resources = {
       draftRecovered:
         'Rascunho recuperado. Revise o texto antes de salvar no cofre.',
       conflict:
-        'O arquivo mudou desde que foi aberto. Sua edição foi preservada aqui. Baixe uma cópia antes de recarregar e comparar as versões.',
+        'O arquivo mudou desde que foi aberto. Sua edição foi preservada aqui. Salve ou baixe uma cópia antes de recarregar e comparar as versões.',
       external_changed:
-        'Esta nota foi alterada fora do COSMOS. Seu rascunho foi preservado. Baixe uma cópia antes de recarregar e comparar.',
+        'Esta nota foi alterada fora do COSMOS. Seu rascunho foi preservado. Salve ou baixe uma cópia antes de recarregar e comparar.',
       external_missing:
-        'Esta nota foi removida ou movida fora do COSMOS. O texto continua aqui para você baixar uma cópia.',
+        'Esta nota foi removida ou movida fora do COSMOS. O texto continua aqui para você salvar ou baixar uma cópia.',
       external_unreadable:
         'Não foi possível ler a versão atual desta nota. O texto aberto foi preservado.',
       monitorUnavailable:
@@ -174,6 +184,16 @@ export const resources = {
       chooseNote: 'A space to think',
       save: 'Save',
       saved: 'Saved to vault.',
+      saveCopy: 'Save copy as…',
+      confirmCopy: 'Create copy',
+      copyHint:
+        'Choose a new .md path inside the vault. The copy saves the current text; the original note and local draft stay as they are.',
+      copySaved: 'Copy saved to {{path}}. The source note remains open.',
+      copySamePath: 'Choose a different path from the original note.',
+      copyInvalidPath:
+        'Use a valid .md path inside the vault, outside reserved folders.',
+      copyTooLarge:
+        'The text exceeds the 8 MiB note limit. Download your edit to preserve it.',
       downloadNote: 'Download note',
       working: 'Working…',
       unsaved: 'Unsaved changes',
@@ -204,11 +224,11 @@ export const resources = {
         'This draft changed in another window. Refresh the list before continuing.',
       draftRecovered: 'Draft recovered. Review it before saving to the vault.',
       conflict:
-        'The file changed since it was opened. Your edit is still here. Download a copy before reloading and comparing versions.',
+        'The file changed since it was opened. Your edit is still here. Save or download a copy before reloading and comparing versions.',
       external_changed:
-        'This note changed outside COSMOS. Your draft was preserved. Download a copy before reloading and comparing.',
+        'This note changed outside COSMOS. Your draft was preserved. Save or download a copy before reloading and comparing.',
       external_missing:
-        'This note was removed or moved outside COSMOS. Its text is still here so you can download a copy.',
+        'This note was removed or moved outside COSMOS. Its text is still here so you can save or download a copy.',
       external_unreadable:
         'The current version of this note could not be read. The open text was preserved.',
       monitorUnavailable:

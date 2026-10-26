@@ -166,7 +166,7 @@ test('two tabs retain separate drafts and recovery never overwrites an external 
   await second.close();
 });
 
-test('a missing source still permits recovery and download of the draft', async ({
+test('a missing source still permits recovery, download and saving a new copy', async ({
   page,
 }) => {
   page.on('dialog', (dialog) => dialog.accept());
@@ -189,6 +189,37 @@ test('a missing source still permits recovery and download of the draft', async 
   expect(
     await readFile((await (await downloading).path()) as string, 'utf8'),
   ).toBe('não perder esta cópia');
+  await page
+    .getByRole('button', { name: 'Salvar cópia como…', exact: true })
+    .click();
+  await page
+    .getByLabel('Caminho de destino', { exact: true })
+    .fill('recovered.md');
+  await page.getByRole('button', { name: 'Criar cópia', exact: true }).click();
+  await expect(
+    page.getByText(
+      'Cópia salva em recovered.md. A nota em edição foi mantida.',
+    ),
+  ).toBeVisible();
+  const saved = await page.evaluate(async () => {
+    const root = await (
+      await navigator.storage.getDirectory()
+    ).getDirectoryHandle('cosmos-vault');
+    const file = await (await root.getFileHandle('recovered.md')).getFile();
+    return file.text();
+  });
+  expect(saved).toBe('não perder esta cópia');
+  await expect(
+    page
+      .getByRole('navigation', { name: 'Notas' })
+      .getByRole('button', { name: 'a.md', exact: true }),
+  ).toHaveCount(0);
+  await expect(page.locator('.cm-content')).toContainText(
+    'não perder esta cópia',
+  );
+  await expect(
+    page.getByRole('button', { name: 'Salvar', exact: true }),
+  ).toBeDisabled();
 });
 
 test('folders with the same name keep separate recoverable drafts across reloads', async ({

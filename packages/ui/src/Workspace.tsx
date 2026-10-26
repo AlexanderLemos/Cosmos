@@ -31,7 +31,10 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
   const links = useMemo(() => noteLinks(content), [content]);
   const [backlinks, setBacklinks] = useState<string[]>([]);
   const [name, setName] = useState('');
-  const [fileAction, setFileAction] = useState<'move' | 'trash' | null>(null);
+  const [fileAction, setFileAction] = useState<
+    'move' | 'trash' | 'copy' | null
+  >(null);
+  const [copySaved, setCopySaved] = useState<string | null>(null);
   const [destination, setDestination] = useState('');
   const [trashItems, setTrashItems] = useState<TrashItem[] | null>(null);
   const [restoreItem, setRestoreItem] = useState<TrashItem | null>(null);
@@ -104,6 +107,7 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
       setRestoreItem(null);
       setFileAction(null);
       setDoc(null);
+      setCopySaved(null);
       setBacklinks([]);
     });
   const load = async (path: string, current = vault) => {
@@ -111,6 +115,7 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
     const note = await current.read(path);
     setPreviewLocation(null);
     setFileAction(null);
+    setCopySaved(null);
     setDestination(path);
     setDoc({
       draftId: crypto.randomUUID(),
@@ -157,6 +162,32 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
       setStatus(t('saved'));
       await refresh(vault);
     });
+  const saveCopy = async () => {
+    const snapshot = documentRef.current;
+    const target = destination.trim();
+    if (!vault || !snapshot || !target) return;
+    if (target === snapshot.path) throw new Error(t('copySamePath'));
+    try {
+      // The empty expected revision means create-only, including empty files.
+      await vault.write(target, snapshot.content, { expectedRev: '' });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (message.includes('CONFLICT') || message.includes('Revision conflict'))
+        throw new Error('DESTINATION_EXISTS');
+      if (message.includes('INVALID_PATH'))
+        throw new Error(t('copyInvalidPath'));
+      if (message.includes('MEMORY_READ_ONLY'))
+        throw new Error(t('memoryReadOnly'));
+      if (message.includes('NOTE_TOO_LARGE'))
+        throw new Error(t('copyTooLarge'));
+      throw error;
+    }
+    // Keep the source editor, undo history and local recovery copy intact.
+    // Record success before refreshing: a later listing failure cannot undo a write.
+    setCopySaved(target);
+    setFileAction(null);
+    await refresh(vault);
+  };
   useEffect(() => {
     setMonitorIssue('');
     if (!vault?.watchState) return;
@@ -282,6 +313,7 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
       const copy = await draftStore.recover(record);
       setPreviewLocation(null);
       setFileAction(null);
+      setCopySaved(null);
       setBacklinks([]);
       setDoc({ ...recovered, draftId: copy.id });
       setStatus(t('draftRecovered'));
@@ -681,6 +713,19 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
                     </button>
                   )}
                   {doc && (
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => {
+                        setDestination('');
+                        setCopySaved(null);
+                        setFileAction('copy');
+                      }}
+                    >
+                      {t('saveCopy')}
+                    </button>
+                  )}
+                  {doc && (
                     <button type="button" onClick={downloadDraft}>
                       {t('downloadNote')}
                     </button>
@@ -690,6 +735,11 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
               <div className={styles.feedback} aria-live="polite">
                 {busy ? t('working') : dirty ? t('unsaved') : status}
               </div>
+              {copySaved && (
+                <p className={styles.feedback} role="status">
+                  {t('copySaved', { path: copySaved })}
+                </p>
+              )}
               {dirty && !drafts.issue && (
                 <p className={styles.feedback} role="status">
                   {t(
@@ -759,6 +809,10 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
                   onSubmit={(event) => {
                     event.preventDefault();
                     void run(async () => {
+                      if (fileAction === 'copy') {
+                        await saveCopy();
+                        return;
+                      }
                       if (dirty || doc.external || !doc.canOrganize) return;
                       if (fileAction === 'move') {
                         const target = destination.trim();
@@ -769,6 +823,7 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
                       } else {
                         await vault.trash?.(doc.path, doc.rev);
                         setDoc(null);
+                        setCopySaved(null);
                         setFileAction(null);
                         await refresh(vault);
                         setTrashItems((await vault.listTrash?.()) ?? []);
@@ -777,7 +832,8 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
                     });
                   }}
                 >
-                  {fileAction === 'move' ? (
+                  {fileAction === 'copy' && <p>{t('copyHint')}</p>}
+                  {fileAction !== 'trash' ? (
                     <label>
                       {t('destinationPath')}
                       <input
@@ -795,13 +851,16 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
                       type="submit"
                       disabled={
                         busy ||
-                        dirty ||
-                        !!doc.external ||
-                        (fileAction === 'move' && !destination.trim())
+                        (fileAction !== 'copy' && (dirty || !!doc.external)) ||
+                        (fileAction !== 'trash' && !destination.trim())
                       }
                     >
                       {t(
-                        fileAction === 'move' ? 'confirmMove' : 'confirmTrash',
+                        fileAction === 'copy'
+                          ? 'confirmCopy'
+                          : fileAction === 'move'
+                            ? 'confirmMove'
+                            : 'confirmTrash',
                       )}
                     </button>
                     <button
@@ -816,7 +875,7 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
               )}
               {doc ? (
                 <>
-                  {doc.readOnly && (
+                  {doc.readOnly && !doc.external && (
                     <p className={styles.feedback}>{t('memoryReadOnly')}</p>
                   )}
                   <fieldset className={styles.viewModes}>
@@ -849,6 +908,7 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
                         onSave={save}
                         onChange={(content) => {
                           setDoc((d) => (d ? { ...d, content } : d));
+                          setCopySaved(null);
                           setStatus('');
                         }}
                       />

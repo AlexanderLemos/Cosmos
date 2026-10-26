@@ -75,11 +75,25 @@ mesma transação; uma lista desatualizada não pode apagar uma edição mais re
 Não há expiração ou limpeza automática das cópias originais.
 
 Se o arquivo do cofre mudou, a recuperação mantém a revisão anterior e bloqueia
-salvar sobre a versão externa. O texto continua disponível para leitura/download;
-recarregar o arquivo requer a confirmação normal de saída da edição. Se o arquivo
+salvar sobre a versão externa. O texto continua disponível para leitura/download e
+para **Salvar cópia como…** em outro caminho. Recarregar o arquivo requer a
+confirmação normal de saída da edição. Se o arquivo
 não existe ou está ilegível, a cópia recuperada fica disponível em modo somente
 leitura. A proteção atual de memória de projetos na Web continua sendo respeitada.
-Merge e salvar um rascunho em outro caminho ainda não têm fluxo específico.
+
+**Salvar cópia como…** usa a escrita com revisão esperada vazia, que exige um
+destino inexistente, inclusive quando o arquivo existente está vazio. A operação
+passa pelas mesmas validações de caminho, limite de tamanho e acesso da escrita
+normal; diretórios de memória na Web continuam protegidos. O caminho deve ser
+relativo ao cofre, terminar em `.md` e diferir da nota original. Abas concorrentes
+são serializadas pela camada de armazenamento. Isso não adiciona uma transação
+com editores externos ou com provedores de sincronização.
+
+A confirmação informa o caminho criado e mantém a nota original aberta, com o
+mesmo texto, histórico de desfazer e rascunhos locais. Copiar não marca o original
+como salvo nem remove suas cópias de recuperação. O recibo aparece somente depois
+da confirmação de escrita; uma falha posterior ao atualizar a lista não desfaz a
+cópia já criada. Mesclagem de versões continua pendente.
 
 O cofre OPFS tem uma identidade fixa dentro da origem. Pastas escolhidas na Web
 são identificadas por `FileSystemHandle.isSameEntry`, com handles no registro
@@ -268,7 +282,10 @@ alterados no SQLite-WASM, persistência do índice, remoções, falhas de leitur
 troca entre cofres sem resultados misturados. Os testes de rascunho cobrem a fila
 de gravação, retry, recarga, bytes originais, abas independentes, conflito externo,
 exclusão com versão, fonte removida, pastas com nomes iguais e armazenamento
-indisponível. O smoke nativo mata e reabre somente o processo criado pelo teste,
+indisponível. Os testes de cópia verificam bytes originais, cancelamento, destino
+ocupado/vazio, caminho inválido, memória protegida, duas abas concorrentes e fonte
+removida. O smoke nativo também verifica cópia de rascunho em conflito sem alterar
+a versão externa ou substituir um destino existente. Ele mata e reabre somente o processo criado pelo teste,
 recuperando um rascunho confirmado sem gravar no cofre até o salvamento explícito.
 A CI executa os testes Rust nos três SOs e
 os três engines Web no Linux. A instalação local de Firefox/WebKit foi bloqueada
@@ -291,7 +308,7 @@ pela política de rede; a execução local cobre Chromium e o WebView GTK nativo
   revisão já funciona no Web e Desktop. Atores independentes por projeto,
   supervisão automática/reconexão após queda e um endpoint por usuário.
 - UI para revisar intenções retidas no journal. A recuperação de rascunhos locais
-  confirmados já funciona; faltam merge, salvar como outra nota, reassociação de
+  confirmados e salvar cópia como outra nota já funcionam; faltam merge, reassociação de
   cofres movidos e exportação global dessas cópias.
 - Recuperação/rollback de importação interrompida e
   exportação incremental de cofres maiores; exportação ZIP e importação de pasta/ZIP

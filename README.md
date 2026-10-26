@@ -12,6 +12,7 @@ de projeto, permite mover notas, oferece lixeira com restauração e acompanha
 alterações externas preservando rascunhos; a Web oferece cofre local, importação de pasta/ZIP e exportação ZIP.
 A busca atualiza o índice por revisão em ambas as plataformas, preservando as entradas inalteradas.
 Web e Desktop também guardam rascunhos locais confirmados e permitem recuperá-los sem sobrescrever a nota original.
+O comando **Salvar cópia como…** grava o texto atual em uma nova nota, inclusive após conflito ou remoção da origem, mantendo a edição aberta.
 Veja [o que já funciona e os limites de F1](docs/fase-1.md).
 O [plano completo](docs/plan/COSMOS_Plano_Mestre_v2.2_Consolidado.md) continua sendo
 a referência; as [pendências de F0](docs/fase-0.md) permanecem explícitas.

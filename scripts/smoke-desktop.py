@@ -186,12 +186,29 @@ def main():
             wait('return document.body.innerText.includes("This note changed outside COSMOS.")')
             assert execute('return document.querySelector(".cm-content").textContent;') == draft
             assert execute('return [...document.querySelectorAll("button")].find(b => b.textContent === "Save").disabled;')
+            # Saving a copy preserves the externally changed source and current editor.
+            (vault / 'Occupied.md').write_bytes(b'')
+            click('Save copy as…')
+            type_into('input[aria-label="Destination path"]', 'Occupied.md')
+            click('Create copy')
+            wait('return document.body.innerText.includes("A file or folder already exists at that destination.")')
+            assert (vault / 'Occupied.md').read_bytes() == b''
+            element = request('POST', session + '/element', {'using': 'css selector', 'value': 'input[aria-label="Destination path"]'})
+            request('POST', session + '/element/' + element['element-6066-11e4-a52e-4f735466cecf'] + '/clear', {})
+            type_into('input[aria-label="Destination path"]', 'Copies/Recovered.md')
+            click('Create copy')
+            wait('return document.body.innerText.includes("Copy saved to Copies/Recovered.md.")')
+            copy_bytes = (vault / 'Copies/Recovered.md').read_bytes()
+            assert b'My local draft' in copy_bytes
+            assert (vault / 'Folder/Moved.md').read_text() == 'another external version'
+            assert execute('return document.querySelector(".cm-content").textContent;') == draft
             # Returning to the original revision clears the warning, not the draft.
             (vault / 'Folder/Moved.md').write_bytes(external)
             wait('return ![...document.querySelectorAll("button")].find(b => b.textContent === "Save").disabled')
             assert execute('return document.querySelector(".cm-content").textContent;') == draft
             click('Save')
             wait('return document.body.innerText.includes("Saved to vault.")')
+            assert (vault / 'Folder/Moved.md').read_bytes() == copy_bytes
             (vault / 'Folder/Moved.md').unlink()
             wait('return document.body.innerText.includes("This note was removed or moved outside COSMOS.")')
             assert execute('return document.querySelector(".cm-content").textContent;') == draft
@@ -209,7 +226,7 @@ def main():
             assert metadata['format_version'] == 1 and metadata['bindings'] == []
             assert not (vault / 'cosmos.db').exists()
             assert execute('return [...document.querySelectorAll("button")].find(b => b.textContent === "Move note").disabled;')
-            checks += ['native folder consent', 'confirmed local draft recovered after application restart without writing the vault', 'Markdown reading and split views preserve editor and follow disk changes', 'CodeMirror save via daemon', 'move, trash and restore via daemon', 'external changes, search, backlinks and draft preservation', 'protected project structure', 'project documents on disk']
+            checks += ['native folder consent', 'confirmed local draft recovered after application restart without writing the vault', 'Markdown reading and split views preserve editor and follow disk changes', 'CodeMirror save via daemon', 'create-only copy preserves external source, draft and existing destinations', 'move, trash and restore via daemon', 'external changes, search, backlinks and draft preservation', 'protected project structure', 'project documents on disk']
             assert execute("""return !document.querySelector('section[aria-label="Markdown preview"]').textContent.includes('cosmos:begin');""")
             if args.evidence_dir:
                 (args.evidence_dir / 'desktop-vault.png').write_bytes(base64.b64decode(request('GET', session + '/screenshot')))
