@@ -5,6 +5,8 @@ Uses only Python's standard library. Never changes the user's vault or integrati
 import argparse
 import base64
 import json
+import os
+import signal
 import subprocess
 import tempfile
 from pathlib import Path
@@ -29,6 +31,18 @@ def main():
         with urllib.request.urlopen(req, timeout=30) as response:
             return json.load(response)['value']
 
+    def application_pids():
+        found = set()
+        for proc in Path('/proc').iterdir():
+            if not proc.name.isdigit():
+                continue
+            try:
+                if (proc / 'cmdline').read_bytes().split(b'\0')[0] == os.fsencode(args.application):
+                    found.add(int(proc.name))
+            except (FileNotFoundError, PermissionError):
+                pass
+        return found
+    previous_pids = application_pids() if args.exercise_vault else set()
     response = request('POST', '/session', {'capabilities': {'alwaysMatch': {'tauri:options': {'application': args.application}}}})
     session = '/session/' + response['sessionId']
     try:
@@ -78,19 +92,42 @@ def main():
                 element = request('POST', session + '/element', {'using': 'css selector', 'value': selector})
                 element_id = element['element-6066-11e4-a52e-4f735466cecf']
                 request('POST', session + '/element/' + element_id + '/value', {'text': value.replace('\n', '\ue007')})
-            click('Choose vault')
-            subprocess.run(['xdotool', 'search', '--sync', '--onlyvisible', '--name', 'Select Folder', 'windowfocus'], check=True, timeout=10, stdout=subprocess.DEVNULL)
-            subprocess.run(['xdotool', 'key', 'ctrl+l'], check=True)
-            subprocess.run(['xdotool', 'type', '--clearmodifiers', str(vault) + '/'], check=True)
-            subprocess.run(['xdotool', 'key', 'Return'], check=True)
-            time.sleep(0.4)
-            subprocess.run(['xdotool', 'key', 'Return'], check=True)
-            wait('return document.querySelector("h1")?.textContent === ' + json.dumps(vault.name))
+            def choose_vault():
+                click('Choose vault')
+                subprocess.run(['xdotool', 'search', '--sync', '--onlyvisible', '--name', 'Select Folder', 'windowfocus'], check=True, timeout=10, stdout=subprocess.DEVNULL)
+                subprocess.run(['xdotool', 'key', 'ctrl+l'], check=True)
+                subprocess.run(['xdotool', 'type', '--clearmodifiers', str(vault) + '/'], check=True)
+                subprocess.run(['xdotool', 'key', 'Return'], check=True)
+                time.sleep(0.4)
+                subprocess.run(['xdotool', 'key', 'Return'], check=True)
+                wait('return document.querySelector("h1")?.textContent === ' + json.dumps(vault.name))
+            choose_vault()
             type_into('input[placeholder]', 'Native.md')
             click('Create note')
             wait('return document.querySelector(".cm-content")?.contentEditable === "true"')
             type_into('.cm-content', '# Native note\nWritten through cosmosd.')
             wait('return document.body.innerText.includes("Unsaved changes")')
+            wait('return document.body.innerText.includes("Draft protected on this device.")')
+            assert (vault / 'Native.md').read_bytes() == b''
+            # Kill only the application created by this test, without beforeunload handlers.
+            owned = application_pids() - previous_pids
+            assert len(owned) == 1, owned
+            os.kill(owned.pop(), signal.SIGKILL)
+            try:
+                request('DELETE', session)
+            except urllib.error.HTTPError as error:
+                if error.code != 404:
+                    raise
+            reopened = request('POST', '/session', {'capabilities': {'alwaysMatch': {'tauri:options': {'application': args.application}}}})
+            session = '/session/' + reopened['sessionId']
+            wait('return !!document.querySelector("select")')
+            execute('const select = document.querySelector("select"); select.value = "en"; select.dispatchEvent(new Event("change", {bubbles:true}));')
+            wait('return document.body.innerText.includes("Choose vault")')
+            choose_vault()
+            wait('return document.body.innerText.includes("Recover draft")')
+            click('Recover draft')
+            wait('return document.querySelector(".cm-content")?.textContent.includes("Written through cosmosd.")')
+            assert (vault / 'Native.md').read_bytes() == b''
             assert execute('return [...document.querySelectorAll("button")].find(b => b.textContent === "Move note").disabled;')
             execute('window.smokeEditor = document.querySelector(".cm-content");')
             click('Edit and read')
@@ -164,7 +201,7 @@ def main():
             wait('return document.body.innerText.includes("Project name")')
             type_into('input[placeholder]', 'Native project')
             click('Create project')
-            wait('return document.querySelector("h2")?.textContent === "context.md"')
+            wait("""return document.querySelector('section[aria-label="Markdown editor"] h2')?.textContent === 'context.md'""")
             wait('return ![...document.querySelectorAll("button")].find(b => b.textContent === "Refresh list").disabled')
             project = vault / 'Universos/Pessoal/Native project'
             assert len(list(project.glob('*.md'))) == 6
@@ -172,7 +209,7 @@ def main():
             assert metadata['format_version'] == 1 and metadata['bindings'] == []
             assert not (vault / 'cosmos.db').exists()
             assert execute('return [...document.querySelectorAll("button")].find(b => b.textContent === "Move note").disabled;')
-            checks += ['native folder consent', 'Markdown reading and split views preserve editor and follow disk changes', 'CodeMirror save via daemon', 'move, trash and restore via daemon', 'external changes, search, backlinks and draft preservation', 'protected project structure', 'project documents on disk']
+            checks += ['native folder consent', 'confirmed local draft recovered after application restart without writing the vault', 'Markdown reading and split views preserve editor and follow disk changes', 'CodeMirror save via daemon', 'move, trash and restore via daemon', 'external changes, search, backlinks and draft preservation', 'protected project structure', 'project documents on disk']
             assert execute("""return !document.querySelector('section[aria-label="Markdown preview"]').textContent.includes('cosmos:begin');""")
             if args.evidence_dir:
                 (args.evidence_dir / 'desktop-vault.png').write_bytes(base64.b64decode(request('GET', session + '/screenshot')))

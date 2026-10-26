@@ -38,6 +38,12 @@ O editor CodeMirror aplica alterações ao texto original, preservando bytes que
 não foram editados, inclusive BOM e quebras de linha mistas. O parser serve à
 navegação, sem reformatar o documento na gravação. A interface salva explicitamente,
 mostra conflitos e permite baixar rascunho antes de recarregar.
+Rascunhos de edição usam IndexedDB no perfil do frontend, como estado local da
+interface; não são gravações de notas nem parte do journal do daemon. São isolados
+por identidade do cofre e sessão, com atualização transacional e recuperação
+explícita para uma nova cópia. O comando nativo `vault_identity` apenas retorna o
+ID opaco do cofre já escolhido; não amplia acesso a arquivos. O salvamento final
+continua passando pelo daemon com revisão esperada.
 
 Em Unix, o socket é criado dentro de um diretório 0700 e recebe 0600 antes de
 aceitar requisições. Isso funciona no macOS, que não suporta o `fchmod` no socket

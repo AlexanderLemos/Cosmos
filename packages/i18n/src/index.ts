@@ -57,7 +57,25 @@ export const resources = {
       unresolved: 'não resolvido',
       noLinks: 'Nenhuma conexão ainda.',
       startWriting: 'Escolha uma nota ou crie algo novo.',
-      discardPrompt: 'Há alterações não salvas. Descartar e continuar?',
+      discardPrompt: 'Há alterações não salvas. Sair da nota mesmo assim?',
+      localDrafts: 'Rascunhos locais',
+      draftsHint:
+        'Cópias neste dispositivo, separadas das notas. Recuperar mantém o rascunho original até você excluí-lo.',
+      refreshDrafts: 'Atualizar rascunhos',
+      recoverDraft: 'Recuperar rascunho',
+      downloadDraft: 'Baixar rascunho',
+      discardDraft: 'Excluir rascunho',
+      discardDraftPrompt:
+        'Excluir esta cópia local? A nota do cofre não será alterada.',
+      draftProtected: 'Rascunho protegido neste dispositivo.',
+      draftProtecting: 'Protegendo rascunho…',
+      draftProtectionFailed:
+        'Não foi possível proteger ou consultar os rascunhos locais. Baixe sua edição antes de sair.',
+      retryDrafts: 'Tentar proteger novamente',
+      draftChanged:
+        'Este rascunho mudou em outra janela. Atualize a lista antes de continuar.',
+      draftRecovered:
+        'Rascunho recuperado. Revise o texto antes de salvar no cofre.',
       conflict:
         'O arquivo mudou desde que foi aberto. Sua edição foi preservada aqui. Baixe uma cópia antes de recarregar e comparar as versões.',
       external_changed:
@@ -167,7 +185,24 @@ export const resources = {
       unresolved: 'unresolved',
       noLinks: 'No connections yet.',
       startWriting: 'Choose a note or create something new.',
-      discardPrompt: 'There are unsaved changes. Discard and continue?',
+      discardPrompt: 'You have unsaved changes. Leave this note anyway?',
+      localDrafts: 'Local drafts',
+      draftsHint:
+        'Copies on this device, separate from the notes. Recovery keeps the original draft until you delete it.',
+      refreshDrafts: 'Refresh drafts',
+      recoverDraft: 'Recover draft',
+      downloadDraft: 'Download draft',
+      discardDraft: 'Delete draft',
+      discardDraftPrompt:
+        'Delete this local copy? The vault note will not be changed.',
+      draftProtected: 'Draft protected on this device.',
+      draftProtecting: 'Protecting draft…',
+      draftProtectionFailed:
+        'Local drafts could not be protected or loaded. Download your edit before leaving.',
+      retryDrafts: 'Retry draft protection',
+      draftChanged:
+        'This draft changed in another window. Refresh the list before continuing.',
+      draftRecovered: 'Draft recovered. Review it before saving to the vault.',
       conflict:
         'The file changed since it was opened. Your edit is still here. Download a copy before reloading and comparing versions.',
       external_changed:

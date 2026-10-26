@@ -33,6 +33,9 @@ foram aprovadas implicitamente pelo avanço da implementação.
   nota. Trocar de nota com rascunho exige confirmação; navegar dentro dela não
   descarta a edição. Um destino ausente/ambíguo fica desabilitado e uma seção não
   encontrada é informada. A visão dividida se empilha em janelas estreitas.
+- **Rascunhos locais:** cópias automáticas no perfil do navegador/WebView, com
+  confirmação visível da proteção. Reabrir o cofre oferece recuperar, baixar ou
+  excluir cada cópia. A recuperação não grava no cofre e mantém o rascunho original.
 - **Organização:** caminhos `Universos/<universo>/<galáxia>/nota.md`; criação de
   pastas sob demanda. A navegação inicial é uma lista de caminhos, não o Firmamento.
 - **Projetos Desktop:** seis documentos (`context`, `requirements`, `architecture`,
@@ -45,6 +48,48 @@ foram aprovadas implicitamente pelo avanço da implementação.
   frase literal e BM25, com desempate por caminho. A reconciliação por revisão
   atualiza somente documentos novos/alterados e remove os que saíram do cofre.
   Web Locks serializam o VFS entre abas; o worker libera os handles.
+
+## Recuperação de rascunhos
+
+Cada sessão de edição recebe um ID independente. O texto em edição, a versão
+original e sua revisão são guardados no IndexedDB `cosmos-drafts` do perfil,
+separadamente dos arquivos do cofre e do SQLite de índice/journal. Cabeçalhos
+menores permitem listar rascunhos sem carregar todos os textos. Gravação e
+remoção de texto/cabeçalho usam uma transação com durabilidade `strict` solicitada.
+Não há envio a serviços externos nem mudança automática do Markdown.
+
+As gravações são serializadas, mantendo apenas o snapshot pendente mais recente
+de cada editor. A interface só informa **rascunho protegido** quando a transação
+do texto e da revisão atualmente exibidos terminou. Uma falha guarda o snapshot
+em memória para tentativa explícita, mostra aviso e mantém salvar/baixar a edição
+disponíveis. Uma queda antes dessa confirmação pode perder as últimas alterações;
+o aviso ao sair com edição não salva permanece. Limpeza do perfil/dados do site,
+quota, navegação privada e falhas de armazenamento também afetam essas cópias.
+Rascunhos não substituem exportação/backup do cofre.
+
+Salvar no cofre limpa somente a cópia da sessão salva, depois da confirmação da
+escrita. Sair de uma nota mantém os rascunhos já protegidos. Recuperar cria uma nova
+cópia de edição e **preserva o rascunho original**, que pode pertencer a outra aba
+ainda aberta. A exclusão do original exige confirmação e confere sua versão na
+mesma transação; uma lista desatualizada não pode apagar uma edição mais recente.
+Não há expiração ou limpeza automática das cópias originais.
+
+Se o arquivo do cofre mudou, a recuperação mantém a revisão anterior e bloqueia
+salvar sobre a versão externa. O texto continua disponível para leitura/download;
+recarregar o arquivo requer a confirmação normal de saída da edição. Se o arquivo
+não existe ou está ilegível, a cópia recuperada fica disponível em modo somente
+leitura. A proteção atual de memória de projetos na Web continua sendo respeitada.
+Merge e salvar um rascunho em outro caminho ainda não têm fluxo específico.
+
+O cofre OPFS tem uma identidade fixa dentro da origem. Pastas escolhidas na Web
+são identificadas por `FileSystemHandle.isSameEntry`, com handles no registro
+IndexedDB; nomes de exibição nunca identificam um cofre. Isso depende de suporte
+do navegador à persistência desses handles: falha gera aviso, sem associar por nome.
+O Desktop usa o ID opaco do diretório canônico já selecionado, obtido pelo comando
+restrito `vault_identity`. Nenhum caminho absoluto é entregue ao frontend.
+Mover o cofre nativo para outro caminho muda essa identidade; reassociação e
+exportação global de rascunhos ainda pendem. Cada versão de texto em um rascunho
+tem limite de 8.388.608 unidades UTF-16; notas mantêm o limite geral de 8 MiB ao salvar.
 
 ## Busca incremental por revisão
 
@@ -220,7 +265,12 @@ exportação e notas com scripts, HTML e imagens remotas sem execução/requisi�
 O smoke nativo também verifica os modos de leitura e a atualização da leitura após
 alteração no disco. Os testes Web verificam contadores de documentos realmente
 alterados no SQLite-WASM, persistência do índice, remoções, falhas de leitura e
-troca entre cofres sem resultados misturados. A CI executa os testes Rust nos três SOs e
+troca entre cofres sem resultados misturados. Os testes de rascunho cobrem a fila
+de gravação, retry, recarga, bytes originais, abas independentes, conflito externo,
+exclusão com versão, fonte removida, pastas com nomes iguais e armazenamento
+indisponível. O smoke nativo mata e reabre somente o processo criado pelo teste,
+recuperando um rascunho confirmado sem gravar no cofre até o salvamento explícito.
+A CI executa os testes Rust nos três SOs e
 os três engines Web no Linux. A instalação local de Firefox/WebKit foi bloqueada
 pela política de rede; a execução local cobre Chromium e o WebView GTK nativo.
 
@@ -240,8 +290,9 @@ pela política de rede; a execução local cobre Chromium e o WebView GTK nativo
   e ensaios de performance em cofres grandes. A atualização incremental do FTS por
   revisão já funciona no Web e Desktop. Atores independentes por projeto,
   supervisão automática/reconexão após queda e um endpoint por usuário.
-- UI para revisar intenções retidas no journal e restauração de rascunhos após
-  queda do navegador; atualmente há salvamento explícito e download de rascunho.
+- UI para revisar intenções retidas no journal. A recuperação de rascunhos locais
+  confirmados já funciona; faltam merge, salvar como outra nota, reassociação de
+  cofres movidos e exportação global dessas cópias.
 - Recuperação/rollback de importação interrompida e
   exportação incremental de cofres maiores; exportação ZIP e importação de pasta/ZIP
   já funcionam. Uma importação interrompida pode deixar arquivos novos parciais,

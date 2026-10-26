@@ -1,4 +1,4 @@
 [[permission]]
 identifier = "vault-window"
 description = "The local main window can choose a vault using a native dialog and send typed commands to cosmosd."
-commands.allow = ["runtime_info", "vault_open", "vault_execute"]
+commands.allow = ["runtime_info", "vault_open", "vault_execute", "vault_identity"]

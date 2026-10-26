@@ -112,6 +112,24 @@
 .document {
   min-width: 0;
 }
+.drafts h2 {
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+.drafts p,
+.drafts small {
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.draftCard {
+  display: grid;
+  gap: 0.4rem;
+  border-top: 1px solid var(--line);
+  margin-top: 1rem;
+  padding-top: 0.5rem;
+}
 .viewModes {
   border: 0;
   padding: 0;

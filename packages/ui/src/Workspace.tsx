@@ -1,10 +1,12 @@
 import { noteLinks, resolveNoteLink } from '@cosmos/core';
 import { MarkdownEditor } from '@cosmos/editor';
+import { type DraftHeader, draftStore } from '@cosmos/fs/drafts';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Foundation } from './Foundation';
 import { MarkdownPreview, type PreviewLocation } from './MarkdownPreview';
 import { type DocumentState, observeVault, reconcileDocument } from './monitor';
+import { useLocalDrafts } from './use-local-drafts';
 import type { OpenVault, TrashItem, VaultPlatform } from './vault';
 import styles from './Workspace.module.css';
 
@@ -13,6 +15,7 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
   const [vault, setVault] = useState<OpenVault | null>(null);
   const [paths, setPaths] = useState<string[]>([]);
   const [doc, setDoc] = useState<DocumentState | null>(null);
+  const drafts = useLocalDrafts(vault, doc);
   const [viewMode, setViewMode] = useState<'edit' | 'read' | 'split'>('edit');
   const [previewLocation, setPreviewLocation] =
     useState<PreviewLocation | null>(null);
@@ -65,13 +68,16 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       setError(
-        message.includes('CONFLICT') || message.includes('Revision conflict')
-          ? t('conflict')
-          : message.includes('DESTINATION_EXISTS')
-            ? t('destinationExists')
-            : message.includes('PROJECT_STRUCTURE_PROTECTED')
-              ? t('structureProtected')
-              : `${t('operationFailed')} ${message}`,
+        message.includes('DRAFT_CHANGED')
+          ? t('draftChanged')
+          : message.includes('CONFLICT') ||
+              message.includes('Revision conflict')
+            ? t('conflict')
+            : message.includes('DESTINATION_EXISTS')
+              ? t('destinationExists')
+              : message.includes('PROJECT_STRUCTURE_PROTECTED')
+                ? t('structureProtected')
+                : `${t('operationFailed')} ${message}`,
       );
     } finally {
       setBusy(false);
@@ -107,6 +113,7 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
     setFileAction(null);
     setDestination(path);
     setDoc({
+      draftId: crypto.randomUUID(),
       path,
       ...note,
       saved: note.content,
@@ -242,6 +249,44 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
       'text/markdown',
     );
   };
+  const recoverDraft = (header: DraftHeader) =>
+    void run(async () => {
+      if (!vault || !drafts.scope || !mayLeave()) return;
+      const record = await draftStore.read(header.id, drafts.scope);
+      if (record.version !== header.version) throw new Error('DRAFT_CHANGED');
+      let recovered: DocumentState = {
+        path: record.path,
+        content: record.content,
+        saved: record.baseContent,
+        rev: record.baseRev,
+        readOnly: true,
+        external: 'unreadable',
+        generation: Date.now(),
+      };
+      try {
+        const note = await vault.read(record.path);
+        const readOnly = await vault.isReadOnly(record.path);
+        recovered = {
+          ...recovered,
+          readOnly,
+          canOrganize: note.canOrganize,
+          ...(note.content === record.content
+            ? { saved: note.content, rev: note.rev, external: undefined }
+            : {
+                external: note.rev === record.baseRev ? undefined : 'changed',
+              }),
+        };
+      } catch {
+        /* Keep local text available when its source cannot be read. */
+      }
+      const copy = await draftStore.recover(record);
+      setPreviewLocation(null);
+      setFileAction(null);
+      setBacklinks([]);
+      setDoc({ ...recovered, draftId: copy.id });
+      setStatus(t('draftRecovered'));
+      drafts.refresh();
+    });
   const launcher = (
     <div className={styles.launcher}>
       <button type="button" disabled={busy} onClick={() => open()}>
@@ -441,6 +486,76 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
                 </section>
               )}
               <div className={styles.tools}>
+                <section
+                  className={styles.drafts}
+                  aria-label={t('localDrafts')}
+                >
+                  <h2>{t('localDrafts')}</h2>
+                  <p>{t('draftsHint')}</p>
+                  <button
+                    type="button"
+                    disabled={busy || !drafts.scope}
+                    onClick={drafts.refresh}
+                  >
+                    {t('refreshDrafts')}
+                  </button>
+                  {drafts.headers.map((entry) => (
+                    <div className={styles.draftCard} key={entry.id}>
+                      <p>{entry.path}</p>
+                      <small>
+                        {new Date(entry.updatedAt).toLocaleString()}
+                      </small>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => recoverDraft(entry)}
+                      >
+                        {t('recoverDraft')}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() =>
+                          void run(async () => {
+                            if (!drafts.scope) return;
+                            const record = await draftStore.read(
+                              entry.id,
+                              drafts.scope,
+                            );
+                            download(
+                              new TextEncoder().encode(record.content),
+                              entry.path.split('/').at(-1) ?? 'draft.md',
+                              'text/markdown',
+                            );
+                          })
+                        }
+                      >
+                        {t('downloadDraft')}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() =>
+                          void run(async () => {
+                            if (
+                              !drafts.scope ||
+                              !window.confirm(t('discardDraftPrompt'))
+                            )
+                              return;
+                            await draftStore.remove(
+                              entry.id,
+                              drafts.scope,
+                              entry.version,
+                            );
+                            drafts.refresh();
+                          })
+                        }
+                      >
+                        {t('discardDraft')}
+                      </button>
+                    </div>
+                  ))}
+                </section>
                 <button
                   type="button"
                   disabled={busy}
@@ -575,6 +690,23 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
               <div className={styles.feedback} aria-live="polite">
                 {busy ? t('working') : dirty ? t('unsaved') : status}
               </div>
+              {dirty && !drafts.issue && (
+                <p className={styles.feedback} role="status">
+                  {t(
+                    drafts.status === 'protected'
+                      ? 'draftProtected'
+                      : 'draftProtecting',
+                  )}
+                </p>
+              )}
+              {drafts.issue && (
+                <div role="alert" className={styles.error}>
+                  <p>{t('draftProtectionFailed')}</p>
+                  <button type="button" onClick={drafts.retry}>
+                    {t('retryDrafts')}
+                  </button>
+                </div>
+              )}
               {(monitorIssue || doc?.external) && (
                 <div role="alert" className={styles.error}>
                   {monitorIssue && <p>{t(monitorIssue)}</p>}
@@ -710,7 +842,7 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
                       className={styles.editorPane}
                     >
                       <MarkdownEditor
-                        key={`${doc.path}:${doc.generation}`}
+                        key={`${doc.draftId ?? doc.path}:${doc.generation}`}
                         initialValue={doc.content}
                         label={t('editor')}
                         readOnly={doc.readOnly || busy}

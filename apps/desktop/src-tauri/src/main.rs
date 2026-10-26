@@ -16,6 +16,18 @@ fn runtime_info() -> cosmos_core::RuntimeInfo {
     cosmos_core::RuntimeInfo::desktop()
 }
 
+#[tauri::command]
+fn vault_identity(state: tauri::State<'_, OpenVault>) -> Result<String, String> {
+    let selected = state.0.lock().map_err(|e| e.to_string())?;
+    let data = selected.as_ref().ok_or("NO_OPEN_VAULT")?;
+    // The selected directory's opaque ID, never its absolute filesystem path.
+    Ok(data
+        .file_name()
+        .ok_or("INVALID_VAULT_ID")?
+        .to_string_lossy()
+        .into_owned())
+}
+
 fn start_daemon(root: &Path, data: &Path) -> Result<(), String> {
     if cosmos_daemon::connect(data).is_ok() {
         return cosmos_daemon::handshake(data).map_err(|e| e.to_string());
@@ -140,6 +152,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             runtime_info,
             vault_open,
+            vault_identity,
             vault_execute
         ])
         .run(tauri::generate_context!())

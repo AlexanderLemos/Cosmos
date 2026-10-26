@@ -2,6 +2,7 @@ import { noteLinks, resolveNoteLink } from '@cosmos/core';
 import type { OpenVault } from './vault';
 
 export type DocumentState = {
+  draftId?: string;
   path: string;
   content: string;
   saved: string;

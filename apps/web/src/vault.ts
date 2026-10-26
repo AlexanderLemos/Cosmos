@@ -1,10 +1,15 @@
 import { BrowserVaultFS, openBrowserVault } from '@cosmos/fs/browser';
+import { directoryDraftScope } from '@cosmos/fs/drafts';
 import { searchNotes } from '@cosmos/fs/search';
 import type { OpenVault, VaultPlatform } from '@cosmos/ui';
 
 function adapt(fs: BrowserVaultFS): OpenVault {
   return {
     name: fs.realFolder ? fs.root.name : 'COSMOS',
+    draftScope: () =>
+      fs.realFolder
+        ? directoryDraftScope(fs.root)
+        : Promise.resolve('web:browser-vault'),
     paths: () => fs.paths(),
     read: (path) => fs.read(path),
     write: (path, content, opts) => fs.write(path, content, opts),

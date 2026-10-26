@@ -7,6 +7,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./browser": "./src/browser.ts",
+    "./drafts": "./src/drafts.ts",
     "./search": "./src/search.ts"
   },
   "scripts": {

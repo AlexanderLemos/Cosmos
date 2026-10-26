@@ -7,6 +7,7 @@ export interface TrashItem {
 /** UI capabilities, not a second domain model. Native commands use generated Rust DTOs. */
 export interface OpenVault {
   name: string;
+  draftScope?(): Promise<string>;
   paths(): Promise<string[]>;
   watchState?(): Promise<{ revision: string; available: boolean }>;
   read(

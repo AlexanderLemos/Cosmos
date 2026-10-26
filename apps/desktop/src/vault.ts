@@ -10,8 +10,13 @@ export const platform: VaultPlatform = {
   open: async () => {
     const name = await invoke<string | null>('vault_open');
     if (!name) return null;
+    const identity = await invoke<string>('vault_identity').catch(() => null);
     return {
       name,
+      draftScope: async () => {
+        if (!identity) throw new Error('DRAFT_SCOPE_UNAVAILABLE');
+        return `desktop:${identity}`;
+      },
       watchState: async () => {
         const result = await command({ op: 'watch' });
         if (result.kind !== 'watch_state') throw new Error('INVALID_RESPONSE');
