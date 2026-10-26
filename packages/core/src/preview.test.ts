@@ -1,4 +1,5 @@
 import type { Root } from 'mdast';
+import { toString as nodeText } from 'mdast-util-to-string';
 import remarkParse from 'remark-parse';
 import { unified } from 'unified';
 import { visit } from 'unist-util-visit';
@@ -16,6 +17,28 @@ function preview(source: string): Root {
 }
 
 describe('read-only Markdown preview', () => {
+  it('keeps text surrounding image embeds and does not also create a note link', () => {
+    const tree = preview('Antes ![[foto.png]] depois [[Nota]] fim.');
+    expect(nodeText(tree)).toBe('Antes foto.png depois Nota fim.');
+    const links: string[] = [];
+    visit(tree, 'link', (node) => {
+      links.push(node.url);
+    });
+    expect(links).toEqual(['cosmos-note:Nota']);
+  });
+  it('recognizes raster embeds but leaves escapes, code, YAML and other transclusions alone', () => {
+    const tree = preview(
+      '---\nimage: "![[hidden.png]]"\n---\n![[assets/Órbita.png|300]] ![[other.JPG]] ![[note#^id]] ![[a.svg]] \\![[escaped.png]] &#33;[[entity.png]] `![[code.png]]`\n\n[![Linked](a.png)](https://example.org)',
+    );
+    const images: string[] = [];
+    visit(tree, 'image', (node) => {
+      images.push(node.url);
+    });
+    expect(images).toEqual([
+      'cosmos-image:assets%2F%C3%93rbita.png',
+      'cosmos-image:other.JPG',
+    ]);
+  });
   it('links plain wikilinks and aliases while leaving code, frontmatter, embeds and escaped syntax alone', () => {
     const tree = preview(
       '\ufeff---\r\naliases: ["[[Hidden]]"]\n---\r\n[[Nota#Seção|Abrir]] [[Outra]]\n\n`[[Code]]` ![[Embed]] \\[[Literal]] &#91;&#91;Entity]]\n\n[existing [[Label]]](https://example.org)\n\n```md\n[[Fence]]\n```',

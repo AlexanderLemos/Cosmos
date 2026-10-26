@@ -9,6 +9,8 @@ export interface OpenVault {
   name: string;
   draftScope?(): Promise<string>;
   paths(): Promise<string[]>;
+  imagePaths?(): Promise<string[]>;
+  readImage?(path: string): Promise<Uint8Array<ArrayBuffer>>;
   watchState?(): Promise<{ revision: string; available: boolean }>;
   read(
     path: string,

@@ -2,11 +2,17 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+pub const VAULT_API_VERSION: u32 = 2;
+
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "op", rename_all = "snake_case", deny_unknown_fields)]
 pub enum VaultCommand {
     List,
     Watch,
+    ListImages,
+    ReadImage {
+        path: String,
+    },
     Read {
         path: String,
     },
@@ -56,12 +62,32 @@ pub struct TrashEntry {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum VaultReply {
-    Paths { paths: Vec<String> },
-    WatchState { revision: String, available: bool },
+    Paths {
+        paths: Vec<String>,
+    },
+    WatchState {
+        revision: String,
+        available: bool,
+    },
     Note(Note),
-    Saved { rev: String },
-    Project { path: String },
-    Moved { path: String },
-    Trashed { id: String },
-    TrashEntries { entries: Vec<TrashEntry> },
+    Image {
+        path: String,
+        media_type: String,
+        data_base64: String,
+    },
+    Saved {
+        rev: String,
+    },
+    Project {
+        path: String,
+    },
+    Moved {
+        path: String,
+    },
+    Trashed {
+        id: String,
+    },
+    TrashEntries {
+        entries: Vec<TrashEntry>,
+    },
 }

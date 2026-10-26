@@ -197,6 +197,7 @@ impl RuntimeInfo {
                 "vault.trash",
                 "vault.restore",
                 "vault.watch",
+                "vault.images",
                 "projects.create",
             ]
             .map(String::from)

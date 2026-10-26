@@ -170,6 +170,13 @@ export type VaultCommand =
       op: "watch";
     }
   | {
+      op: "list_images";
+    }
+  | {
+      op: "read_image";
+      path: string;
+    }
+  | {
       op: "read";
       path: string;
     }
@@ -227,6 +234,12 @@ export type VaultReply =
       kind: "note";
       path: string;
       rev: string;
+    }
+  | {
+      data_base64: string;
+      kind: "image";
+      media_type: string;
+      path: string;
     }
   | {
       kind: "saved";

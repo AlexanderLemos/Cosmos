@@ -11,6 +11,8 @@ function adapt(fs: BrowserVaultFS): OpenVault {
         ? directoryDraftScope(fs.root)
         : Promise.resolve('web:browser-vault'),
     paths: () => fs.paths(),
+    imagePaths: () => fs.imagePaths(),
+    readImage: (path) => fs.readImage(path),
     read: (path) => fs.read(path),
     write: (path, content, opts) => fs.write(path, content, opts),
     isReadOnly: (path) => fs.isReadOnly(path),

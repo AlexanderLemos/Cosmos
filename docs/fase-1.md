@@ -35,6 +35,10 @@ foram aprovadas implicitamente pelo avanço da implementação.
   encontrada é informada. Referências Obsidian a blocos (`[[Nota#^id|alias]]` e
   `[texto](Nota.md#^id)`) focam o trecho na mesma nota ou em outra; identificadores
   ausentes/repetidos são informados. A visão dividida se empilha em janelas estreitas.
+- **Imagens locais:** na leitura Web/Desktop, PNG, JPEG, GIF e WebP do cofre podem
+  ser exibidos pelo botão **Mostrar imagem**, em sintaxe Markdown ou `![[imagem]]`.
+  Limite de 8 MiB por arquivo, com validação da extensão e assinatura; imagens
+  remotas não são carregadas. Ver detalhes e limites abaixo.
 - **Rascunhos locais:** cópias automáticas no perfil do navegador/WebView, com
   confirmação visível da proteção. Reabrir o cofre oferece recuperar, baixar ou
   excluir cada cópia. A recuperação não grava no cofre e mantém o rascunho original.
@@ -143,8 +147,9 @@ automaticamente; limpeza seletiva/diagnóstico do índice ainda não tem interfa
 
 A árvore de renderização nunca é gravada sobre o Markdown. Frontmatter YAML fica
 preservado no editor e não aparece na leitura; tags/blocos HTML e comentários são
-omitidos, sem execução. Imagens aparecem como referências e `![[embeds]]` permanecem literais:
-não há carregamento automático de recursos locais ou remotos. Links ativos têm
+omitidos, sem execução. Imagens locais compatíveis têm visualização sob demanda;
+embeds de notas e outros formatos permanecem literais. Não há carregamento
+automático de recursos locais ou remotos. Links ativos têm
 alvos restritos a notas listadas ou HTTP/HTTPS/mailto explícitos. Na Web, links
 externos abrem uma aba sem acesso à janela de origem; no Desktop, o endereço é
 exibido como texto até existir abertura pelo navegador com permissão específica.
@@ -184,9 +189,50 @@ autocompletar/criação de IDs nem transclusão de blocos (`![[Nota#^id]]`).
 Uma fixture Obsidian adicional participa da inspeção compartilhada TS/Rust de
 títulos e links; a transformação de âncoras pertence somente ao parser de exibição
 TS compartilhado por Web/Desktop. O contrato IPC e o armazenamento não mudaram.
-Anexos continuam preservados na importação/exportação, mas sua visualização
-depende de um próximo incremento de leitura binária restrita ao cofre no daemon
-e nos adaptadores Web, com limites e validação próprios.
+Anexos continuam preservados na importação/exportação. O incremento de imagens
+locais abaixo adiciona a primeira leitura binária restrita ao cofre.
+
+### Imagens locais sob demanda — 2026-10-26
+
+`![descrição](imagens/foto.png)` e `![[foto.png]]` oferecem **Mostrar imagem** nos
+modos Ler e Edição e leitura. São aceitos PNG, JPEG (`.jpg`/`.jpeg`), GIF e WebP,
+até 8 MiB por arquivo. Extensão e assinatura dos bytes devem corresponder; o
+decoder do navegador/WebView confirma se a imagem pode ser exibida. Arquivos
+ausentes, ambíguos, grandes, inválidos ou ilegíveis geram aviso e permitem nova
+tentativa, sem perder a nota ou seu rascunho. SVG, PDF, áudio/vídeo, imagens remotas,
+URLs `file:`, `data:` e `blob:` escritas na nota não são carregados.
+
+Links Markdown de imagem são relativos à pasta da nota, incluindo `../` somente
+quando o resultado permanece dentro do cofre. Wikilinks tentam o caminho local,
+o caminho na raiz do cofre e, para nomes sem pasta, um único nome de arquivo.
+Comparações usam NFC e ignoram caixa; colisões não escolhem um arquivo
+arbitrariamente. Pastas `.git`, `.obsidian` e nomes iniciados por `.cosmos` são
+excluídos. O Desktop recusa symlinks e aplica a gramática portátil do armazenamento.
+Embeds de imagens não aparecem como conexões a notas; embeds de notas continuam
+contando para backlinks, mas ainda não são renderizados como transclusões.
+
+Cada clique consulta novamente os caminhos disponíveis e lê somente a imagem
+solicitada. Não há varredura de bytes nem carregamento de imagens ao abrir uma
+nota. A visualização é um snapshot: **Ocultar imagem** e **Mostrar imagem** relê
+uma alteração externa. As URLs `blob:` são criadas internamente a partir dos bytes
+validados e revogadas ao ocultar, trocar de nota/cofre, sair da leitura ou desmontar
+o componente. Cancelar descarta resultados tardios; não interrompe uma leitura
+que o sistema operacional já iniciou. Tema/idioma preservam imagens já abertas.
+
+No Desktop, `list_images`/`read_image` passam exclusivamente pelo daemon; a janela
+não ganha acesso genérico a arquivos nem usa protocolo de assets para caminhos
+reais. O retorno binário usa base64 dentro do frame IPC já limitado a 50 MiB.
+A CSP autoriza `blob:` apenas para imagens. A API do cofre passa à versão 2 no
+handshake, com JSON-RPC/protocolo 1 e banco v3 mantidos. **Encerre o daemon antigo
+antes de abrir esta versão:** o cliente recusa um daemon sem a API nova; não o
+encerra automaticamente. Não há migração de banco nesta entrega.
+
+Dimensões Obsidian (`|300`, `|300x200`), formatação dentro de nomes, transclusões,
+carregamento em lote e atualização automática de imagens abertas ficam pendentes.
+Uma imagem dentro de um link vira seu texto alternativo na leitura para evitar
+controles interativos aninhados. O limite é de bytes por arquivo, não de pixels
+decodificados ou memória total das imagens que o usuário abrir. Listar caminhos
+ainda percorre o cofre a cada solicitação; cache e ensaios de cofres grandes pendem.
 
 ## Alterações externas no Desktop
 
@@ -330,11 +376,24 @@ cobre três documentos. Passaram 19 E2E Chromium contra o build de produção,
 incluindo foco de blocos locais/entre notas, IDs repetidos/ausentes, acessibilidade
 nos dois temas, rascunho/undo e exportação com bytes exatos. O smoke Tauri Linux
 também passou com foco de blocos no WebView real e verificação dos arquivos no disco.
-A matriz de três sistemas e três engines Web é verificada pela CI após publicar.
+A CI desse incremento passou nos três sistemas, incluindo 57 testes Web
+(Chromium, Firefox e WebKit) em `34bc5ce`.
+
+Validação do incremento de imagens locais (2026-10-26): passaram `pnpm check`
+(32 testes unitários, tipos, lint e schemas), builds Web/Desktop, fmt/Clippy,
+testes Rust do workspace e de fault injection. Passaram 21 E2E Chromium contra
+o build de produção, incluindo PNG real, ausência de requisições remotas,
+colisões de nomes, imagem grande/truncada/SVG renomeado, acessibilidade nos dois
+temas, bytes exatos no ZIP, cancelamento e descarte de respostas após navegar.
+O smoke Tauri Linux exibiu o PNG via IPC/CSP nativos em Markdown e wikilink e
+conferiu os arquivos intactos no disco. Os testes de processo verificam o
+transporte binário e a recusa de daemons sem a versão atual da API do cofre.
+A matriz completa de sistemas/navegadores será executada pela CI ao publicar.
 
 ## Fechamento ainda necessário
 
-- Live preview no CodeMirror, embeds/anexos, transclusão/autocompletar de blocos, compatibilidade avançada de
+- Live preview no CodeMirror, anexos além das imagens raster sob demanda, dimensões
+  de imagens, transclusão/autocompletar de blocos, compatibilidade avançada de
   títulos/wikilinks e inventário maior de fixtures Obsidian. A leitura separada e
   a visão dividida já funcionam; não equivalem a todos os recursos do Obsidian.
 - Concluir o adaptador Tauri do contrato `VaultFS`, especialmente `watch` e listagem

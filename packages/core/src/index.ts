@@ -4,6 +4,9 @@ import remarkGfm from 'remark-gfm';
 import remarkParse from 'remark-parse';
 import { unified } from 'unified';
 import { visit } from 'unist-util-visit';
+import { imageTarget } from './images';
+
+export { imageTarget, resolveImageTarget } from './images';
 
 export {
   headingId,
@@ -41,8 +44,15 @@ export function noteLinks(source: string): string[] {
   const links: string[] = [];
   visit(tree, (node) => {
     if (node.type === 'text') {
-      for (const match of node.value.matchAll(/\[\[([^\]\n]+)\]\]/g)) {
-        const target = match[1]?.split('|')[0]?.split('#')[0]?.trim();
+      for (const match of node.value.matchAll(/(!?)\[\[([^\]\n]+)\]\]/g)) {
+        const rawTarget = match[2]?.split('|')[0]?.trim();
+        if (
+          match[1] &&
+          rawTarget &&
+          imageTarget(`cosmos-image:${encodeURIComponent(rawTarget)}`)
+        )
+          continue;
+        const target = rawTarget?.split('#')[0]?.trim();
         if (target) links.push(target);
       }
     }

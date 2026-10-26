@@ -60,7 +60,7 @@ def main():
             const done = arguments[arguments.length - 1];
             window.__TAURI_INTERNALS__.invoke('runtime_info').then(done).catch(error => done({error:String(error)}));
         ''', 'args': []})
-        assert runtime == {'protocol_version': 1, 'application_version': '0.0.0', 'capabilities': ['vault.read', 'vault.write', 'vault.search', 'vault.move', 'vault.trash', 'vault.restore', 'vault.watch', 'projects.create']}, runtime
+        assert runtime == {'protocol_version': 1, 'application_version': '0.0.0', 'capabilities': ['vault.read', 'vault.write', 'vault.search', 'vault.move', 'vault.trash', 'vault.restore', 'vault.watch', 'vault.images', 'projects.create']}, runtime
         if args.evidence_dir:
             args.evidence_dir.mkdir(parents=True, exist_ok=True)
             (args.evidence_dir / 'desktop.png').write_bytes(base64.b64decode(request('GET', session + '/screenshot')))
@@ -87,6 +87,7 @@ def main():
                     time.sleep(0.1)
                 raise AssertionError('native condition timed out: ' + script)
             def click(text):
+                wait('const button = [...document.querySelectorAll("button")].find(b => b.textContent === ' + json.dumps(text) + '); return button && !button.disabled;')
                 execute('const button = [...document.querySelectorAll("button")].find(b => b.textContent === ' + json.dumps(text) + '); if (!button) throw new Error("button missing"); button.click();')
             def type_into(selector, value):
                 element = request('POST', session + '/element', {'using': 'css selector', 'value': selector})
@@ -178,6 +179,23 @@ def main():
             wait('return document.activeElement?.id === "cosmos-block-native"')
             assert (vault / 'Folder/Moved.md').read_bytes() == blocks
             assert (vault / 'Blocks.md').read_bytes() == block_target
+            image_bytes = (Path(__file__).resolve().parents[1] / 'tests/fixtures/images/pixels.png').read_bytes()
+            (vault / 'assets').mkdir()
+            (vault / 'assets/pixels.png').write_bytes(image_bytes)
+            image_note = blocks + b'\r\n![Native image](../assets/pixels.png)\r\n\r\n![[pixels.png]]\r\n'
+            (vault / 'Folder/Moved.md').write_bytes(image_note)
+            wait('return document.body.innerText.includes("Show image: Native image")')
+            assert execute("""return document.querySelectorAll('section[aria-label="Markdown preview"] img').length === 0""")
+            click('Show image: Native image')
+            wait("""const img = document.querySelector('section[aria-label="Markdown preview"] img'); return img?.complete && img.naturalWidth === 2 && img.src.startsWith('blob:')""")
+            assert (vault / 'assets/pixels.png').read_bytes() == image_bytes
+            assert (vault / 'Folder/Moved.md').read_bytes() == image_note
+            click('Hide image: Native image')
+            wait("""return document.querySelectorAll('section[aria-label="Markdown preview"] img').length === 0""")
+            click('Show image: pixels.png')
+            wait("""const img = document.querySelector('section[aria-label="Markdown preview"] img'); return img?.complete && img.naturalWidth === 2 && img.alt === 'pixels.png'""")
+            click('Hide image: pixels.png')
+            checks += ['local PNG attachment crosses daemon IPC and renders on demand under the native CSP without changing vault bytes']
             (vault / 'Folder/Moved.md').write_bytes(external)
             (vault / 'Blocks.md').unlink()
             wait('return !document.getElementById("cosmos-block-native")')

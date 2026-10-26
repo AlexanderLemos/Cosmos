@@ -19,3 +19,4 @@ pendente. Nenhum asset visual de terceiros foi incluído nesta entrega.
 | `tauri-plugin-dialog`, `rfd`   | Consentimento por seletor de pasta                     | MIT ou Apache-2.0 (plugin), MIT (rfd) — https://github.com/tauri-apps/plugins-workspace / https://github.com/PolyMeilex/rfd |
 | `ulid`, `time`                 | Identificação e data de projeto                        | MIT (`ulid`), MIT ou Apache-2.0 (`time`) — https://github.com/dylanhart/ulid-rs / https://github.com/time-rs/time           |
 | `notify`                       | Observação nativa do cofre, sem seguir symlinks        | CC0-1.0 — https://github.com/notify-rs/notify                                                                               |
+| `base64` 0.23.1                | Transporte de imagens locais no IPC                    | MIT ou Apache-2.0 — https://github.com/marshallpierce/rust-base64                                                           |

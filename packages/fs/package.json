@@ -8,6 +8,7 @@
     ".": "./src/index.ts",
     "./browser": "./src/browser.ts",
     "./drafts": "./src/drafts.ts",
+    "./images": "./src/images.ts",
     "./search": "./src/search.ts"
   },
   "scripts": {

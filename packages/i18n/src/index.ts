@@ -42,7 +42,16 @@ export const resources = {
       blockNotFound:
         'O bloco indicado pelo link não foi encontrado ou seu identificador está repetido nesta nota.',
       image: 'Imagem',
-      imageNotDisplayed: 'Imagem: {{name}} (visualização de anexos pendente)',
+      imageNotDisplayed: 'Imagem: {{name}} (formato ou endereço não suportado)',
+      showImage: 'Mostrar imagem: {{name}}',
+      hideImage: 'Ocultar imagem: {{name}}',
+      cancelImage: 'Cancelar imagem: {{name}}',
+      imageLoading: 'Carregando imagem do cofre…',
+      imageTooLarge: 'A imagem excede o limite de 8 MiB.',
+      imageUnresolved:
+        'A imagem não foi encontrada ou seu nome é ambíguo no cofre.',
+      imageFailed:
+        'Não foi possível exibir a imagem. Confira o arquivo e tente novamente.',
       taskDone: 'Tarefa concluída',
       taskPending: 'Tarefa pendente',
       chooseNote: 'Um espaço para pensar',
@@ -182,7 +191,16 @@ export const resources = {
       blockNotFound:
         'The linked block was not found or its identifier is repeated in this note.',
       image: 'Image',
-      imageNotDisplayed: 'Image: {{name}} (attachment preview pending)',
+      imageNotDisplayed: 'Image: {{name}} (unsupported format or address)',
+      showImage: 'Show image: {{name}}',
+      hideImage: 'Hide image: {{name}}',
+      cancelImage: 'Cancel image: {{name}}',
+      imageLoading: 'Loading image from the vault…',
+      imageTooLarge: 'The image exceeds the 8 MiB limit.',
+      imageUnresolved:
+        'The image was not found or its name is ambiguous in the vault.',
+      imageFailed:
+        'The image could not be displayed. Check the file and try again.',
       taskDone: 'Completed task',
       taskPending: 'Pending task',
       chooseNote: 'A space to think',

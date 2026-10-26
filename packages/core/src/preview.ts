@@ -30,6 +30,12 @@ function remarkPreview() {
       const linked =
         insideLink || node.type === 'link' || node.type === 'linkReference';
       node.children = node.children.flatMap((child): RootContent[] => {
+        // Linked images remain the link's label, avoiding nested interactive controls.
+        if (
+          linked &&
+          (child.type === 'image' || child.type === 'imageReference')
+        )
+          return [{ type: 'text', value: child.alt || '' }];
         if (child.type !== 'text' || linked) {
           walk(child, linked);
           return [child];
@@ -41,8 +47,7 @@ function remarkPreview() {
           child.position?.end.offset,
         );
         let rawOffset = 0;
-        // Embeds remain literal until attachment/transclusion support is available.
-        for (const match of child.value.matchAll(/(?<!!)\[\[([^\]\n]+)\]\]/g)) {
+        for (const match of child.value.matchAll(/!?\[\[([^\]\n]+)\]\]/g)) {
           const rawIndex = raw.indexOf(match[0], rawOffset);
           if (rawIndex < 0) continue;
           rawOffset = rawIndex + match[0].length;
@@ -51,15 +56,29 @@ function remarkPreview() {
           if (escapes % 2) continue;
           const [target, ...alias] = (match[1] ?? '').split('|');
           if (!target?.trim()) continue;
+          const embed = match[0].startsWith('!');
+          // Note/PDF/SVG transclusions remain literal. Images never become direct URLs.
+          if (embed && !/\.(png|jpe?g|gif|webp)$/i.test(target.trim()))
+            continue;
           parts.push({
             type: 'text',
             value: child.value.slice(offset, match.index),
           });
-          parts.push({
-            type: 'link',
-            url: `cosmos-note:${encodeURIComponent(target.trim())}`,
-            children: [{ type: 'text', value: alias.join('|') || target }],
-          });
+          parts.push(
+            embed
+              ? {
+                  type: 'image',
+                  url: `cosmos-image:${encodeURIComponent(target.trim())}`,
+                  alt: target.trim(),
+                }
+              : {
+                  type: 'link',
+                  url: `cosmos-note:${encodeURIComponent(target.trim())}`,
+                  children: [
+                    { type: 'text', value: alias.join('|') || target },
+                  ],
+                },
+          );
           offset = match.index + match[0].length;
         }
         parts.push({ type: 'text', value: child.value.slice(offset) });

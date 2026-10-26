@@ -180,7 +180,9 @@ fn request(
 }
 pub fn handshake(data: &Path) -> io::Result<()> {
     let result = request(data, "handshake", None)?;
-    if result["protocol_version"] != 1 || result["schema_version"] != cosmos_storage::SCHEMA_VERSION
+    if result["protocol_version"] != 1
+        || result["schema_version"] != cosmos_storage::SCHEMA_VERSION
+        || result["vault_api_version"] != cosmos_core::vault::VAULT_API_VERSION
     {
         return Err(io::Error::other("INCOMPATIBLE_DAEMON"));
     }
@@ -199,7 +201,7 @@ pub fn dispatch(value: serde_json::Value, vault: &mut cosmos_storage::Vault) -> 
         }
         match (request.method.as_str(), request.params.command) {
             ("handshake", None) => Ok(
-                serde_json::json!({"protocol_version":1,"schema_version":cosmos_storage::SCHEMA_VERSION,"application_version":env!("CARGO_PKG_VERSION")}),
+                serde_json::json!({"protocol_version":1,"vault_api_version":cosmos_core::vault::VAULT_API_VERSION,"schema_version":cosmos_storage::SCHEMA_VERSION,"application_version":env!("CARGO_PKG_VERSION")}),
             ),
             ("vault", Some(command)) => {
                 serde_json::to_value(vault.execute(command).map_err(|e| e.to_string())?)

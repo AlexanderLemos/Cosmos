@@ -11,6 +11,7 @@ de compartilhamento de dados derivados antes de incorporar; não tratá-lo como 
 
 A licença MIT do COSMOS não relicencia dependências nem assets de terceiros.
 
-| Arquivo                                              | Autor / fonte                           | Licença                      | Uso                                                                        |
-| ---------------------------------------------------- | --------------------------------------- | ---------------------------- | -------------------------------------------------------------------------- |
-| `img/cosmos-foundation.svg` e PNG/ICO/ICNS derivados | COSMOS contributors, geometria original | MIT (LICENSE do repositório) | Ícone provisório exigido pelo build Tauri; não é a identidade visual final |
+| Arquivo                                                     | Autor / fonte                                   | Licença                      | Uso                                                                                                                       |
+| ----------------------------------------------------------- | ----------------------------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `img/cosmos-foundation.svg` e PNG/ICO/ICNS derivados        | COSMOS contributors, geometria original         | MIT (LICENSE do repositório) | Ícone provisório exigido pelo build Tauri; não é a identidade visual final                                                |
+| `tests/fixtures/images/pixels.png` (na raiz do repositório) | COSMOS contributors, fixture sintética original | MIT (LICENSE do repositório) | PNG RGB de 2×1 pixels (verde/azul), gerado com `struct`/`zlib` da biblioteca padrão Python para testes; sem asset externo |

@@ -1,8 +1,10 @@
 import { previewFragmentId, previewLink, previewPlugins } from '@cosmos/core';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Markdown, { defaultUrlTransform } from 'react-markdown';
+import { LocalImage } from './LocalImage';
 import styles from './MarkdownPreview.module.css';
+import type { OpenVault } from './vault';
 
 export type PreviewLocation = {
   path: string;
@@ -18,6 +20,7 @@ export function MarkdownPreview({
   externalLinks,
   location,
   onNavigate,
+  vault,
 }: {
   content: string;
   path: string;
@@ -26,10 +29,23 @@ export function MarkdownPreview({
   externalLinks: boolean;
   location: PreviewLocation | null;
   onNavigate: (path: string, fragment: string) => void;
+  vault: OpenVault;
 }) {
   const { t } = useTranslation();
   const root = useRef<HTMLElement>(null);
   const [missing, setMissing] = useState(false);
+  const renderImage = useCallback(
+    ({ src = '', alt = '' }: { src?: string; alt?: string }) => (
+      <LocalImage
+        key={`${path}:${src}`}
+        src={src}
+        alt={alt}
+        from={path}
+        vault={vault}
+      />
+    ),
+    [path, vault],
+  );
   useEffect(() => {
     setMissing(false);
     if (location?.path !== path || !location.fragment) return;
@@ -65,7 +81,9 @@ export function MarkdownPreview({
           skipHtml
           remarkPlugins={previewPlugins}
           urlTransform={(url) =>
-            url.startsWith('cosmos-note:') ? url : defaultUrlTransform(url)
+            url.startsWith('cosmos-note:') || url.startsWith('cosmos-image:')
+              ? url
+              : defaultUrlTransform(url)
           }
           components={{
             a: ({ href = '', children }) => {
@@ -102,12 +120,7 @@ export function MarkdownPreview({
                 </button>
               );
             },
-            // No automatic requests, blob/file URLs, SVG, or access outside the selected vault.
-            img: ({ alt }) => (
-              <span className={styles.attachment}>
-                {t('imageNotDisplayed', { name: alt || t('image') })}
-              </span>
-            ),
+            img: renderImage,
             input: ({ checked }) => (
               <span
                 role="img"

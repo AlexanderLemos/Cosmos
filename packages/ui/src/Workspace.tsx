@@ -915,6 +915,7 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
                     </div>
                     {viewMode !== 'edit' && (
                       <MarkdownPreview
+                        vault={vault}
                         content={doc.content}
                         path={doc.path}
                         paths={paths}

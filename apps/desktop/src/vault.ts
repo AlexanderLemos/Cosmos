@@ -1,3 +1,4 @@
+import { imageMediaType, MAX_IMAGE_BYTES } from '@cosmos/fs/images';
 import type { VaultCommandContract, VaultReplyContract } from '@cosmos/schemas';
 import type { VaultPlatform } from '@cosmos/ui';
 import { invoke } from '@tauri-apps/api/core';
@@ -31,6 +32,24 @@ export const platform: VaultPlatform = {
         const result = await command({ op: 'read', path });
         if (result.kind !== 'note') throw new Error('INVALID_RESPONSE');
         return { ...result, canOrganize: result.can_organize };
+      },
+      imagePaths: async () => {
+        const result = await command({ op: 'list_images' });
+        if (result.kind !== 'paths') throw new Error('INVALID_RESPONSE');
+        return result.paths;
+      },
+      readImage: async (path) => {
+        const result = await command({ op: 'read_image', path });
+        if (result.kind !== 'image' || result.path !== path)
+          throw new Error('INVALID_RESPONSE');
+        if (result.data_base64.length > 4 * Math.ceil(MAX_IMAGE_BYTES / 3))
+          throw new Error('IMAGE_TOO_LARGE');
+        const bytes = Uint8Array.from(atob(result.data_base64), (char) =>
+          char.charCodeAt(0),
+        );
+        if (imageMediaType(path, bytes) !== result.media_type)
+          throw new Error('UNSUPPORTED_IMAGE');
+        return bytes;
       },
       write: async (path, content, opts) => {
         const result = await command({

@@ -12,6 +12,7 @@ use std::{
 
 pub const MAX_NOTE_BYTES: usize = 8 * 1024 * 1024;
 pub const SCHEMA_VERSION: i64 = 3;
+mod images;
 mod relocate;
 mod search;
 mod watch;
@@ -27,6 +28,10 @@ pub enum Error {
     Version,
     #[error("NOTE_TOO_LARGE")]
     TooLarge,
+    #[error("IMAGE_TOO_LARGE")]
+    ImageTooLarge,
+    #[error("UNSUPPORTED_IMAGE")]
+    UnsupportedImage,
     #[error("DESTINATION_EXISTS")]
     DestinationExists,
     #[error("PROJECT_STRUCTURE_PROTECTED")]
@@ -311,6 +316,8 @@ impl Vault {
             &command,
             VaultCommand::Watch
                 | VaultCommand::List
+                | VaultCommand::ListImages
+                | VaultCommand::ReadImage { .. }
                 | VaultCommand::Read { .. }
                 | VaultCommand::Search { .. }
                 | VaultCommand::ListTrash
@@ -323,6 +330,10 @@ impl Vault {
                 paths: self.list()?,
             }),
             VaultCommand::Read { path } => Ok(VaultReply::Note(self.read(&path)?)),
+            VaultCommand::ListImages => Ok(VaultReply::Paths {
+                paths: self.list_images()?,
+            }),
+            VaultCommand::ReadImage { path } => self.read_image(&path),
             VaultCommand::Move {
                 from,
                 to,

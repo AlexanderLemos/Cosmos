@@ -37,6 +37,76 @@ fn start(root: &Path, data: &Path) -> Daemon {
         .unwrap();
     wait_ready(Daemon(child), data)
 }
+
+#[test]
+fn image_bytes_cross_ipc_without_modifying_the_vault() {
+    use base64::{Engine, engine::general_purpose::STANDARD};
+    let temp = tempfile::tempdir().unwrap();
+    let root = temp.path().join("v");
+    let data = temp.path().join("d");
+    let _daemon = start(&root, &data);
+    let bytes = include_bytes!("../../../tests/fixtures/images/pixels.png");
+    std::fs::write(root.join("pixels.png"), bytes).unwrap();
+    let VaultReply::Paths { paths } = cosmos_daemon::call(&data, VaultCommand::ListImages).unwrap()
+    else {
+        panic!()
+    };
+    assert_eq!(paths, vec!["pixels.png"]);
+    let VaultReply::Image {
+        path,
+        media_type,
+        data_base64,
+    } = cosmos_daemon::call(
+        &data,
+        VaultCommand::ReadImage {
+            path: "pixels.png".into(),
+        },
+    )
+    .unwrap()
+    else {
+        panic!()
+    };
+    assert_eq!(path, "pixels.png");
+    assert_eq!(media_type, "image/png");
+    assert_eq!(STANDARD.decode(data_base64).unwrap(), bytes);
+    assert_eq!(std::fs::read(root.join("pixels.png")).unwrap(), bytes);
+    assert!(
+        cosmos_daemon::call(
+            &data,
+            VaultCommand::ReadImage {
+                path: "../pixels.png".into()
+            }
+        )
+        .is_err()
+    );
+}
+
+#[test]
+fn handshake_rejects_daemons_without_the_current_vault_api() {
+    use interprocess::local_socket::prelude::*;
+    for version in [
+        serde_json::Value::Null,
+        serde_json::json!(1),
+        serde_json::json!(999),
+    ] {
+        let temp = tempfile::tempdir().unwrap();
+        let listener = cosmos_daemon::listener(temp.path()).unwrap();
+        thread::scope(|scope| {
+            let server = scope.spawn(|| {
+                let mut stream = listener.accept().unwrap();
+                let _ = cosmos_daemon::receive(&mut stream).unwrap();
+                cosmos_daemon::send(&mut stream, &serde_json::json!({"jsonrpc":"2.0","id":1,"result":{"protocol_version":1,"schema_version":cosmos_storage::SCHEMA_VERSION,"vault_api_version":version}})).unwrap();
+            });
+            assert!(
+                cosmos_daemon::handshake(temp.path())
+                    .unwrap_err()
+                    .to_string()
+                    .contains("INCOMPATIBLE_DAEMON")
+            );
+            server.join().unwrap();
+        });
+    }
+}
 #[test]
 fn real_process_serializes_writes_rejects_versions_and_survives_kill() {
     let temp = tempfile::tempdir().unwrap();

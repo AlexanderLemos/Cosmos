@@ -443,6 +443,7 @@ dependencies = [
 name = "cosmos-daemon"
 version = "0.0.0"
 dependencies = [
+ "base64 0.23.1",
  "blake3",
  "cosmos-core",
  "cosmos-storage",
@@ -472,6 +473,7 @@ dependencies = [
 name = "cosmos-storage"
 version = "0.0.0"
 dependencies = [
+ "base64 0.23.1",
  "blake3",
  "cosmos-core",
  "fs4",

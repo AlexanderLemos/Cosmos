@@ -1,6 +1,12 @@
 /// <reference path="./browser-types.d.ts" />
 import { unzipSync, zipSync } from 'fflate';
 import {
+  excludedImagePath,
+  imageExtension,
+  imageMediaType,
+  MAX_IMAGE_BYTES,
+} from './images';
+import {
   type Entry,
   type FsEvent,
   RevisionConflict,
@@ -124,6 +130,33 @@ export class BrowserVaultFS implements VaultFS {
       }).decode(bytes),
       rev: await rev(bytes),
     };
+  }
+  async imagePaths(): Promise<string[]> {
+    const paths: string[] = [];
+    const walk = async (dir: string) => {
+      for (const entry of await this.list(dir)) {
+        if (excludedImagePath(entry.path)) continue;
+        try {
+          validatePath(entry.path);
+        } catch {
+          continue;
+        }
+        if (entry.kind === 'directory') await walk(entry.path);
+        else if (imageExtension(entry.path)) paths.push(entry.path);
+      }
+    };
+    await walk('');
+    return paths.sort();
+  }
+  async readImage(path: string): Promise<Uint8Array<ArrayBuffer>> {
+    validatePath(path);
+    if (excludedImagePath(path)) throw new Error('INVALID_PATH');
+    if (!imageExtension(path)) throw new Error('UNSUPPORTED_IMAGE');
+    const file = await this.file(path);
+    if (file.size > MAX_IMAGE_BYTES) throw new Error('IMAGE_TOO_LARGE');
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    imageMediaType(path, bytes);
+    return bytes;
   }
   async isReadOnly(path: string) {
     let dir = this.root;
