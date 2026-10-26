@@ -227,8 +227,17 @@ handshake, com JSON-RPC/protocolo 1 e banco v3 mantidos. **Encerre o daemon anti
 antes de abrir esta versão:** o cliente recusa um daemon sem a API nova; não o
 encerra automaticamente. Não há migração de banco nesta entrega.
 
-Dimensões Obsidian (`|300`, `|300x200`), formatação dentro de nomes, transclusões,
-carregamento em lote e atualização automática de imagens abertas ficam pendentes.
+Embeds Obsidian também aceitam `![[foto.png|300]]` (largura, preservando proporção)
+e `![[foto.png|300x200]]` (caixa de largura/altura com a imagem contida, sem distorção).
+São pixels CSS inteiros de 1 a 4096, sem unidades, espaços ou expressões CSS.
+Tamanhos inválidos, aliases não numéricos e múltiplos sufixos são ignorados;
+a imagem mantém o tamanho natural sujeito aos limites do painel. A largura nunca
+ultrapassa o painel e a altura fica limitada a 70% da janela. O dimensionamento
+não muda os bytes nem amplia o limite de leitura/decodificação. A sintaxe de
+dimensões dentro do texto alternativo de imagens Markdown permanece pendente.
+
+Formatação dentro de nomes, transclusões, carregamento em lote e atualização
+automática de imagens abertas ficam pendentes.
 Uma imagem dentro de um link vira seu texto alternativo na leitura para evitar
 controles interativos aninhados. O limite é de bytes por arquivo, não de pixels
 decodificados ou memória total das imagens que o usuário abrir. Listar caminhos
@@ -388,12 +397,18 @@ temas, bytes exatos no ZIP, cancelamento e descarte de respostas após navegar.
 O smoke Tauri Linux exibiu o PNG via IPC/CSP nativos em Markdown e wikilink e
 conferiu os arquivos intactos no disco. Os testes de processo verificam o
 transporte binário e a recusa de daemons sem a versão atual da API do cofre.
-A matriz completa de sistemas/navegadores será executada pela CI ao publicar.
+A CI de `dcbabb7` passou nos três sistemas, incluindo Chromium, Firefox e WebKit.
+
+Validação das dimensões Obsidian (2026-10-26): `pnpm check` passou com 34 testes
+unitários; builds Web/Desktop e 22 E2E Chromium também passaram. O teste de
+dimensões verifica largura proporcional, caixa sem distorção, valores inválidos,
+painel estreito, idioma/modo e ZIP com bytes originais. O smoke Tauri confirmou os
+atributos `96x48` no WebView real. A CI verifica a matriz completa após publicação.
 
 ## Fechamento ainda necessário
 
 - Live preview no CodeMirror, anexos além das imagens raster sob demanda, dimensões
-  de imagens, transclusão/autocompletar de blocos, compatibilidade avançada de
+  em imagens Markdown (embeds Obsidian já suportados), transclusão/autocompletar de blocos, compatibilidade avançada de
   títulos/wikilinks e inventário maior de fixtures Obsidian. A leitura separada e
   a visão dividida já funcionam; não equivalem a todos os recursos do Obsidian.
 - Concluir o adaptador Tauri do contrato `VaultFS`, especialmente `watch` e listagem

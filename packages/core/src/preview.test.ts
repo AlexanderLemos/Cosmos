@@ -26,6 +26,26 @@ describe('read-only Markdown preview', () => {
     });
     expect(links).toEqual(['cosmos-note:Nota']);
   });
+  it('adds display-only dimensions to image embeds without turning aliases or invalid sizes into CSS', () => {
+    const tree = preview(
+      'Antes ![[a.png|300]] ![[b.png|300x200]] ![[c.png|0]] ![[d.png|300%]] ![[e.png|300|200]] ![[f.png|Legenda]] depois',
+    );
+    const images: unknown[] = [];
+    visit(tree, 'image', (node) => {
+      images.push({ alt: node.alt, data: node.data });
+    });
+    expect(images).toEqual([
+      { alt: 'a.png', data: { hProperties: { width: 300 } } },
+      { alt: 'b.png', data: { hProperties: { width: 300, height: 200 } } },
+      ...['c.png', 'd.png', 'e.png', 'f.png'].map((alt) => ({
+        alt,
+        data: { hProperties: undefined },
+      })),
+    ]);
+    expect(nodeText(tree)).toBe(
+      'Antes a.png b.png c.png d.png e.png f.png depois',
+    );
+  });
   it('recognizes raster embeds but leaves escapes, code, YAML and other transclusions alone', () => {
     const tree = preview(
       '---\nimage: "![[hidden.png]]"\n---\n![[assets/Órbita.png|300]] ![[other.JPG]] ![[note#^id]] ![[a.svg]] \\![[escaped.png]] &#33;[[entity.png]] `![[code.png]]`\n\n[![Linked](a.png)](https://example.org)',

@@ -182,7 +182,7 @@ def main():
             image_bytes = (Path(__file__).resolve().parents[1] / 'tests/fixtures/images/pixels.png').read_bytes()
             (vault / 'assets').mkdir()
             (vault / 'assets/pixels.png').write_bytes(image_bytes)
-            image_note = blocks + b'\r\n![Native image](../assets/pixels.png)\r\n\r\n![[pixels.png]]\r\n'
+            image_note = blocks + b'\r\n![Native image](../assets/pixels.png)\r\n\r\n![[pixels.png|96x48]]\r\n'
             (vault / 'Folder/Moved.md').write_bytes(image_note)
             wait('return document.body.innerText.includes("Show image: Native image")')
             assert execute("""return document.querySelectorAll('section[aria-label="Markdown preview"] img').length === 0""")
@@ -194,6 +194,7 @@ def main():
             wait("""return document.querySelectorAll('section[aria-label="Markdown preview"] img').length === 0""")
             click('Show image: pixels.png')
             wait("""const img = document.querySelector('section[aria-label="Markdown preview"] img'); return img?.complete && img.naturalWidth === 2 && img.alt === 'pixels.png'""")
+            assert execute("""const img = document.querySelector('section[aria-label="Markdown preview"] img'); return img.getAttribute('width') === '96' && img.getAttribute('height') === '48';""")
             click('Hide image: pixels.png')
             checks += ['local PNG attachment crosses daemon IPC and renders on demand under the native CSP without changing vault bytes']
             (vault / 'Folder/Moved.md').write_bytes(external)

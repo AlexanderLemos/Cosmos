@@ -1,4 +1,4 @@
-import { imageTarget, resolveImageTarget } from '@cosmos/core';
+import { type ImageSize, imageTarget, resolveImageTarget } from '@cosmos/core';
 import { imageMediaType } from '@cosmos/fs/images';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -10,11 +10,13 @@ export function LocalImage({
   alt,
   from,
   vault,
+  size,
 }: {
   src: string;
   alt: string;
   from: string;
   vault: OpenVault;
+  size?: ImageSize;
 }) {
   const { t } = useTranslation();
   const target = imageTarget(src);
@@ -84,6 +86,8 @@ export function LocalImage({
         <img
           src={url}
           alt={name}
+          width={size?.width}
+          height={size?.height}
           onError={() => {
             hide();
             setError('imageFailed');

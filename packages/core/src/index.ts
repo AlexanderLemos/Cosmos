@@ -6,7 +6,12 @@ import { unified } from 'unified';
 import { visit } from 'unist-util-visit';
 import { imageTarget } from './images';
 
-export { imageTarget, resolveImageTarget } from './images';
+export {
+  type ImageSize,
+  imageSize,
+  imageTarget,
+  resolveImageTarget,
+} from './images';
 
 export {
   headingId,

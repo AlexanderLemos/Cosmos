@@ -3,6 +3,7 @@ import { toString as nodeText } from 'mdast-util-to-string';
 import remarkFrontmatter from 'remark-frontmatter';
 import remarkGfm from 'remark-gfm';
 import { blockId, remarkBlocks } from './blocks';
+import { imageSize } from './images';
 import { resolveNoteLink } from './index';
 
 export function headingSlug(text: string): string {
@@ -70,6 +71,12 @@ function remarkPreview() {
                   type: 'image',
                   url: `cosmos-image:${encodeURIComponent(target.trim())}`,
                   alt: target.trim(),
+                  data: {
+                    hProperties:
+                      alias.length === 1
+                        ? imageSize(alias[0] ?? '')
+                        : undefined,
+                  },
                 }
               : {
                   type: 'link',

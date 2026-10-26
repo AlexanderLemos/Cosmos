@@ -1,5 +1,31 @@
 import { expect, test } from 'vitest';
-import { imageTarget, resolveImageTarget } from './images';
+import { imageSize, imageTarget, resolveImageTarget } from './images';
+
+test('Obsidian image sizes accept only bounded positive pixel dimensions', () => {
+  expect(imageSize('300')).toEqual({ width: 300 });
+  expect(imageSize('300x200')).toEqual({ width: 300, height: 200 });
+  expect(imageSize('1x4096')).toEqual({ width: 1, height: 4096 });
+  for (const value of [
+    '',
+    '0',
+    '01',
+    '-1',
+    '1.5',
+    '300%',
+    '300px',
+    '300x0',
+    '300x',
+    'x300',
+    '300x200x100',
+    '4097',
+    '1x4097',
+    '999999999',
+    '300;display:none',
+    ' 300 ',
+    '300X200',
+  ])
+    expect(imageSize(value), value).toBeUndefined();
+});
 
 test('only local raster references can request bytes; wiki filenames decode once', () => {
   for (const url of [

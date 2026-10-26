@@ -1,4 +1,9 @@
-import { previewFragmentId, previewLink, previewPlugins } from '@cosmos/core';
+import {
+  imageSize,
+  previewFragmentId,
+  previewLink,
+  previewPlugins,
+} from '@cosmos/core';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Markdown, { defaultUrlTransform } from 'react-markdown';
@@ -35,13 +40,24 @@ export function MarkdownPreview({
   const root = useRef<HTMLElement>(null);
   const [missing, setMissing] = useState(false);
   const renderImage = useCallback(
-    ({ src = '', alt = '' }: { src?: string; alt?: string }) => (
+    ({
+      src = '',
+      alt = '',
+      width,
+      height,
+    }: {
+      src?: string;
+      alt?: string;
+      width?: number | string;
+      height?: number | string;
+    }) => (
       <LocalImage
         key={`${path}:${src}`}
         src={src}
         alt={alt}
         from={path}
         vault={vault}
+        size={imageSize(`${width}${height === undefined ? '' : `x${height}`}`)}
       />
     ),
     [path, vault],

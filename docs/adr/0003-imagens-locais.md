@@ -8,6 +8,10 @@ embeds Obsidian raster. O usuário solicita cada imagem explicitamente. Imagens
 remotas, SVG e transclusões de notas não são habilitados por esse incremento.
 O texto original nunca é reserializado; a transformação ocorre somente na árvore
 de exibição. Imagens dentro de links usam seu texto alternativo como rótulo.
+Dimensões em embeds Obsidian são interpretadas como números inteiros entre 1 e
+4096 pixels CSS; valores inválidos são ignorados. Largura isolada preserva a
+proporção, e largura/altura formam uma caixa com `object-fit: contain`, limitada
+pelo painel/janela. Não se aceita CSS arbitrário nem se altera o arquivo da imagem.
 
 O daemon recebe os comandos tipados `list_images` e `read_image`; seus schemas e
 tipos TS são gerados a partir do Rust. A API de cofre versão 2 é conferida pelo

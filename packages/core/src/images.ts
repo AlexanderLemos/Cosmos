@@ -1,4 +1,15 @@
 export type ImageTarget = { path: string; wiki: boolean };
+export type ImageSize = { width: number; height?: number };
+
+/** Obsidian embed sizes are bounded CSS pixels, never CSS expressions or URLs. */
+export function imageSize(value: string): ImageSize | undefined {
+  const match = /^([1-9]\d{0,3})(?:x([1-9]\d{0,3}))?$/.exec(value);
+  if (!match) return;
+  const width = Number(match[1]);
+  const height = match[2] ? Number(match[2]) : undefined;
+  if (width > 4096 || (height !== undefined && height > 4096)) return;
+  return height === undefined ? { width } : { width, height };
+}
 
 /** Decode only local raster references; never reinterpret a URL as a vault path. */
 export function imageTarget(url: string): ImageTarget | undefined {
