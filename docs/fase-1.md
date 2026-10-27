@@ -673,6 +673,13 @@ seleção da mesma origem. Isso evita liberar a seleção antes das leituras
 assíncronas; a relação com os timeouts anteriores precisa ser conferida na CI.
 Evidências de futuras falhas Web passam a ser preservadas como artefatos por sete dias.
 
+A CI de `9aeb7e3` confirmou PDFs em Firefox/WebKit e os dois cenários de pasta
+no WebKit. Encontrou duas corridas no Chromium: o teste novo digitava antes de o
+editor ficar editável, e a busca permitia digitar enquanto a atualização da lista
+ainda podia limpar a consulta. O teste agora espera o editor e confirma o rascunho
+antes de abrir o PDF; o campo de busca fica desabilitado durante operações, assim
+como o botão. A validação desses ajustes acompanha o commit seguinte.
+
 ## Fechamento ainda necessário
 
 - Live preview no CodeMirror, anexos além das imagens raster e PDFs sob demanda,

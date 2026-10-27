@@ -379,6 +379,7 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
                   {t('search')}
                   <input
                     value={query}
+                    disabled={busy}
                     onChange={(e) => setQuery(e.target.value)}
                   />
                 </label>

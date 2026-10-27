@@ -51,8 +51,10 @@ test('local PDFs open on demand with page navigation, text and keyboard focus wh
     .getByRole('button', { name: 'Folder/Nota.md' })
     .click();
   const editor = page.locator('.cm-content');
+  await expect(editor).toHaveAttribute('contenteditable', 'true');
   await editor.press('ControlOrMeta+End');
   await editor.pressSequentially('Rascunho PDF');
+  await expect(editor).toContainText('Rascunho PDF');
   await page
     .getByRole('button', { name: 'Edição e leitura', exact: true })
     .click();
