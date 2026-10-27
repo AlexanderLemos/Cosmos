@@ -4,6 +4,7 @@ import remarkParse from 'remark-parse';
 import { unified } from 'unified';
 import { visit } from 'unist-util-visit';
 import { describe, expect, it } from 'vitest';
+import { noteLinks } from './index';
 import {
   headingId,
   previewFragmentId,
@@ -17,6 +18,21 @@ function preview(source: string): Root {
 }
 
 describe('read-only Markdown preview', () => {
+  it('turns PDF links and embeds into local reader actions, excluding code and escapes', () => {
+    const source =
+      '[[Manual.pdf|Manual]] ![[Manual.pdf#page=2|Página]] [PDF](Manual.pdf) [[Nota]] `![[code.pdf]]` \\![[escaped.pdf]]';
+    const urls: string[] = [];
+    visit(preview(source), 'link', (node) => {
+      urls.push(node.url);
+    });
+    expect(urls).toEqual([
+      'cosmos-pdf:Manual.pdf',
+      'cosmos-pdf:Manual.pdf%23page%3D2',
+      'Manual.pdf',
+      'cosmos-note:Nota',
+    ]);
+    expect(noteLinks(source)).toEqual(['Nota']);
+  });
   it('keeps text surrounding image embeds and does not also create a note link', () => {
     const tree = preview('Antes ![[foto.png]] depois [[Nota]] fim.');
     expect(nodeText(tree)).toBe('Antes foto.png depois Nota fim.');

@@ -1,5 +1,6 @@
 import {
   imageSize,
+  pdfTarget,
   previewFragmentId,
   previewLink,
   previewPlugins,
@@ -9,6 +10,7 @@ import { useTranslation } from 'react-i18next';
 import Markdown, { type Components, defaultUrlTransform } from 'react-markdown';
 import { LocalImage } from './LocalImage';
 import styles from './MarkdownPreview.module.css';
+import { PdfDialog } from './PdfDialog';
 import type { OpenVault } from './vault';
 
 const CalloutDiv: NonNullable<Components['div']> = ({
@@ -66,6 +68,7 @@ export function MarkdownPreview({
   const { t } = useTranslation();
   const root = useRef<HTMLElement>(null);
   const [missing, setMissing] = useState(false);
+  const [pdf, setPdf] = useState<{ src: string; path: string } | null>(null);
   const renderImage = useCallback(
     ({
       src = '',
@@ -132,7 +135,9 @@ export function MarkdownPreview({
           skipHtml
           remarkPlugins={previewPlugins}
           urlTransform={(url) =>
-            url.startsWith('cosmos-note:') || url.startsWith('cosmos-image:')
+            url.startsWith('cosmos-note:') ||
+            url.startsWith('cosmos-image:') ||
+            url.startsWith('cosmos-pdf:')
               ? url
               : defaultUrlTransform(url)
           }
@@ -140,6 +145,17 @@ export function MarkdownPreview({
             div: CalloutDiv,
             summary: CalloutSummary,
             a: ({ href = '', children }) => {
+              if (pdfTarget(href))
+                return (
+                  <button
+                    type="button"
+                    data-pdf={href}
+                    disabled={busy || !vault.readPdf || !vault.pdfPaths}
+                    onClick={() => setPdf({ src: href, path })}
+                  >
+                    {t('openPdf')}: {children}
+                  </button>
+                );
               const target = previewLink(href, path, paths);
               if (target.kind === 'external' && !externalLinks)
                 return (
@@ -186,6 +202,27 @@ export function MarkdownPreview({
         >
           {content}
         </Markdown>
+      )}
+      {pdf?.path === path && (
+        <PdfDialog
+          key={`${path}:${pdf.src}`}
+          src={pdf.src}
+          from={path}
+          vault={vault}
+          onClose={() => {
+            const href = pdf.src;
+            setPdf(null);
+            requestAnimationFrame(() => {
+              Array.from(
+                root.current?.querySelectorAll<HTMLButtonElement>(
+                  'button[data-pdf]',
+                ) ?? [],
+              )
+                .find((button) => button.dataset.pdf === href)
+                ?.focus();
+            });
+          }}
+        />
       )}
     </section>
   );

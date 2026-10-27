@@ -80,6 +80,31 @@
         },
         "kind": {
           "type": "string",
+          "const": "pdf"
+        },
+        "media_type": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "path",
+        "media_type",
+        "data_base64"
+      ]
+    },
+    {
+      "type": "object",
+      "properties": {
+        "data_base64": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string",
           "const": "image"
         },
         "media_type": {

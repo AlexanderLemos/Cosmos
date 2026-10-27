@@ -13,9 +13,21 @@ export function imageSize(value: string): ImageSize | undefined {
 
 /** Decode only local raster references; never reinterpret a URL as a vault path. */
 export function imageTarget(url: string): ImageTarget | undefined {
+  return localAttachmentTarget(
+    url,
+    'cosmos-image:',
+    /\.(png|jpe?g|gif|webp)$/i,
+  );
+}
+
+export function localAttachmentTarget(
+  url: string,
+  prefix: string,
+  extension: RegExp,
+): ImageTarget | undefined {
   try {
-    const wiki = url.startsWith('cosmos-image:');
-    const raw = wiki ? url.slice('cosmos-image:'.length) : url;
+    const wiki = url.startsWith(prefix);
+    const raw = wiki ? url.slice(prefix.length) : url;
     if (!wiki && /[?#]/.test(raw)) return;
     const path = decodeURIComponent(raw);
     if (
@@ -30,7 +42,7 @@ export function imageTarget(url: string): ImageTarget | undefined {
       )
     )
       return;
-    if (!/\.(png|jpe?g|gif|webp)$/i.test(path)) return;
+    if (!extension.test(path)) return;
     return { path, wiki };
   } catch {
     return;

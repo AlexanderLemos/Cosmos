@@ -1,0 +1,40 @@
+.dialog {
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  width: min(60rem, calc(100vw - 3rem));
+  max-height: calc(100vh - 3rem);
+  padding: 1rem;
+  overflow: auto;
+}
+.dialog::backdrop {
+  background: rgb(0 0 0 / 65%);
+}
+.toolbar {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+.toolbar strong {
+  overflow-wrap: anywhere;
+}
+.canvas {
+  max-width: 100%;
+  height: auto;
+  background: white;
+}
+.text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+}
+.dialog summary {
+  cursor: pointer;
+}
+.dialog summary:focus-visible {
+  outline: 2px solid var(--orichalcum);
+  outline-offset: 3px;
+}

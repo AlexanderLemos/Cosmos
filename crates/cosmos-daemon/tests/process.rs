@@ -87,6 +87,7 @@ fn handshake_rejects_daemons_without_the_current_vault_api() {
     for version in [
         serde_json::Value::Null,
         serde_json::json!(1),
+        serde_json::json!(2),
         serde_json::json!(999),
     ] {
         let temp = tempfile::tempdir().unwrap();

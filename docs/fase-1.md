@@ -53,6 +53,10 @@ foram aprovadas implicitamente pelo avanço da implementação.
 - **Rascunhos locais:** cópias automáticas no perfil do navegador/WebView, com
   confirmação visível da proteção. Reabrir o cofre oferece recuperar, baixar ou
   excluir cada cópia. A recuperação não grava no cofre e mantém o rascunho original.
+- **PDFs locais:** links Markdown e referências/embeds Obsidian oferecem **Abrir
+  PDF** no Web/Desktop, com navegação por páginas, `#page=N` e texto extraído.
+  Leitura sob demanda, até 16 MiB e 2.000 páginas; sem modificar notas ou anexos.
+  PDFs com senha e recursos avançados ainda têm limitações descritas abaixo.
 - **Organização:** caminhos `Universos/<universo>/<galáxia>/nota.md`; criação de
   pastas sob demanda. A navegação inicial é uma lista de caminhos, não o Firmamento.
 - **Projetos Desktop:** seis documentos (`context`, `requirements`, `architecture`,
@@ -280,9 +284,10 @@ a diferença. Permanecem os limites de 10 mil arquivos e 256 MiB da seleção or
 A árvore de renderização nunca é gravada sobre o Markdown. Frontmatter YAML fica
 preservado no editor e não aparece na leitura; tags/blocos HTML e comentários são
 omitidos, sem execução. Imagens locais compatíveis têm visualização sob demanda;
-embeds de notas e outros formatos permanecem literais. Não há carregamento
+embeds de PDFs locais oferecem abertura no leitor; embeds de notas e outros
+formatos permanecem literais. Não há carregamento
 automático de recursos locais ou remotos. Links ativos têm
-alvos restritos a notas listadas ou HTTP/HTTPS/mailto explícitos. Na Web, links
+alvos restritos a notas listadas, PDFs locais ou HTTP/HTTPS/mailto explícitos. Na Web, links
 externos abrem uma aba sem acesso à janela de origem; no Desktop, o endereço é
 exibido como texto até existir abertura pelo navegador com permissão específica.
 
@@ -410,6 +415,28 @@ Uma imagem dentro de um link vira seu texto alternativo na leitura para evitar
 controles interativos aninhados. O limite é de bytes por arquivo, não de pixels
 decodificados ou memória total das imagens que o usuário abrir. Listar caminhos
 ainda percorre o cofre a cada solicitação; cache e ensaios de cofres grandes pendem.
+
+## PDFs locais — 2026-10-27
+
+`[Manual](assets/manual.pdf)`, `[[manual.pdf|Manual]]` e `![[manual.pdf]]`
+oferecem **Abrir PDF**. O leitor funciona offline dentro do Web/Desktop, com
+botões de página anterior/próxima, fechamento por Escape/botão e texto extraído
+selecionável. `#page=2` abre diretamente a segunda página. Ausência, ambiguidade,
+arquivo inválido, tamanho excessivo e página inexistente são informados.
+A nota, seu histórico de edição e os rascunhos permanecem disponíveis ao fechar.
+
+O arquivo é lido somente ao clicar; fechar/reabrir consulta os bytes atuais.
+Limites: 16 MiB, 2.000 páginas, uma página renderizada por vez até 1.200×1.600
+pixels e 250 mil caracteres de texto extraído por página. PDFs com senha, OCR,
+zoom, impressão, formulários e anotações interativas ainda não são suportados.
+Certos encodings/fontes e imagens JPEG 2000 podem não renderizar completamente;
+o leitor inicial não inclui todos os recursos do PDF.js. Não executa scripts
+do PDF nem busca o documento em serviços externos. A leitura passa pelo daemon
+no Desktop e não altera Markdown, anexos ou journal.
+
+**Atualização Desktop:** a API do cofre passa a 3; encerre o daemon antigo antes
+de abrir esta versão. Protocolo 1 e banco v3 permanecem, sem migração.
+Decisões, licença e limites estão na [ADR 0007](adr/0007-leitor-pdf-local.md).
 
 ## Alterações externas no Desktop
 
@@ -629,11 +656,27 @@ produção, incluindo dimensões diretas/por referência/em tabelas, descriçõe
 acessíveis, valores inválidos, painel estreito, exportação com bytes idênticos,
 carregamento sob demanda e cancelamento. O smoke Tauri Linux também passou com
 as dimensões Markdown diretas e por referência, preservando os arquivos do cofre.
-A CI executa a suíte completa nos três sistemas após a publicação.
+A CI de `1181857` passou em Windows/macOS e nos cenários de imagens dos três
+navegadores, mas ficou com 128/129 testes Web nas duas tentativas: timeouts em
+seleção de pasta no WebKit (retomada na primeira, importação na segunda).
+
+Validação do leitor PDF (2026-10-27): `pnpm check` passou com 47 testes unitários,
+tipos, lint e schemas; builds Web/Desktop, Tauri debug, Clippy e testes Rust do
+workspace passaram. Passaram 45 E2E Chromium contra o build de produção,
+incluindo páginas, texto, acessibilidade, foco, cancelamento, encerramento do
+worker e bytes exatos no ZIP. O smoke Tauri Linux confirmou leitura pelo daemon,
+worker sob a CSP nativa e navegação por página sem alterar o cofre.
+Firefox/WebKit são verificados na CI; a instalação local do WebKit foi bloqueada
+pela política de rede do ambiente. A seleção nativa de pasta/ZIP agora permanece
+ativa até a operação terminar, sendo limpa no `finally` para permitir nova
+seleção da mesma origem. Isso evita liberar a seleção antes das leituras
+assíncronas; a relação com os timeouts anteriores precisa ser conferida na CI.
+Evidências de futuras falhas Web passam a ser preservadas como artefatos por sete dias.
 
 ## Fechamento ainda necessário
 
-- Live preview no CodeMirror, anexos além das imagens raster sob demanda,
+- Live preview no CodeMirror, anexos além das imagens raster e PDFs sob demanda,
+  recursos avançados do leitor PDF,
   transclusão/autocompletar de blocos, compatibilidade avançada de títulos/wikilinks, títulos formatados e
   personalização de callouts, e inventário maior de fixtures Obsidian. A leitura
   separada e a visão dividida já funcionam; não equivalem a todos os recursos do Obsidian.

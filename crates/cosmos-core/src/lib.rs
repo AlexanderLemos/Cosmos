@@ -198,6 +198,7 @@ impl RuntimeInfo {
                 "vault.restore",
                 "vault.watch",
                 "vault.images",
+                "vault.pdfs",
                 "projects.create",
             ]
             .map(String::from)

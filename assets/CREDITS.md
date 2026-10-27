@@ -11,6 +11,16 @@ de compartilhamento de dados derivados antes de incorporar; não tratá-lo como 
 
 A licença MIT do COSMOS não relicencia dependências nem assets de terceiros.
 
+O leitor usa [PDF.js 6.4.299](https://github.com/mozilla/pdf.js), da Mozilla
+Foundation e contribuidores, sob Apache-2.0. Parser e worker são distribuídos
+localmente sem alterações no código da biblioteca; a licença acompanha os builds
+Web/Desktop em `licenses/pdfjs-LICENSE.txt` (fonte em `assets/public/licenses`).
+Não incluímos os pacotes de fontes, CMaps ou codecs Wasm opcionais.
+A fixture `tests/fixtures/pdfs/two-pages.pdf` é sintética, criada para o COSMOS
+com Python padrão: duas páginas de texto, referência à fonte padrão Helvetica
+(sem incorporar fonte) e uma ação JavaScript inerte para verificar que o leitor
+não a executa. Sua licença é MIT, como o código do repositório.
+
 | Arquivo                                                     | Autor / fonte                                   | Licença                      | Uso                                                                                                                       |
 | ----------------------------------------------------------- | ----------------------------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
 | `img/cosmos-foundation.svg` e PNG/ICO/ICNS derivados        | COSMOS contributors, geometria original         | MIT (LICENSE do repositório) | Ícone provisório exigido pelo build Tauri; não é a identidade visual final                                                |

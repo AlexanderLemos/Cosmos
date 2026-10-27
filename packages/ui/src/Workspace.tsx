@@ -659,19 +659,24 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
                       {...{ webkitdirectory: '' }}
                       disabled={busy}
                       onChange={(e) => {
-                        const files = Array.from(e.target.files ?? []);
-                        e.target.value = '';
+                        const input = e.currentTarget;
+                        const files = Array.from(input.files ?? []);
+                        if (!files.length) return;
                         void run(async () => {
-                          if (!files.length) return;
-                          const result = await vault.importFiles?.(files, {
-                            resume: resumeImport,
-                          });
-                          await refresh(vault);
-                          if (result)
-                            setImportResult({
-                              ...result,
-                              resumed: resumeImport,
+                          try {
+                            const result = await vault.importFiles?.(files, {
+                              resume: resumeImport,
                             });
+                            await refresh(vault);
+                            if (result)
+                              setImportResult({
+                                ...result,
+                                resumed: resumeImport,
+                              });
+                          } finally {
+                            // Keep the native selection alive throughout asynchronous reads.
+                            input.value = '';
+                          }
                         });
                       }}
                     />
@@ -686,19 +691,23 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
                       accept=".zip,application/zip"
                       disabled={busy}
                       onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        e.target.value = '';
+                        const input = e.currentTarget;
+                        const file = input.files?.[0];
                         if (file)
                           void run(async () => {
-                            const result = await vault.importZip?.(file, {
-                              resume: resumeImport,
-                            });
-                            await refresh(vault);
-                            if (result)
-                              setImportResult({
-                                ...result,
-                                resumed: resumeImport,
+                            try {
+                              const result = await vault.importZip?.(file, {
+                                resume: resumeImport,
                               });
+                              await refresh(vault);
+                              if (result)
+                                setImportResult({
+                                  ...result,
+                                  resumed: resumeImport,
+                                });
+                            } finally {
+                              input.value = '';
+                            }
                           });
                       }}
                     />

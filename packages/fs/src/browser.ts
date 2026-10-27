@@ -19,6 +19,7 @@ import {
   RevisionConflict,
   type VaultFS,
 } from './index';
+import { MAX_PDF_BYTES, validatePdf } from './pdfs';
 
 export const MAX_NOTE_BYTES = 8 * 1024 * 1024;
 export function validatePath(path: string) {
@@ -155,7 +156,25 @@ export class BrowserVaultFS implements VaultFS {
       rev: await rev(bytes),
     };
   }
+  async pdfPaths(): Promise<string[]> {
+    return this.binaryPaths((path) => /\.pdf$/i.test(path));
+  }
+  async readPdf(path: string): Promise<Uint8Array<ArrayBuffer>> {
+    validatePath(path);
+    if (excludedImagePath(path)) throw new Error('INVALID_PATH');
+    if (!/\.pdf$/i.test(path)) throw new Error('UNSUPPORTED_PDF');
+    const file = await this.file(path);
+    if (file.size > MAX_PDF_BYTES) throw new Error('PDF_TOO_LARGE');
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    validatePdf(path, bytes);
+    return bytes;
+  }
   async imagePaths(): Promise<string[]> {
+    return this.binaryPaths((path) => !!imageExtension(path));
+  }
+  private async binaryPaths(
+    accept: (path: string) => boolean,
+  ): Promise<string[]> {
     const paths: string[] = [];
     const walk = async (dir: string) => {
       for (const entry of await this.list(dir)) {
@@ -166,7 +185,7 @@ export class BrowserVaultFS implements VaultFS {
           continue;
         }
         if (entry.kind === 'directory') await walk(entry.path);
-        else if (imageExtension(entry.path)) paths.push(entry.path);
+        else if (accept(entry.path)) paths.push(entry.path);
       }
     };
     await walk('');

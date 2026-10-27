@@ -1,4 +1,5 @@
 import { imageMediaType, MAX_IMAGE_BYTES } from '@cosmos/fs/images';
+import { MAX_PDF_BYTES, validatePdf } from '@cosmos/fs/pdfs';
 import type { VaultCommandContract, VaultReplyContract } from '@cosmos/schemas';
 import type { VaultPlatform } from '@cosmos/ui';
 import { invoke } from '@tauri-apps/api/core';
@@ -32,6 +33,25 @@ export const platform: VaultPlatform = {
         const result = await command({ op: 'read', path });
         if (result.kind !== 'note') throw new Error('INVALID_RESPONSE');
         return { ...result, canOrganize: result.can_organize };
+      },
+      pdfPaths: async () => {
+        const result = await command({ op: 'list_pdfs' });
+        if (result.kind !== 'paths') throw new Error('INVALID_RESPONSE');
+        return result.paths;
+      },
+      readPdf: async (path) => {
+        const result = await command({ op: 'read_pdf', path });
+        if (result.kind !== 'pdf' || result.path !== path)
+          throw new Error('INVALID_RESPONSE');
+        if (result.data_base64.length > 4 * Math.ceil(MAX_PDF_BYTES / 3))
+          throw new Error('PDF_TOO_LARGE');
+        const bytes = Uint8Array.from(atob(result.data_base64), (char) =>
+          char.charCodeAt(0),
+        );
+        validatePdf(path, bytes);
+        if (result.media_type !== 'application/pdf')
+          throw new Error('UNSUPPORTED_PDF');
+        return bytes;
       },
       imagePaths: async () => {
         const result = await command({ op: 'list_images' });

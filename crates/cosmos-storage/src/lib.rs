@@ -13,6 +13,7 @@ use std::{
 pub const MAX_NOTE_BYTES: usize = 8 * 1024 * 1024;
 pub const SCHEMA_VERSION: i64 = 3;
 mod images;
+mod pdfs;
 mod relocate;
 mod search;
 mod watch;
@@ -30,6 +31,10 @@ pub enum Error {
     TooLarge,
     #[error("IMAGE_TOO_LARGE")]
     ImageTooLarge,
+    #[error("PDF_TOO_LARGE")]
+    PdfTooLarge,
+    #[error("UNSUPPORTED_PDF")]
+    UnsupportedPdf,
     #[error("UNSUPPORTED_IMAGE")]
     UnsupportedImage,
     #[error("DESTINATION_EXISTS")]
@@ -316,6 +321,8 @@ impl Vault {
             &command,
             VaultCommand::Watch
                 | VaultCommand::List
+                | VaultCommand::ListPdfs
+                | VaultCommand::ReadPdf { .. }
                 | VaultCommand::ListImages
                 | VaultCommand::ReadImage { .. }
                 | VaultCommand::Read { .. }
@@ -330,6 +337,10 @@ impl Vault {
                 paths: self.list()?,
             }),
             VaultCommand::Read { path } => Ok(VaultReply::Note(self.read(&path)?)),
+            VaultCommand::ListPdfs => Ok(VaultReply::Paths {
+                paths: self.list_pdfs()?,
+            }),
+            VaultCommand::ReadPdf { path } => self.read_pdf(&path),
             VaultCommand::ListImages => Ok(VaultReply::Paths {
                 paths: self.list_images()?,
             }),

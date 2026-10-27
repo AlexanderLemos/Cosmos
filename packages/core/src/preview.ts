@@ -6,6 +6,7 @@ import { blockId, remarkBlocks } from './blocks';
 import { remarkCallouts } from './callouts';
 import { imageSize } from './images';
 import { resolveNoteLink } from './index';
+import { pdfTarget } from './pdfs';
 
 export function headingSlug(text: string): string {
   return text
@@ -83,15 +84,18 @@ function remarkPreview() {
           const [target, ...alias] = (match[1] ?? '').split('|');
           if (!target?.trim()) continue;
           const embed = match[0].startsWith('!');
-          // Note/PDF/SVG transclusions remain literal. Images never become direct URLs.
-          if (embed && !/\.(png|jpe?g|gif|webp)$/i.test(target.trim()))
+          const pdf = pdfTarget(
+            `cosmos-pdf:${encodeURIComponent(target.trim())}`,
+          );
+          // Note/SVG transclusions remain literal. Attachments never become direct URLs.
+          if (embed && !pdf && !/\.(png|jpe?g|gif|webp)$/i.test(target.trim()))
             continue;
           parts.push({
             type: 'text',
             value: child.value.slice(offset, match.index),
           });
           parts.push(
-            embed
+            embed && !pdf
               ? {
                   type: 'image',
                   url: `cosmos-image:${encodeURIComponent(target.trim())}`,
@@ -105,7 +109,7 @@ function remarkPreview() {
                 }
               : {
                   type: 'link',
-                  url: `cosmos-note:${encodeURIComponent(target.trim())}`,
+                  url: `${pdf ? 'cosmos-pdf:' : 'cosmos-note:'}${encodeURIComponent(target.trim())}`,
                   children: [
                     { type: 'text', value: alias.join('|') || target },
                   ],

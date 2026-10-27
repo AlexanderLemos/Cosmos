@@ -9,6 +9,7 @@
     "./browser": "./src/browser.ts",
     "./drafts": "./src/drafts.ts",
     "./images": "./src/images.ts",
+    "./pdfs": "./src/pdfs.ts",
     "./search": "./src/search.ts"
   },
   "scripts": {

@@ -45,3 +45,13 @@ jobs:
         run: |
           pnpm exec playwright install --with-deps chromium firefox webkit
           pnpm exec playwright test --reporter=github,list
+      - name: Preserve browser failure evidence
+        if: failure() && runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-failure-evidence
+          path: |
+            test-results/**/trace.zip
+            test-results/**/error-context.md
+          if-no-files-found: ignore
+          retention-days: 7

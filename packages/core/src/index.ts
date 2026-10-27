@@ -1,3 +1,5 @@
+export { pdfTarget } from './pdfs';
+
 import { toString as nodeText } from 'mdast-util-to-string';
 import remarkFrontmatter from 'remark-frontmatter';
 import remarkGfm from 'remark-gfm';
@@ -5,6 +7,7 @@ import remarkParse from 'remark-parse';
 import { unified } from 'unified';
 import { visit } from 'unist-util-visit';
 import { imageTarget } from './images';
+import { pdfTarget } from './pdfs';
 
 export {
   type ImageSize,
@@ -52,6 +55,11 @@ export function noteLinks(source: string): string[] {
       for (const match of node.value.matchAll(/(!?)\[\[([^\]\n]+)\]\]/g)) {
         const rawTarget = match[2]?.split('|')[0]?.trim();
         if (
+          rawTarget &&
+          pdfTarget(`cosmos-pdf:${encodeURIComponent(rawTarget)}`)
+        )
+          continue;
+        if (
           match[1] &&
           rawTarget &&
           imageTarget(`cosmos-image:${encodeURIComponent(rawTarget)}`)
@@ -62,6 +70,7 @@ export function noteLinks(source: string): string[] {
       }
     }
     if (node.type === 'link' && !/^[a-z][a-z\d+.-]*:/i.test(node.url)) {
+      if (pdfTarget(node.url)) return;
       const target = node.url.split('#')[0];
       if (target) {
         try {

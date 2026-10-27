@@ -60,7 +60,7 @@ def main():
             const done = arguments[arguments.length - 1];
             window.__TAURI_INTERNALS__.invoke('runtime_info').then(done).catch(error => done({error:String(error)}));
         ''', 'args': []})
-        assert runtime == {'protocol_version': 1, 'application_version': '0.0.0', 'capabilities': ['vault.read', 'vault.write', 'vault.search', 'vault.move', 'vault.trash', 'vault.restore', 'vault.watch', 'vault.images', 'projects.create']}, runtime
+        assert runtime == {'protocol_version': 1, 'application_version': '0.0.0', 'capabilities': ['vault.read', 'vault.write', 'vault.search', 'vault.move', 'vault.trash', 'vault.restore', 'vault.watch', 'vault.images', 'vault.pdfs', 'projects.create']}, runtime
         if args.evidence_dir:
             args.evidence_dir.mkdir(parents=True, exist_ok=True)
             (args.evidence_dir / 'desktop.png').write_bytes(base64.b64decode(request('GET', session + '/screenshot')))
@@ -203,6 +203,24 @@ def main():
             click('Hide image: Native reference')
             assert (vault / 'Folder/Moved.md').read_bytes() == image_note
             checks += ['local PNG attachment crosses daemon IPC and renders on demand under the native CSP without changing vault bytes']
+            pdf_bytes = (Path(__file__).resolve().parents[1] / 'tests/fixtures/pdfs/two-pages.pdf').read_bytes()
+            (vault / 'assets/manual.pdf').write_bytes(pdf_bytes)
+            pdf_note = blocks + b'\r\n[Manual PDF](../assets/manual.pdf)\r\n\r\n![[manual.pdf#page=2|Second PDF page]]\r\n'
+            (vault / 'Folder/Moved.md').write_bytes(pdf_note)
+            wait('return document.body.innerText.includes("Open PDF: Manual PDF")')
+            click('Open PDF: Manual PDF')
+            wait("""return !!document.querySelector('dialog[open] canvas:not([hidden])')""")
+            assert execute("""return document.querySelector('dialog').textContent.includes('Page 1 of 2')""")
+            click('Next page')
+            wait("""return document.querySelector('dialog').textContent.includes('COSMOS PDF second page')""")
+            click('Close PDF')
+            wait("return !document.querySelector('dialog')")
+            click('Open PDF: Second PDF page')
+            wait("""return !!document.querySelector('dialog canvas:not([hidden])') && document.querySelector('dialog').textContent.includes('Page 2 of 2')""")
+            click('Close PDF')
+            assert (vault / 'Folder/Moved.md').read_bytes() == pdf_note
+            assert (vault / 'assets/manual.pdf').read_bytes() == pdf_bytes
+            checks += ['PDF pages render through daemon IPC with local worker, page links and original bytes preserved']
             callouts = blocks + b'\r\n> [!note]- Native callout\r\n>\r\n> > [!tip]- Nested callout\r\n> > Hidden native body. ^hidden\r\n\r\n[[#^hidden|Reveal callout]]\r\n'
             (vault / 'Folder/Moved.md').write_bytes(callouts)
             wait("""return document.querySelector('summary')?.textContent === 'Native callout'""")

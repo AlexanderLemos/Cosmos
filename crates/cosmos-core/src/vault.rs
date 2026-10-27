@@ -2,13 +2,17 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-pub const VAULT_API_VERSION: u32 = 2;
+pub const VAULT_API_VERSION: u32 = 3;
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "op", rename_all = "snake_case", deny_unknown_fields)]
 pub enum VaultCommand {
     List,
     Watch,
+    ListPdfs,
+    ReadPdf {
+        path: String,
+    },
     ListImages,
     ReadImage {
         path: String,
@@ -70,6 +74,11 @@ pub enum VaultReply {
         available: bool,
     },
     Note(Note),
+    Pdf {
+        path: String,
+        media_type: String,
+        data_base64: String,
+    },
     Image {
         path: String,
         media_type: String,
