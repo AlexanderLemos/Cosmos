@@ -51,3 +51,32 @@ export class ImportConflict extends Error {
     super(`IMPORT_CONFLICT: ${path}`);
   }
 }
+
+export interface ImportHeader {
+  format: 1;
+  id: string;
+  scope: string;
+  source: string;
+  version: string;
+  createdAt: number;
+  updatedAt: number;
+  total: number;
+  imported: number;
+  skipped: number;
+  current?: string;
+}
+export interface ImportEntry {
+  path: string;
+  size: number;
+  rev: string;
+  state: 'pending' | 'kept' | 'writing' | 'written';
+}
+export interface ImportReport {
+  header: ImportHeader;
+  entries: ImportEntry[];
+}
+export interface ImportHistory {
+  list(): Promise<ImportHeader[]>;
+  read(id: string, version: string): Promise<ImportReport>;
+  forget(id: string, version: string): Promise<void>;
+}

@@ -29,6 +29,25 @@ export const resources = {
         'O navegador pode omitir arquivos ocultos. Para preservar .obsidian, use ZIP.',
       imported: 'Importação concluída sem alterar os originais.',
       resumeImport: 'Retomar importação',
+      pendingImports: 'Importações pendentes',
+      pendingImportsHint:
+        'Confira o progresso registrado e selecione novamente a origem com Retomar importação. O relatório contém caminhos e verificações dos arquivos, sem o conteúdo das notas.',
+      refreshImports: 'Atualizar importações',
+      checkingImports: 'Consultando importações…',
+      noPendingImports: 'Nenhuma importação pendente registrada.',
+      importProgress:
+        'Confirmados: {{imported}} · Idênticos mantidos: {{skipped}} · Sem confirmação: {{remaining}}',
+      importUnconfirmedPath: 'Última tentativa sem confirmação: {{path}}',
+      downloadImportReport: 'Baixar relatório da importação',
+      forgetImportRecord: 'Esquecer registro',
+      forgetImportPrompt:
+        'Esquecer este registro de progresso? Os arquivos do cofre serão mantidos. Baixe o relatório antes se quiser guardar esses detalhes.',
+      importRecordChanged:
+        'O registro da importação mudou ou já foi concluído. Atualize a lista antes de tentar novamente.',
+      importRecordLimit:
+        'Há 20 registros pendentes neste cofre. Confira e baixe os relatórios antes de esquecer registros antigos para iniciar outra importação.',
+      importHistoryUnavailable:
+        'Não foi possível acessar ou atualizar os registros de importação. Confira as importações pendentes e o armazenamento do navegador antes de tentar novamente.',
       resumeImportHint:
         'Selecione novamente o ZIP ou a pasta de origem. Arquivos idênticos serão mantidos; diferenças impedem a retomada.',
       importResumed:
@@ -201,6 +220,25 @@ export const resources = {
         'Your browser may omit hidden files. Use ZIP to preserve .obsidian.',
       imported: 'Import complete without changing the originals.',
       resumeImport: 'Resume import',
+      pendingImports: 'Pending imports',
+      pendingImportsHint:
+        'Review the recorded progress and select the source again with Resume import. Reports contain paths and file checks, without note contents.',
+      refreshImports: 'Refresh imports',
+      checkingImports: 'Checking imports…',
+      noPendingImports: 'No pending import recorded.',
+      importProgress:
+        'Confirmed: {{imported}} · Identical files kept: {{skipped}} · Unconfirmed: {{remaining}}',
+      importUnconfirmedPath: 'Last unconfirmed attempt: {{path}}',
+      downloadImportReport: 'Download import report',
+      forgetImportRecord: 'Forget record',
+      forgetImportPrompt:
+        'Forget this progress record? Vault files will be kept. Download the report first if you want to retain these details.',
+      importRecordChanged:
+        'The import record changed or was already completed. Refresh the list before trying again.',
+      importRecordLimit:
+        'This vault has 20 pending records. Review and download reports before forgetting old records to start another import.',
+      importHistoryUnavailable:
+        'Import records could not be accessed or updated. Check pending imports and browser storage before trying again.',
       resumeImportHint:
         'Select the source ZIP or folder again. Identical files will be kept; differences prevent resuming.',
       importResumed:

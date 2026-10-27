@@ -269,3 +269,22 @@
 .importResume small {
   grid-column: 1 / -1;
 }
+
+.importRecovery {
+  border-top: 1px solid var(--line);
+  padding-top: 0.75rem;
+  overflow-wrap: anywhere;
+  font-size: 0.8rem;
+}
+.importRecovery h2,
+.importRecovery h3 {
+  font-size: 0.85rem;
+}
+.importRecovery article {
+  margin-top: 0.75rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--line);
+}
+.importRecovery button {
+  margin: 0.2rem 0;
+}

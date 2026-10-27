@@ -1,15 +1,18 @@
 /// <reference path="./browser-types.d.ts" />
 import { unzipSync, zipSync } from 'fflate';
+import { directoryDraftScope } from './drafts';
 import {
   excludedImagePath,
   imageExtension,
   imageMediaType,
   MAX_IMAGE_BYTES,
 } from './images';
+import { importJournal } from './import-journal';
 import {
   type Entry,
   type FsEvent,
   ImportConflict,
+  type ImportEntry,
   type ImportOptions,
   type ImportResult,
   RevisionConflict,
@@ -76,7 +79,7 @@ export class BrowserVaultFS implements VaultFS {
   capabilities() {
     return { realFolder: this.realFolder, memoryWritable: false, git: false };
   }
-  private lock<T>(action: () => Promise<T>) {
+  private async lock<T>(action: () => Promise<T>): Promise<T> {
     if (!navigator.locks) throw new Error('WEB_LOCKS_UNAVAILABLE');
     return navigator.locks.request(`cosmos-vault:${this.root.name}`, action);
   }
@@ -262,6 +265,28 @@ export class BrowserVaultFS implements VaultFS {
   private emit(event: FsEvent) {
     for (const cb of this.listeners) cb(event);
   }
+  private async importScope() {
+    try {
+      return this.realFolder
+        ? await directoryDraftScope(this.root)
+        : 'web:browser-vault';
+    } catch (error) {
+      throw new Error('IMPORT_RECORD_UNAVAILABLE', { cause: error });
+    }
+  }
+  listImports() {
+    return this.lock(async () => importJournal.list(await this.importScope()));
+  }
+  readImport(id: string, version: string) {
+    return this.lock(async () =>
+      importJournal.read(await this.importScope(), id, version),
+    );
+  }
+  forgetImport(id: string, version: string) {
+    return this.lock(async () =>
+      importJournal.forget(await this.importScope(), id, version),
+    );
+  }
   async importFiles(
     files: { path: string; file: File }[],
     options: ImportOptions = {},
@@ -307,8 +332,9 @@ export class BrowserVaultFS implements VaultFS {
       };
       const planned: { path: string; bytes: Uint8Array<ArrayBuffer> }[] = [];
       let skipped = 0;
-      // Read the complete selected source before writing. No Markdown reserialization,
-      // journal ownership guess or deletion of files from an earlier attempt.
+      const entries: ImportEntry[] = [];
+      // Read the complete selected source before writing. Progress evidence never
+      // grants ownership or permits deleting files from an earlier attempt.
       for (const { path, file } of files) {
         const destination = await existing(path);
         if (destination && !options.resume)
@@ -326,7 +352,34 @@ export class BrowserVaultFS implements VaultFS {
             throw new ImportConflict(path);
           skipped++;
         } else planned.push({ path, bytes });
+        entries.push({
+          path,
+          size: bytes.length,
+          rev: await rev(bytes),
+          state: destination ? 'kept' : 'pending',
+        });
       }
+      if (!entries.length) return { imported: 0, skipped: 0 };
+      const scope = await this.importScope();
+      const source = await rev(
+        new TextEncoder().encode(
+          JSON.stringify(
+            entries
+              .map(({ path, size, rev }) => [path, size, rev])
+              .sort((a, b) =>
+                String(a[0]) < String(b[0])
+                  ? -1
+                  : String(a[0]) > String(b[0])
+                    ? 1
+                    : 0,
+              ),
+          ),
+        ),
+      );
+      // Strict local transactions precede writes; failures leave conservative progress.
+      const operation = planned.length
+        ? await importJournal.start(scope, source, entries)
+        : undefined;
       // A project manifest makes its directory read-only in the Web UI. Publish
       // all content first, then manifests from deepest to shallowest, so an
       // interruption cannot lock still-missing content inside an imported project.
@@ -345,6 +398,8 @@ export class BrowserVaultFS implements VaultFS {
       });
       let imported = 0;
       for (const { path, bytes } of planned) {
+        if (!operation) throw new Error('IMPORT_RECORD_UNAVAILABLE');
+        await importJournal.mark(scope, operation, path, false);
         // Check again after source reads. Web Locks serialize COSMOS tabs; an
         // external native editor still cannot participate in an atomic create-only CAS.
         if (await existing(path)) {
@@ -355,8 +410,11 @@ export class BrowserVaultFS implements VaultFS {
         // editor). The delayed manifests above keep this check valid for new imports.
         if (await this.isReadOnly(path)) throw new Error('MEMORY_READ_ONLY');
         await this.put(path, bytes);
+        await importJournal.mark(scope, operation, path, true);
         imported++;
       }
+      // Clear earlier attempts only after the entire same source was verified/imported.
+      await importJournal.finish(scope, source);
       return { imported, skipped };
     });
   }

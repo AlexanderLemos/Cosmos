@@ -57,3 +57,8 @@ Esta ordem permite retomar falhas entre documentos e entre publicações de
 manifestos aninhados. Não recupera automaticamente um manifesto vazio/parcial,
 nem projetos incompletos protegidos por uma versão anterior. Esses casos continuam
 exigindo o registro persistente e a revisão de conflitos descritos acima.
+
+O registro persistente de progresso foi acrescentado na [ADR 0006](0006-registro-importacoes-web.md).
+Ele permite revisar tentativas e confirmar a retomada da mesma seleção, sem
+conceder propriedade de arquivos nem habilitar rollback automático. Os limites
+de arquivos parciais e de concorrência com editores externos continuam aplicáveis.

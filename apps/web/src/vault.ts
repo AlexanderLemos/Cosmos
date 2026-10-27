@@ -33,6 +33,11 @@ function adapt(fs: BrowserVaultFS): OpenVault {
       ),
     importZip: (file, options) => fs.importZip(file, options),
     exportZip: () => fs.exportZip(),
+    importHistory: {
+      list: () => fs.listImports(),
+      read: (id, version) => fs.readImport(id, version),
+      forget: (id, version) => fs.forgetImport(id, version),
+    },
   };
 }
 const picker = (

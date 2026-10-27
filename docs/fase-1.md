@@ -14,6 +14,8 @@ foram aprovadas implicitamente pelo avanço da implementação.
   ZIP, 256 MiB descomprimidos; importação ZIP, até 10 mil entradas; pasta, até
   10 mil arquivos e 256 MiB. **Retomar importação** mantém arquivos com bytes
   idênticos e acrescenta apenas os ausentes, mediante nova seleção da origem.
+  Importações gravam progresso local antes de escrever; **Importações pendentes**
+  permite conferir tentativas interrompidas e baixar relatórios sem conteúdo das notas.
   Seletores de pasta podem omitir arquivos ocultos (WebKit); use ZIP para preservar `.obsidian`. A interface informa falhas, inclusive quota.
 - **Desktop:** escolher uma pasta em diálogo nativo; iniciar/reutilizar `cosmosd`;
   listar, editar e salvar notas; buscar; criar projetos manualmente; mover notas,
@@ -179,8 +181,9 @@ permissão, fechamento da aba ou conflitos posteriores à validação podem deix
 uma importação parcial. Use **Atualizar lista** para conferir os arquivos após
 uma falha, ou reabra o cofre.
 
-A retomada não é rollback nem um journal persistente de importação. Não apaga,
-substitui ou presume propriedade de um arquivo divergente, vazio ou parcial. Se
+A retomada não é rollback. O registro local descrito abaixo é evidência de
+progresso, não prova de propriedade de arquivos. Não apaga, substitui ou presume
+propriedade de um arquivo divergente, vazio ou parcial. Se
 os bytes divergirem da origem, é necessária conferência manual. Em projetos já
 protegidos por `project.cosmos.json`, arquivos idênticos podem ser mantidos, mas
 não se acrescentam arquivos. Projetos parciais deixados por versões anteriores ou
@@ -189,6 +192,47 @@ manual. O tratamento desses casos e o rollback com registro de propriedade
 permanecem pendentes. Não há mudança no
 Desktop, que já adota a pasta original em vez de oferecer cópia por importação.
 Ver [ADR 0005](adr/0005-retomada-importacao-web.md).
+
+## Registros locais de importação — 2026-10-26
+
+Na Web, **Importações pendentes** mostra tentativas sem conclusão registrada,
+com quantidades de arquivos confirmados, idênticos mantidos e sem confirmação.
+Quando houver, mostra o último caminho cuja tentativa não foi confirmada. A
+lista é atualizada após operações na própria aba; **Atualizar importações**
+consulta alterações feitas em outras abas. A consulta aguarda o lock do cofre,
+para não apresentar uma operação ainda ativa em outra aba como interrompida.
+
+**Baixar relatório da importação** exporta JSON com versão, datas, caminhos
+relativos, tamanhos, hashes SHA-256 e estados por arquivo. Não contém texto das
+notas nem bytes de anexos. **Esquecer registro** pede confirmação e remove somente
+o relatório local, preservando todos os arquivos. A lista aceita até 20 registros
+pendentes por cofre; ao atingir o limite, revise/baixe relatórios e esqueça os que
+não precisa manter. O limite de 10 mil entradas por tentativa continua valendo.
+
+O registro inicial é confirmado em IndexedDB antes da primeira gravação no cofre.
+Cada arquivo recebe uma marca anterior à tentativa e outra somente depois de
+`createWritable().close()` e da transação de confirmação do registro. Uma escrita
+que terminou sem confirmação persistida permanece incerta: o arquivo pode estar
+completo, parcial ou ausente. Fechar a aba não transforma essa incerteza em sucesso.
+A falha inicial do registro impede novas gravações; uma falha posterior interrompe
+a operação e mantém o progresso já confirmado. Criação e salvamento manual de
+notas continuam disponíveis se IndexedDB falhar, com o aviso existente de
+rascunhos indisponíveis.
+
+A retomada continua exigindo selecionar a origem novamente e comparar os bytes.
+Somente a conclusão de uma seleção com os mesmos caminhos, tamanhos e hashes
+(independentemente da ordem dos arquivos) limpa seus registros anteriores. Uma
+origem diferente não os apaga. Ler ou esquecer um registro exige sua versão atual;
+relatórios concluídos/removidos em outra aba não são tratados como atuais.
+
+Os registros ficam em `cosmos-imports`, no perfil local do navegador, fora do
+cofre e do ZIP exportado. Pastas reais usam identidade por handle, compartilhada
+com o registro de identidade dos rascunhos; nomes iguais não compartilham histórico.
+Limpar os dados do site perde esses registros. Não há cópia do conteúdo da origem
+para recuperação sem nova seleção, migração do journal nativo ou nova permissão
+no Desktop. Registros anteriores a esta entrega não são reconstruídos. Rollback,
+propriedade de arquivos e recuperação de arquivos parciais permanecem pendentes.
+Ver [ADR 0006](adr/0006-registro-importacoes-web.md).
 
 ## Limites da leitura Markdown
 
@@ -504,7 +548,18 @@ Passaram 31 E2E Chromium contra o build de produção, incluindo interrupção a
 de copiar todos os documentos, retomada após publicar somente o manifesto interno,
 ordem de finalização e proteção habilitada durante a validação da origem.
 Os testes conferem bytes exatos e o estado somente leitura após concluir os
-projetos. A CI verifica a matriz completa após publicação.
+projetos. A CI de `5d9d9a0` passou nos três sistemas, incluindo 93 testes Web
+em Chromium, Firefox e WebKit.
+
+Validação dos registros locais de importação (2026-10-26): `pnpm check` passou
+com 43 testes unitários, tipos, lint e schemas; builds Web/Desktop e Tauri debug
+passaram. Os 39 cenários E2E Chromium foram verificados, incluindo fechamento da
+aba durante uma tentativa, relatório sem conteúdo, isolamento de pastas com o
+mesmo nome, falha antes de registrar, falha após escrever mas antes de confirmar,
+retomada da mesma seleção, versão obsoleta entre abas, limite de registros,
+acessibilidade nos dois temas e descarte de metadados sem apagar arquivos.
+O smoke Tauri Linux mantém os fluxos nativos existentes aprovados. A CI verifica
+a matriz completa após publicação; não houve mudança nos contratos Rust/IPC.
 
 ## Fechamento ainda necessário
 
@@ -527,10 +582,13 @@ projetos. A CI verifica a matriz completa após publicação.
 - UI para revisar intenções retidas no journal. A recuperação de rascunhos locais
   confirmados e salvar cópia como outra nota já funcionam; faltam merge, reassociação de
   cofres movidos e exportação global dessas cópias.
-- Journal e rollback de importação interrompida, tratamento de arquivos ou
-  manifestos parciais e projetos incompletos herdados de versões anteriores,
-  além de exportação incremental de cofres maiores. A publicação dos manifestos
-  por último já evita bloquear documentos ainda não copiados nas novas importações. A retomada explícita de pasta/ZIP já mantém arquivos idênticos e
+- Rollback de importação interrompida com regras de propriedade dos arquivos,
+  tratamento de arquivos ou manifestos parciais e projetos incompletos herdados
+  de versões anteriores. O registro local de progresso Web já está disponível,
+  mas não autoriza remoção ou substituição automática. Também falta exportação
+  incremental de cofres maiores. A publicação dos manifestos por último já evita
+  bloquear documentos ainda não copiados nas novas importações. A retomada explícita
+  de pasta/ZIP já mantém arquivos idênticos e
   acrescenta ausentes; não remove nem substitui destinos divergentes. As limitações
   de concorrência com editores externos em pasta real estão descritas acima.
 - Separação do projetor de memória em `cosmos-memory`, contratos completos de

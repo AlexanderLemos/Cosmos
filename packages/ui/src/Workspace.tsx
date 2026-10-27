@@ -5,6 +5,7 @@ import { type DraftHeader, draftStore } from '@cosmos/fs/drafts';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Foundation } from './Foundation';
+import { ImportRecovery } from './ImportRecovery';
 import { MarkdownPreview, type PreviewLocation } from './MarkdownPreview';
 import { type DocumentState, observeVault, reconcileDocument } from './monitor';
 import { useLocalDrafts } from './use-local-drafts';
@@ -79,21 +80,27 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
       setError(
         error instanceof ImportConflict
           ? t('importConflict', { path: error.path })
-          : message.includes('IMPORT_TOO_LARGE') ||
-              message.includes('TOO_MANY_FILES')
-            ? t('importLimit')
-            : message.includes('MEMORY_READ_ONLY')
-              ? t('memoryReadOnly')
-              : message.includes('DRAFT_CHANGED')
-                ? t('draftChanged')
-                : message.includes('CONFLICT') ||
-                    message.includes('Revision conflict')
-                  ? t('conflict')
-                  : message.includes('DESTINATION_EXISTS')
-                    ? t('destinationExists')
-                    : message.includes('PROJECT_STRUCTURE_PROTECTED')
-                      ? t('structureProtected')
-                      : `${t('operationFailed')} ${message}`,
+          : message.includes('IMPORT_RECORD_CHANGED')
+            ? t('importRecordChanged')
+            : message.includes('IMPORT_RECORD_LIMIT')
+              ? t('importRecordLimit')
+              : message.includes('IMPORT_RECORD_UNAVAILABLE')
+                ? t('importHistoryUnavailable')
+                : message.includes('IMPORT_TOO_LARGE') ||
+                    message.includes('TOO_MANY_FILES')
+                  ? t('importLimit')
+                  : message.includes('MEMORY_READ_ONLY')
+                    ? t('memoryReadOnly')
+                    : message.includes('DRAFT_CHANGED')
+                      ? t('draftChanged')
+                      : message.includes('CONFLICT') ||
+                          message.includes('Revision conflict')
+                        ? t('conflict')
+                        : message.includes('DESTINATION_EXISTS')
+                          ? t('destinationExists')
+                          : message.includes('PROJECT_STRUCTURE_PROTECTED')
+                            ? t('structureProtected')
+                            : `${t('operationFailed')} ${message}`,
       );
     } finally {
       setBusy(false);
@@ -694,6 +701,14 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
                       }}
                     />
                   </label>
+                )}
+                {vault.importHistory && (
+                  <ImportRecovery
+                    history={vault.importHistory}
+                    busy={busy}
+                    run={run}
+                    download={download}
+                  />
                 )}
                 {importResult && (
                   <p role="status" className={styles.feedback}>

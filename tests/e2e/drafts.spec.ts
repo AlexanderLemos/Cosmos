@@ -281,7 +281,16 @@ test('unavailable draft storage is explicit and leaves manual saving available',
       }
     }),
   ).toBe('QuotaExceededError');
-  await note(page);
+  // Imports now require their progress journal. Manual note creation/saving must
+  // still work when IndexedDB (including drafts and import records) is unavailable.
+  await page
+    .getByRole('textbox', { name: 'Caminho da nota', exact: true })
+    .fill('a.md');
+  await page.getByRole('button', { name: 'Criar nota', exact: true }).click();
+  await expect(page.locator('.cm-content')).toHaveAttribute(
+    'contenteditable',
+    'true',
+  );
   await page.locator('.cm-content').fill('edição ainda disponível');
   await expect(page.getByRole('alert')).toContainText(
     'Não foi possível proteger',
