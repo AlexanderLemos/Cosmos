@@ -8,11 +8,11 @@ const png = await readFile(
   new URL('../fixtures/images/pixels.png', import.meta.url),
 );
 
-test('Obsidian image dimensions stay within the reading pane and never rewrite the source', async ({
+test('Obsidian and Markdown image dimensions preserve accessible descriptions, pane bounds and source bytes', async ({
   page,
 }) => {
   const source =
-    '\ufeff# Dimensões\r\n\r\nAntes ![[width.png|300]] depois.\n\n![[box.png|300x180]]\r\n\r\n![[invalid.png|4097]]\n';
+    '\ufeff# Dimensões\r\n\r\nAntes ![[width.png|300]] depois.\n\n![[box.png|300x180]]\r\n\r\n![[invalid.png|4097]]\n\n![Órbita &amp; Lua|300](markdown.png "Legenda")\r\n\n![Referência|300x180][foto]\n\n![Inválida|4097](invalid.png)\n\n![|40](empty.png)\n\n| Imagem |\n| --- |\n| ![Tabela\\|90](table.png) |\n\n[foto]: reference.png\n';
   await page.goto('/');
   await page.getByRole('button', { name: 'Usar cofre no navegador' }).click();
   await page.getByLabel('Importar ZIP', { exact: true }).setInputFiles({
@@ -24,6 +24,10 @@ test('Obsidian image dimensions stay within the reading pane and never rewrite t
         'width.png': png,
         'box.png': png,
         'invalid.png': png,
+        'markdown.png': png,
+        'reference.png': png,
+        'empty.png': png,
+        'table.png': png,
       }),
     ),
   });
@@ -36,7 +40,17 @@ test('Obsidian image dimensions stay within the reading pane and never rewrite t
     .click();
   await page.getByRole('button', { name: 'Ler', exact: true }).click();
   const preview = page.getByRole('region', { name: 'Leitura Markdown' });
-  for (const name of ['width.png', 'box.png', 'invalid.png']) {
+  await expect(preview.locator('img')).toHaveCount(0);
+  for (const name of [
+    'width.png',
+    'box.png',
+    'invalid.png',
+    'Órbita & Lua',
+    'Referência',
+    'Inválida|4097',
+    'empty.png',
+    'Tabela',
+  ]) {
     await preview
       .getByRole('button', { name: `Mostrar imagem: ${name}`, exact: true })
       .click();
@@ -63,6 +77,27 @@ test('Obsidian image dimensions stay within the reading pane and never rewrite t
   await expect(
     preview.getByRole('img', { name: 'invalid.png', exact: true }),
   ).not.toHaveAttribute('width');
+  const markdown = preview.getByRole('img', {
+    name: 'Órbita & Lua',
+    exact: true,
+  });
+  const reference = preview.getByRole('img', {
+    name: 'Referência',
+    exact: true,
+  });
+  await expect(markdown).toHaveAttribute('width', '300');
+  await expect(markdown).not.toHaveAttribute('height');
+  await expect(reference).toHaveAttribute('width', '300');
+  await expect(reference).toHaveAttribute('height', '180');
+  await expect(
+    preview.getByRole('img', { name: 'Inválida|4097', exact: true }),
+  ).not.toHaveAttribute('width');
+  await expect(
+    preview.getByRole('img', { name: 'empty.png', exact: true }),
+  ).toHaveAttribute('width', '40');
+  await expect(
+    preview.getByRole('img', { name: 'Tabela', exact: true }),
+  ).toHaveAttribute('width', '90');
   await expect(preview).toContainText('Antes');
   await expect(preview).toContainText('depois.');
   const displayed = await width.getAttribute('src');
@@ -70,13 +105,16 @@ test('Obsidian image dimensions stay within the reading pane and never rewrite t
     .getByRole('button', { name: 'Edição e leitura', exact: true })
     .click();
   await expect(page.locator('.cm-content')).toContainText('![[width.png|300]]');
+  await expect(page.locator('.cm-content')).toContainText(
+    '![Órbita &amp; Lua|300](markdown.png "Legenda")',
+  );
   await expect(width).toHaveAttribute('src', displayed as string);
   await page.getByLabel('Idioma').selectOption('en');
   await expect(
     page.getByRole('img', { name: 'width.png', exact: true }),
   ).toHaveAttribute('width', '300');
   await page.setViewportSize({ width: 360, height: 720 });
-  for (const name of ['width.png', 'box.png']) {
+  for (const name of ['width.png', 'box.png', 'Órbita & Lua', 'Referência']) {
     const fits = await page
       .getByRole('img', { name, exact: true })
       .evaluate(
@@ -98,6 +136,8 @@ test('Obsidian image dimensions stay within the reading pane and never rewrite t
   );
   expect(Buffer.from(archive['Nota.md'] ?? [])).toEqual(Buffer.from(source));
   expect(Buffer.from(archive['width.png'] ?? [])).toEqual(png);
+  expect(Buffer.from(archive['markdown.png'] ?? [])).toEqual(png);
+  expect(Buffer.from(archive['reference.png'] ?? [])).toEqual(png);
 });
 
 test('local image attachments load only on request, preserve vault bytes and release blob URLs', async ({

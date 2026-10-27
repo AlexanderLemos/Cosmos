@@ -37,3 +37,20 @@ Sem cache persistente ou monitor próprio de anexos nesta entrega: cada solicita
 refaz a listagem e leitura, e uma imagem aberta permanece como snapshot até ser
 ocultada/reaberta. A arquitetura mantém o daemon como único acesso nativo ao cofre;
 PDF, outros formatos e carregamento em lote terão limites e decisões próprios.
+
+## Dimensões em imagens Markdown — 2026-10-27
+
+A leitura também aceita `![Descrição|300](imagem.png)` e
+`![Descrição|300x200](imagem.png)`, inclusive imagens por referência
+(`![Descrição|300][foto]`). O último sufixo do texto alternativo decodificado
+é interpretado somente quando satisfaz os mesmos limites dos embeds Obsidian.
+Sufixos inválidos permanecem na descrição; barras anteriores continuam como
+texto. Em tabelas GFM, a barra deve ser escapada (`\|`) conforme a sintaxe da tabela.
+
+A descrição anterior ao sufixo continua como nome acessível da imagem e do botão;
+quando vazia, usa-se o caminho da imagem. Imagens dentro de links continuam como
+rótulos de texto, sem controles nem interpretação de dimensões. O destino e as
+definições de referência não são alterados. A transformação ocorre apenas na
+árvore de leitura compartilhada entre Web e Desktop, mantendo carregamento sob
+demanda e as restrições de formato/origem existentes. Não há alteração no IPC,
+no armazenamento ou nos bytes do Markdown/anexo.

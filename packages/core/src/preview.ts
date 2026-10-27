@@ -47,6 +47,21 @@ function remarkPreview() {
           (child.type === 'image' || child.type === 'imageReference')
         )
           return [{ type: 'text', value: child.alt || '' }];
+        if (child.type === 'image' || child.type === 'imageReference') {
+          const alt = child.alt ?? '';
+          const separator = alt.lastIndexOf('|');
+          const size =
+            separator < 0 ? undefined : imageSize(alt.slice(separator + 1));
+          if (size) {
+            // Only the final valid size suffix is presentation metadata. The
+            // decoded description remains the accessible label; source is untouched.
+            child.alt = alt.slice(0, separator);
+            child.data = {
+              ...child.data,
+              hProperties: size,
+            };
+          }
+        }
         if (child.type !== 'text' || linked) {
           walk(child, linked);
           return [child];

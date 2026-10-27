@@ -46,8 +46,10 @@ foram aprovadas implicitamente pelo avanço da implementação.
   abrem os callouts ancestrais antes de focar o destino. Ver limites abaixo.
 - **Imagens locais:** na leitura Web/Desktop, PNG, JPEG, GIF e WebP do cofre podem
   ser exibidos pelo botão **Mostrar imagem**, em sintaxe Markdown ou `![[imagem]]`.
-  Limite de 8 MiB por arquivo, com validação da extensão e assinatura; imagens
-  remotas não são carregadas. Ver detalhes e limites abaixo.
+  Dimensões Obsidian são aceitas nos embeds e no texto alternativo de imagens
+  Markdown, inclusive por referência. Limite de 8 MiB por arquivo, com validação
+  da extensão e assinatura; imagens remotas não são carregadas.
+  Ver detalhes e limites abaixo.
 - **Rascunhos locais:** cópias automáticas no perfil do navegador/WebView, com
   confirmação visível da proteção. Reabrir o cofre oferece recuperar, baixar ou
   excluir cada cópia. A recuperação não grava no cofre e mantém o rascunho original.
@@ -390,8 +392,17 @@ São pixels CSS inteiros de 1 a 4096, sem unidades, espaços ou expressões CSS.
 Tamanhos inválidos, aliases não numéricos e múltiplos sufixos são ignorados;
 a imagem mantém o tamanho natural sujeito aos limites do painel. A largura nunca
 ultrapassa o painel e a altura fica limitada a 70% da janela. O dimensionamento
-não muda os bytes nem amplia o limite de leitura/decodificação. A sintaxe de
-dimensões dentro do texto alternativo de imagens Markdown permanece pendente.
+não muda os bytes nem amplia o limite de leitura/decodificação.
+
+Desde 2026-10-27, imagens Markdown aceitam os mesmos tamanhos no fim do texto
+alternativo: `![Órbita|300](foto.png)` e `![Órbita|300x200](foto.png)`, inclusive
+por referência (`![Órbita|300][foto]` com uma definição `[foto]: foto.png`).
+A descrição acessível é `Órbita`; se vazia (`![|300](foto.png)`), usa-se o caminho.
+Somente o último sufixo válido do texto alternativo decodificado define dimensões;
+valores inválidos permanecem no rótulo. Em tabelas, escape a barra como `\|`.
+Destinos, definições de referência, BOM e quebras de linha permanecem intactos.
+O carregamento continua sob demanda; dimensões não habilitam outros formatos nem
+imagens remotas. Detalhes na [ADR 0003](adr/0003-imagens-locais.md).
 
 Formatação dentro de nomes, transclusões, carregamento em lote e atualização
 automática de imagens abertas ficam pendentes.
@@ -607,14 +618,23 @@ passaram. Passaram 43 E2E Chromium contra o build de produção, incluindo estad
 atuais diferentes do progresso registrado, preservação de rascunho e bytes,
 reconferência explícita, filtro/paginação, idiomas, acessibilidade nos dois temas,
 metadados inconsistentes sem acesso a arquivos e registros obsoletos entre abas.
-O smoke Tauri Linux também passou. A CI verifica os três sistemas e navegadores
-após publicação; o banco local e os contratos Rust/IPC permanecem nas mesmas versões.
+O smoke Tauri Linux também passou. A CI de `6078bdd` passou nos três sistemas,
+incluindo 129 testes Web; o banco local e os contratos Rust/IPC permanecem nas
+mesmas versões.
+
+Validação das dimensões em imagens Markdown (2026-10-27): `pnpm check` passou
+com 44 testes unitários, tipos, lint e schemas; builds Web/Desktop e Tauri debug
+passaram. Os três cenários Chromium de imagens passaram contra o build de
+produção, incluindo dimensões diretas/por referência/em tabelas, descrições
+acessíveis, valores inválidos, painel estreito, exportação com bytes idênticos,
+carregamento sob demanda e cancelamento. O smoke Tauri Linux também passou com
+as dimensões Markdown diretas e por referência, preservando os arquivos do cofre.
+A CI executa a suíte completa nos três sistemas após a publicação.
 
 ## Fechamento ainda necessário
 
-- Live preview no CodeMirror, anexos além das imagens raster sob demanda, dimensões
-  em imagens Markdown (embeds Obsidian já suportados), transclusão/autocompletar de
-  blocos, compatibilidade avançada de títulos/wikilinks, títulos formatados e
+- Live preview no CodeMirror, anexos além das imagens raster sob demanda,
+  transclusão/autocompletar de blocos, compatibilidade avançada de títulos/wikilinks, títulos formatados e
   personalização de callouts, e inventário maior de fixtures Obsidian. A leitura
   separada e a visão dividida já funcionam; não equivalem a todos os recursos do Obsidian.
 - Concluir o adaptador Tauri do contrato `VaultFS`, especialmente `watch` e listagem

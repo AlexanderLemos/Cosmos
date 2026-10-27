@@ -182,12 +182,13 @@ def main():
             image_bytes = (Path(__file__).resolve().parents[1] / 'tests/fixtures/images/pixels.png').read_bytes()
             (vault / 'assets').mkdir()
             (vault / 'assets/pixels.png').write_bytes(image_bytes)
-            image_note = blocks + b'\r\n![Native image](../assets/pixels.png)\r\n\r\n![[pixels.png|96x48]]\r\n'
+            image_note = blocks + b'\r\n![Native image|120](../assets/pixels.png)\r\n\r\n![[pixels.png|96x48]]\r\n\r\n![Native reference|96x48][photo]\r\n\r\n[photo]: ../assets/pixels.png\r\n'
             (vault / 'Folder/Moved.md').write_bytes(image_note)
             wait('return document.body.innerText.includes("Show image: Native image")')
             assert execute("""return document.querySelectorAll('section[aria-label="Markdown preview"] img').length === 0""")
             click('Show image: Native image')
             wait("""const img = document.querySelector('section[aria-label="Markdown preview"] img'); return img?.complete && img.naturalWidth === 2 && img.src.startsWith('blob:')""")
+            assert execute("""const img = document.querySelector('section[aria-label="Markdown preview"] img'); return img.alt === 'Native image' && img.getAttribute('width') === '120' && !img.hasAttribute('height');""")
             assert (vault / 'assets/pixels.png').read_bytes() == image_bytes
             assert (vault / 'Folder/Moved.md').read_bytes() == image_note
             click('Hide image: Native image')
@@ -196,6 +197,11 @@ def main():
             wait("""const img = document.querySelector('section[aria-label="Markdown preview"] img'); return img?.complete && img.naturalWidth === 2 && img.alt === 'pixels.png'""")
             assert execute("""const img = document.querySelector('section[aria-label="Markdown preview"] img'); return img.getAttribute('width') === '96' && img.getAttribute('height') === '48';""")
             click('Hide image: pixels.png')
+            click('Show image: Native reference')
+            wait("""const img = document.querySelector('section[aria-label="Markdown preview"] img'); return img?.complete && img.naturalWidth === 2 && img.alt === 'Native reference'""")
+            assert execute("""const img = document.querySelector('section[aria-label="Markdown preview"] img'); return img.getAttribute('width') === '96' && img.getAttribute('height') === '48';""")
+            click('Hide image: Native reference')
+            assert (vault / 'Folder/Moved.md').read_bytes() == image_note
             checks += ['local PNG attachment crosses daemon IPC and renders on demand under the native CSP without changing vault bytes']
             callouts = blocks + b'\r\n> [!note]- Native callout\r\n>\r\n> > [!tip]- Nested callout\r\n> > Hidden native body. ^hidden\r\n\r\n[[#^hidden|Reveal callout]]\r\n'
             (vault / 'Folder/Moved.md').write_bytes(callouts)

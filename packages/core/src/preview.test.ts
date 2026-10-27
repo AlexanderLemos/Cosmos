@@ -59,6 +59,35 @@ describe('read-only Markdown preview', () => {
       'cosmos-image:other.JPG',
     ]);
   });
+  it('sizes Markdown images and references using only a valid final alt suffix, preserving descriptions and destinations', () => {
+    const tree = preview(
+      '\ufeff![Órbita &amp; Lua|300](assets/a.png "Título")\r\n\n![Caixa|300x200][foto]\n\n![|40](empty.png)\n\n![A | B|120](b.png)\n\n![Inválida|4097](bad.png)\n\n![CSS|300px](css.png)\n\n![Espaços| 300](spaces.png)\n\n![Fim|300|texto](suffix.png)\n\n![Entidade&#124;80](entity.png)\n\n![Tabela|90][tabela]\n\n[![Link|300](linked.png)](https://example.org)\n\n`![Código|300](code.png)`\n\n[foto]: assets/ref.png "Referência"\n[tabela]: table.png\n',
+    );
+    const images: unknown[] = [];
+    visit(tree, (node) => {
+      if (node.type === 'image' || node.type === 'imageReference')
+        images.push({
+          alt: node.alt,
+          target: node.type === 'image' ? node.url : node.identifier,
+          size: (node.data as { hProperties?: unknown } | undefined)
+            ?.hProperties,
+        });
+    });
+    expect(images).toEqual([
+      { alt: 'Órbita & Lua', target: 'assets/a.png', size: { width: 300 } },
+      { alt: 'Caixa', target: 'foto', size: { width: 300, height: 200 } },
+      { alt: '', target: 'empty.png', size: { width: 40 } },
+      { alt: 'A | B', target: 'b.png', size: { width: 120 } },
+      { alt: 'Inválida|4097', target: 'bad.png', size: undefined },
+      { alt: 'CSS|300px', target: 'css.png', size: undefined },
+      { alt: 'Espaços| 300', target: 'spaces.png', size: undefined },
+      { alt: 'Fim|300|texto', target: 'suffix.png', size: undefined },
+      { alt: 'Entidade', target: 'entity.png', size: { width: 80 } },
+      { alt: 'Tabela', target: 'tabela', size: { width: 90 } },
+    ]);
+    expect(nodeText(tree)).toContain('Link|300');
+    expect(nodeText(tree)).toContain('![Código|300](code.png)');
+  });
   it('links plain wikilinks and aliases while leaving code, frontmatter, embeds and escaped syntax alone', () => {
     const tree = preview(
       '\ufeff---\r\naliases: ["[[Hidden]]"]\n---\r\n[[Nota#Seção|Abrir]] [[Outra]]\n\n`[[Code]]` ![[Embed]] \\[[Literal]] &#91;&#91;Entity]]\n\n[existing [[Label]]](https://example.org)\n\n```md\n[[Fence]]\n```',
