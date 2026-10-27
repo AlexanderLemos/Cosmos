@@ -31,6 +31,10 @@ foram aprovadas implicitamente pelo avanço da implementação.
   recarga explícita. Alterar idioma ou tema preserva a edição. Texto não é
   serializado de volta de uma AST. Links de notas e backlinks ignoram código e
   frontmatter; alvos ambíguos não são escolhidos automaticamente.
+- **Edição visual inicial:** títulos ATX, negrito, itálico e código em linha
+  formatados no CodeMirror, no Web/Desktop. Linhas em edição/selecionadas revelam
+  os marcadores; alternar modos mantém texto, histórico e rascunhos. É a primeira
+  etapa de live preview, com os limites descritos abaixo.
 - **Leitura:** modos Editar, Ler e Edição e leitura no Web e Desktop, com Markdown/GFM,
   tabelas, listas de tarefas, citações e blocos de código. A leitura acompanha o
   rascunho e as recargas externas aceitas. Alternar o modo mantém a instância do
@@ -296,9 +300,26 @@ Isso cobre navegação básica, sem prometer equivalência a todos os identifica
 do Obsidian. Wikilinks com formatação Markdown dentro do nome/alias,
 transclusões, personalização avançada de callouts, matemática, diagramas e plugins
 ainda não têm suporte completo. A pré-visualização é limitada a 262.144 unidades de texto UTF-16;
-notas maiores continuam editáveis dentro do limite geral de 8 MiB. Não é ainda o
-live preview dentro do próprio CodeMirror nem uma garantia de performance para
-cofres grandes.
+notas maiores continuam editáveis dentro do limite geral de 8 MiB. A leitura
+separada não é uma garantia de performance para cofres grandes. A edição visual
+inicial dentro do CodeMirror está descrita a seguir.
+
+### Edição visual inicial — 2026-10-27
+
+O botão **Edição visual** formata títulos `#` a `######`, `**negrito**`,
+`*itálico*` e código entre crases diretamente no editor. Fora das linhas do cursor
+ou seleção, os marcadores ficam ocultos; ao entrar na linha, a sintaxe reaparece.
+Selecionar tudo revela o texto Markdown. Alternar para Editar, Ler ou Edição e
+leitura preserva a instância do editor, desfazer/refazer e o rascunho atual.
+Salvar continua explícito e segue as mesmas regras de revisão e somente leitura.
+
+A transformação não reserializa Markdown nem altera BOM ou quebras de linha.
+Frontmatter YAML, blocos de código/HTML e formatação inline multilinha permanecem
+literais. O limite é de 262.144 unidades de texto UTF-16; notas maiores usam a
+edição Markdown com aviso. O modo não persiste após recarregar o aplicativo.
+Tabelas, tarefas, títulos Setext, tachado, links, callouts, transclusões e anexos
+no próprio editor ainda pendem. A leitura separada mantém seu suporte existente.
+Detalhes na [ADR 0008](adr/0008-edicao-visual-inicial.md).
 
 ### Callouts Obsidian — 2026-10-26
 
@@ -678,11 +699,22 @@ no WebKit. Encontrou duas corridas no Chromium: o teste novo digitava antes de o
 editor ficar editável, e a busca permitia digitar enquanto a atualização da lista
 ainda podia limpar a consulta. O teste agora espera o editor e confirma o rascunho
 antes de abrir o PDF; o campo de busca fica desabilitado durante operações, assim
-como o botão. A validação desses ajustes acompanha o commit seguinte.
+como o botão. A CI de `ecadef5` passou nos três sistemas, incluindo 135 testes Web.
+
+Validação da edição visual inicial (2026-10-27): `pnpm check` passou com 47 testes
+unitários, tipos, lint e schemas; builds Web/Desktop e Tauri debug passaram.
+Passaram os quatro cenários Chromium de edição visual e leitura contra o build
+de produção. Cobrem edição dentro de formatação, seleção, desfazer/refazer,
+troca de modos/idioma/tema, acessibilidade, proteção de projetos, limite de tamanho
+e preservação de bytes no salvamento/exportação. O smoke Tauri Linux confirmou
+formatação no WebView, manutenção da instância do editor e arquivos intactos.
+A suíte completa nos três navegadores e sistemas é executada pela CI após publicar.
 
 ## Fechamento ainda necessário
 
-- Live preview no CodeMirror, anexos além das imagens raster e PDFs sob demanda,
+- Ampliar a edição visual inicial do CodeMirror para tabelas, tarefas, títulos
+  Setext, tachado, links, callouts e anexos; formatos de anexos além das imagens
+  raster e PDFs sob demanda,
   recursos avançados do leitor PDF,
   transclusão/autocompletar de blocos, compatibilidade avançada de títulos/wikilinks, títulos formatados e
   personalização de callouts, e inventário maior de fixtures Obsidian. A leitura

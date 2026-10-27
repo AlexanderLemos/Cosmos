@@ -1,5 +1,5 @@
 import { noteLinks, resolveNoteLink } from '@cosmos/core';
-import { MarkdownEditor } from '@cosmos/editor';
+import { LIVE_PREVIEW_LIMIT, MarkdownEditor } from '@cosmos/editor';
 import { ImportConflict, type ImportResult } from '@cosmos/fs';
 import { type DraftHeader, draftStore } from '@cosmos/fs/drafts';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -18,7 +18,9 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
   const [paths, setPaths] = useState<string[]>([]);
   const [doc, setDoc] = useState<DocumentState | null>(null);
   const drafts = useLocalDrafts(vault, doc);
-  const [viewMode, setViewMode] = useState<'edit' | 'read' | 'split'>('edit');
+  const [viewMode, setViewMode] = useState<'edit' | 'live' | 'read' | 'split'>(
+    'edit',
+  );
   const [previewLocation, setPreviewLocation] =
     useState<PreviewLocation | null>(null);
   const navigationRequest = useRef(0);
@@ -959,17 +961,28 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
                   )}
                   <fieldset className={styles.viewModes}>
                     <legend>{t('viewMode')}</legend>
-                    {(['edit', 'read', 'split'] as const).map((mode) => (
-                      <button
-                        key={mode}
-                        type="button"
-                        aria-pressed={viewMode === mode}
-                        onClick={() => setViewMode(mode)}
-                      >
-                        {t(`view_${mode}`)}
-                      </button>
-                    ))}
+                    {(['edit', 'live', 'read', 'split'] as const).map(
+                      (mode) => (
+                        <button
+                          key={mode}
+                          type="button"
+                          aria-pressed={viewMode === mode}
+                          onClick={() => setViewMode(mode)}
+                        >
+                          {t(`view_${mode}`)}
+                        </button>
+                      ),
+                    )}
                   </fieldset>
+                  {viewMode === 'live' && (
+                    <p className={styles.feedback}>
+                      {t(
+                        doc.content.length > LIVE_PREVIEW_LIMIT
+                          ? 'livePreviewTooLarge'
+                          : 'livePreviewHint',
+                      )}
+                    </p>
+                  )}
                   <div
                     className={
                       viewMode === 'split' ? styles.splitView : undefined
@@ -983,6 +996,10 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
                         key={`${doc.draftId ?? doc.path}:${doc.generation}`}
                         initialValue={doc.content}
                         label={t('editor')}
+                        visual={
+                          viewMode === 'live' &&
+                          doc.content.length <= LIVE_PREVIEW_LIMIT
+                        }
                         readOnly={doc.readOnly || busy}
                         onSave={save}
                         onChange={(content) => {
@@ -992,7 +1009,7 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
                         }}
                       />
                     </div>
-                    {viewMode !== 'edit' && (
+                    {(viewMode === 'read' || viewMode === 'split') && (
                       <MarkdownPreview
                         vault={vault}
                         content={doc.content}

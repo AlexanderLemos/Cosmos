@@ -6,6 +6,9 @@ import { Compartment, EditorState } from '@codemirror/state';
 import { EditorView, keymap, lineNumbers } from '@codemirror/view';
 import { tags } from '@lezer/highlight';
 import { useEffect, useRef } from 'react';
+import { livePreview } from './live-preview';
+
+export { LIVE_PREVIEW_LIMIT } from './live-preview';
 
 export function MarkdownEditor({
   initialValue,
@@ -13,12 +16,14 @@ export function MarkdownEditor({
   onSave,
   readOnly,
   label,
+  visual = false,
 }: {
   initialValue: string;
   onChange: (text: string) => void;
   onSave: () => void;
   readOnly: boolean;
   label: string;
+  visual?: boolean;
 }) {
   const parent = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
@@ -28,6 +33,7 @@ export function MarkdownEditor({
   const initial = useRef(initialValue);
   const raw = useRef(initialValue);
   const attributes = useRef(new Compartment());
+  const presentation = useRef(new Compartment());
   // biome-ignore lint/correctness/useExhaustiveDependencies: initial document is mount-only; preferences reconfigure below.
   useEffect(() => {
     if (!parent.current) return;
@@ -39,6 +45,7 @@ export function MarkdownEditor({
         doc: initial.current,
         extensions: [
           markdown(),
+          presentation.current.of(visual ? livePreview : []),
           history(),
           lineNumbers(),
           syntaxHighlighting(
@@ -154,5 +161,10 @@ export function MarkdownEditor({
       ],
     });
   }, [label, readOnly]);
+  useEffect(() => {
+    view.current?.dispatch({
+      effects: presentation.current.reconfigure(visual ? livePreview : []),
+    });
+  }, [visual]);
   return <div ref={parent} />;
 }

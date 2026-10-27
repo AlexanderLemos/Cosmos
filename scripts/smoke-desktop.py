@@ -164,6 +164,19 @@ def main():
             (vault / 'Folder/Moved.md').write_bytes(external)
             wait('return document.querySelector(".cm-content")?.textContent.includes("Updated outside COSMOS.")')
             wait("""return document.querySelector('section[aria-label="Markdown preview"] h1')?.textContent === 'External note'""")
+            visual_note = b'# Native heading\r\n\r\n**Native bold** and *native emphasis* and `native code`.\n\nFinal'
+            (vault / 'Folder/Moved.md').write_bytes(visual_note)
+            wait('return document.querySelector(".cm-content")?.textContent.includes("Native bold")')
+            execute('window.nativeEditor = document.querySelector(".cm-content")')
+            click('Visual editing')
+            wait('return document.querySelector(".cm-live-strong")?.textContent === "Native bold"')
+            assert execute('return document.querySelector(".cm-live-code")?.textContent === "native code"')
+            click('Edit')
+            wait('return document.querySelector(".cm-content")?.textContent.includes("**Native bold**")')
+            assert execute('return document.querySelector(".cm-content") === window.nativeEditor')
+            assert (vault / 'Folder/Moved.md').read_bytes() == visual_note
+            click('Edit and read')
+            checks += ['visual editing formats inactive Markdown while preserving the editor instance and original vault bytes']
             # Obsidian anchors use the same display parser in the real native WebView.
             blocks = b'# External note\r\n\r\nUpdated outside COSMOS. ^native\r\n\r\n[[#^native|Local block]]\r\n\r\n[[Blocks#^target|Other block]]\r\n'
             block_target = b'Target block. ^target\n\n[Return to block](Folder/Moved.md#%5Enative)'
