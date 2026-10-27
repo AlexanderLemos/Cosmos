@@ -292,3 +292,193 @@ test('a destination appearing during source validation is preserved by the final
     'First.md': new Uint8Array(Buffer.from('External version')),
   });
 });
+
+test('project manifests wait for all content and an interrupted import resumes before protection is enabled', async ({
+  page,
+}) => {
+  const source = {
+    'Project/project.cosmos.json': Buffer.from('{"id":"parent"}\r\n'),
+    'Project/Deep/project.cosmos.json': Buffer.from('{"id":"child"}\n'),
+    'Project/context.md': Buffer.from('\ufeff# Projeto\r\n'),
+    'Project/Deep/context.md': Buffer.from('# Interno\n'),
+    'Project/Stop.md': Buffer.from('# Último\n'),
+    'Project/attachment.bin': Buffer.from([0, 255, 42]),
+  };
+  await open(page);
+  await page.evaluate(() => {
+    const original = FileSystemDirectoryHandle.prototype.getFileHandle;
+    FileSystemDirectoryHandle.prototype.getFileHandle = async function (
+      name,
+      options,
+    ) {
+      if (name === 'Stop.md' && options?.create)
+        throw new DOMException('Interrupted content', 'QuotaExceededError');
+      return original.call(this, name, options);
+    };
+  });
+  await page
+    .getByLabel('Importar ZIP', { exact: true })
+    .setInputFiles(zip(source));
+  await expect(page.getByRole('alert')).toContainText('Interrupted content');
+  let archive = await exported(page);
+  expect(Object.keys(archive).sort()).toEqual([
+    'Project/Deep/context.md',
+    'Project/context.md',
+  ]);
+  expect(Buffer.from(archive['Project/context.md'] ?? [])).toEqual(
+    source['Project/context.md'],
+  );
+  await page.reload();
+  await page.getByRole('button', { name: 'Usar cofre no navegador' }).click();
+  await page.evaluate(() => {
+    const original = FileSystemDirectoryHandle.prototype.getFileHandle;
+    const created: string[] = [];
+    Reflect.set(window, 'createdImportFiles', created);
+    FileSystemDirectoryHandle.prototype.getFileHandle = async function (
+      name,
+      options,
+    ) {
+      if (options?.create) created.push(`${this.name}/${name}`);
+      return original.call(this, name, options);
+    };
+  });
+  await page
+    .getByRole('checkbox', { name: 'Retomar importação', exact: true })
+    .check();
+  await page
+    .getByLabel('Importar ZIP', { exact: true })
+    .setInputFiles(zip(source));
+  await expect(
+    page.getByText(
+      'Importação retomada: 4 arquivo(s) adicionado(s), 2 idêntico(s) mantido(s).',
+    ),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(() => Reflect.get(window, 'createdImportFiles')),
+  ).toEqual([
+    'Project/Stop.md',
+    'Project/attachment.bin',
+    'Deep/project.cosmos.json',
+    'Project/project.cosmos.json',
+  ]);
+  archive = await exported(page);
+  for (const [path, bytes] of Object.entries(source))
+    expect(Buffer.from(archive[path] ?? [])).toEqual(bytes);
+  await page
+    .getByRole('navigation', { name: 'Notas' })
+    .getByRole('button', { name: 'Project/Deep/context.md', exact: true })
+    .click();
+  await expect(page.locator('.cm-content')).toHaveAttribute(
+    'contenteditable',
+    'false',
+  );
+  await expect(
+    page.getByText(
+      'A memória de projetos é somente leitura na Web. Use o Desktop para editar.',
+    ),
+  ).toBeVisible();
+});
+
+test('interruption while publishing parent metadata keeps a completed nested project intact on retry', async ({
+  page,
+}) => {
+  const source = {
+    'Project/project.cosmos.json': Buffer.from('{"id":"parent"}'),
+    'Project/Deep/project.cosmos.json': Buffer.from('{"id":"child"}'),
+    'Project/context.md': Buffer.from('parent content'),
+    'Project/Deep/context.md': Buffer.from('child content'),
+  };
+  await open(page);
+  await page.evaluate(() => {
+    const original = FileSystemDirectoryHandle.prototype.getFileHandle;
+    FileSystemDirectoryHandle.prototype.getFileHandle = async function (
+      name,
+      options,
+    ) {
+      if (
+        this.name === 'Project' &&
+        name === 'project.cosmos.json' &&
+        options?.create
+      )
+        throw new DOMException(
+          'Interrupted parent manifest',
+          'QuotaExceededError',
+        );
+      return original.call(this, name, options);
+    };
+  });
+  await page
+    .getByLabel('Importar ZIP', { exact: true })
+    .setInputFiles(zip(source));
+  await expect(page.getByRole('alert')).toContainText(
+    'Interrupted parent manifest',
+  );
+  const partial = await exported(page);
+  expect(partial['Project/project.cosmos.json']).toBeUndefined();
+  for (const path of [
+    'Project/Deep/project.cosmos.json',
+    'Project/context.md',
+    'Project/Deep/context.md',
+  ] as const)
+    expect(Buffer.from(partial[path] ?? [])).toEqual(source[path]);
+  await page.reload();
+  await page.getByRole('button', { name: 'Usar cofre no navegador' }).click();
+  await page
+    .getByRole('checkbox', { name: 'Retomar importação', exact: true })
+    .check();
+  await page
+    .getByLabel('Importar ZIP', { exact: true })
+    .setInputFiles(zip(source));
+  await expect(
+    page.getByText(
+      'Importação retomada: 1 arquivo(s) adicionado(s), 3 idêntico(s) mantido(s).',
+    ),
+  ).toBeVisible();
+  const complete = await exported(page);
+  for (const [path, bytes] of Object.entries(source))
+    expect(Buffer.from(complete[path] ?? [])).toEqual(bytes);
+});
+
+test('a project appearing during import preflight blocks new writes into the protected directory', async ({
+  page,
+}) => {
+  await open(page);
+  await page.evaluate(() => {
+    const read = File.prototype.arrayBuffer;
+    File.prototype.arrayBuffer = async function () {
+      const bytes = await read.call(this);
+      if (this.name === 'Project/Later.md') {
+        const root = await (
+          await navigator.storage.getDirectory()
+        ).getDirectoryHandle('cosmos-vault');
+        const project = await root.getDirectoryHandle('Project', {
+          create: true,
+        });
+        const manifest = await project.getFileHandle('project.cosmos.json', {
+          create: true,
+        });
+        const writer = await manifest.createWritable();
+        await writer.write('{"id":"external"}');
+        await writer.close();
+      }
+      return bytes;
+    };
+  });
+  await page
+    .getByRole('checkbox', { name: 'Retomar importação', exact: true })
+    .check();
+  await page.getByLabel('Importar ZIP', { exact: true }).setInputFiles(
+    zip({
+      'Project/First.md': Buffer.from('first'),
+      'Project/Later.md': Buffer.from('later'),
+    }),
+  );
+  await expect(page.getByRole('alert')).toContainText(
+    'A memória de projetos é somente leitura na Web.',
+  );
+  expect(await exported(page)).toEqual({
+    'Project/project.cosmos.json': new Uint8Array(
+      Buffer.from('{"id":"external"}'),
+    ),
+  });
+});

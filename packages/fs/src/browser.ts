@@ -327,6 +327,22 @@ export class BrowserVaultFS implements VaultFS {
           skipped++;
         } else planned.push({ path, bytes });
       }
+      // A project manifest makes its directory read-only in the Web UI. Publish
+      // all content first, then manifests from deepest to shallowest, so an
+      // interruption cannot lock still-missing content inside an imported project.
+      const manifestDepth = (path: string) => {
+        const parts = path.split('/');
+        return /^project\.cosmos\.json$/i.test(parts.at(-1) ?? '')
+          ? parts.length
+          : 0;
+      };
+      planned.sort((a, b) => {
+        const left = manifestDepth(a.path);
+        const right = manifestDepth(b.path);
+        if (!left || !right)
+          return Number(Boolean(left)) - Number(Boolean(right));
+        return right - left;
+      });
       let imported = 0;
       for (const { path, bytes } of planned) {
         // Check again after source reads. Web Locks serialize COSMOS tabs; an
@@ -335,6 +351,9 @@ export class BrowserVaultFS implements VaultFS {
           if (options.resume) throw new ImportConflict(path);
           throw new Error('DESTINATION_EXISTS');
         }
+        // A project may have appeared since preflight (for example in a native
+        // editor). The delayed manifests above keep this check valid for new imports.
+        if (await this.isReadOnly(path)) throw new Error('MEMORY_READ_ONLY');
         await this.put(path, bytes);
         imported++;
       }

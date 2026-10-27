@@ -35,3 +35,25 @@ A interface informa os totais sem ocultá-los por existir um rascunho aberto e
 mantém a edição/histórico. A retomada não grava uma preferência permanente e exige
 nova seleção da origem após recarregar. Os contratos Rust/IPC, banco e fluxo de
 adoção de pasta no Desktop não mudam.
+
+## Finalização dos projetos importados — 2026-10-26
+
+Documentos e anexos passam a ser escritos antes dos arquivos
+`project.cosmos.json`, independentemente da ordem da origem. Os manifestos são
+ordenados por profundidade decrescente: o de um projeto interno precisa ser
+concluído antes do manifesto de seu ancestral. Assim, a própria importação não
+ativa a proteção somente leitura enquanto ainda faltam arquivos naquele projeto.
+Durante uma interrupção anterior à finalização, as cópias podem aparecer como
+notas comuns; alterações feitas pelo usuário impedem a retomada por comparação
+de bytes, em vez de serem substituídas.
+
+Além da existência do destino, a proteção do projeto é conferida novamente antes
+de cada escrita. Um manifesto surgido após a validação inicial impede novas
+criações no projeto. Isso reduz a janela de conflito, sem prometer exclusão mútua
+com editores externos. Manifestos de projetos já existentes não são alterados nem
+removidos para permitir a importação.
+
+Esta ordem permite retomar falhas entre documentos e entre publicações de
+manifestos aninhados. Não recupera automaticamente um manifesto vazio/parcial,
+nem projetos incompletos protegidos por uma versão anterior. Esses casos continuam
+exigindo o registro persistente e a revisão de conflitos descritos acima.

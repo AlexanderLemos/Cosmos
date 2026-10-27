@@ -164,8 +164,15 @@ o caminho conflitante. BOM, quebras de linha, anexos, `.canvas` e `.obsidian`
 continuam sendo bytes originais, sem reserialização. Uma falha de leitura da
 origem também ocorre antes de criar destinos.
 
-Web Locks serializam importações entre abas do COSMOS; cada destino ausente é
-conferido novamente antes da escrita. Em pasta real, um editor externo ainda
+Documentos e anexos são gravados antes de qualquer `project.cosmos.json`.
+Manifestos são finalizados dos diretórios mais internos para os mais externos,
+independentemente da ordem no ZIP ou na pasta selecionada. Isso evita que o
+próprio importador proteja um projeto enquanto ainda faltam documentos ou
+manifestos internos. Até essa finalização, arquivos de uma importação parcial
+podem aparecer como notas comuns; a retomada recusa qualquer diferença de bytes.
+
+Web Locks serializam importações entre abas do COSMOS; cada destino ausente e a
+proteção do projeto são conferidos novamente antes de cada escrita. Em pasta real, um editor externo ainda
 pode alterar o diretório entre a última checagem e a criação: File System Access
 não oferece criação exclusiva com comparação de revisão. Falhas de quota,
 permissão, fechamento da aba ou conflitos posteriores à validação podem deixar
@@ -176,9 +183,10 @@ A retomada não é rollback nem um journal persistente de importação. Não apa
 substitui ou presume propriedade de um arquivo divergente, vazio ou parcial. Se
 os bytes divergirem da origem, é necessária conferência manual. Em projetos já
 protegidos por `project.cosmos.json`, arquivos idênticos podem ser mantidos, mas
-não se acrescentam arquivos: uma interrupção após criar esse manifesto ainda
-pode bloquear a continuação do projeto na Web. O tratamento desses casos e o
-rollback com registro de propriedade permanecem pendentes. Não há mudança no
+não se acrescentam arquivos. Projetos parciais deixados por versões anteriores ou
+manifestos vazios/parciais após falha de escrita ainda podem exigir conferência
+manual. O tratamento desses casos e o rollback com registro de propriedade
+permanecem pendentes. Não há mudança no
 Desktop, que já adota a pasta original em vez de oferecer cópia por importação.
 Ver [ADR 0005](adr/0005-retomada-importacao-web.md).
 
@@ -486,8 +494,17 @@ Passaram os 27 E2E Chromium da suíte e um novo cenário de destino criado duran
 a validação da origem (28 cenários ao todo). Os testes cobrem interrupção entre
 arquivos, recarga, repetição sem novas gravações, rascunho/undo, bytes exatos,
 conflitos antes de gravar, projetos protegidos, duas abas concorrentes, pasta de
-origem preservada e acessibilidade nos dois temas. A CI verifica os três sistemas
-e navegadores após publicação. Não houve alteração em Rust ou nos schemas.
+origem preservada e acessibilidade nos dois temas. A CI de `6bddc6e` passou nos
+três sistemas, incluindo Chromium, Firefox e WebKit. Não houve alteração em Rust
+ou nos schemas.
+
+Validação da finalização de projetos importados (2026-10-26): `pnpm check`
+(43 testes unitários, tipos, lint e schemas) e builds Web/Desktop passaram.
+Passaram 31 E2E Chromium contra o build de produção, incluindo interrupção antes
+de copiar todos os documentos, retomada após publicar somente o manifesto interno,
+ordem de finalização e proteção habilitada durante a validação da origem.
+Os testes conferem bytes exatos e o estado somente leitura após concluir os
+projetos. A CI verifica a matriz completa após publicação.
 
 ## Fechamento ainda necessário
 
@@ -510,9 +527,10 @@ e navegadores após publicação. Não houve alteração em Rust ou nos schemas.
 - UI para revisar intenções retidas no journal. A recuperação de rascunhos locais
   confirmados e salvar cópia como outra nota já funcionam; faltam merge, reassociação de
   cofres movidos e exportação global dessas cópias.
-- Journal e rollback de importação interrompida, tratamento de arquivos parciais
-  ou projetos bloqueados após importar o manifesto, e exportação incremental de
-  cofres maiores. A retomada explícita de pasta/ZIP já mantém arquivos idênticos e
+- Journal e rollback de importação interrompida, tratamento de arquivos ou
+  manifestos parciais e projetos incompletos herdados de versões anteriores,
+  além de exportação incremental de cofres maiores. A publicação dos manifestos
+  por último já evita bloquear documentos ainda não copiados nas novas importações. A retomada explícita de pasta/ZIP já mantém arquivos idênticos e
   acrescenta ausentes; não remove nem substitui destinos divergentes. As limitações
   de concorrência com editores externos em pasta real estão descritas acima.
 - Separação do projetor de memória em `cosmos-memory`, contratos completos de
