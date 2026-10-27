@@ -46,3 +46,31 @@ arquivos. Não deduzimos propriedade a partir de nome, tamanho, hash ou marca
 propriedade, revisões e conflitos. A retomada permanece condicionada à seleção
 explícita da origem e aos limites dos projetos protegidos. Não há mudanças nos
 contratos Rust/IPC, no banco nativo ou na adoção de pastas pelo Desktop.
+
+## Conferência do estado atual — 2026-10-27
+
+O painel passa a oferecer uma conferência somente leitura dos caminhos de um
+registro. O estado da tentativa (`pending`, `kept`, `writing`, `written`) é mantido
+separado da observação atual (`matching`, `different`, `missing`, `incompatible`,
+`unreadable`). Comparamos tamanho e SHA-256 com a origem registrada; não precisamos
+reabrir a origem nem interpretar o conteúdo dos arquivos. Uma diferença não é
+classificada automaticamente como corrupção, pois pode ser uma edição do usuário.
+
+Antes de acessar arquivos, validamos caminhos portáveis, unicidade, tamanhos,
+estados/contadores e a identidade da seleção, além do escopo e versão já exigidos
+pelo journal. Essa validação recusa metadados inconsistentes em vez de usá-los
+para orientar acesso a arquivos. Arquivos com tamanho diferente são classificados
+sem ler seus bytes; os limites da seleção original permanecem aplicáveis.
+
+A operação usa o mesmo Web Lock das importações e não escreve no cofre ou journal.
+A conferência tem horários de início e conclusão e pode ficar desatualizada; não
+prometemos uma visão atômica diante de editores externos. O resultado é transitório
+na UI, com filtros e paginação de 50 linhas. O relatório JSON de conferência,
+formato 1, inclui a seleção registrada e a observação de todos os caminhos, sem
+conteúdo de notas/anexos. A paginação não limita o relatório baixado.
+
+Conferir novamente exige a versão atual do registro. Uma conferência antiga não
+é convertida em autorização para modificar arquivos, e um arquivo atualmente
+idêntico não ganha automaticamente uma confirmação retroativa no journal.
+Continuam pendentes propriedade, rollback e reparo de arquivos parciais.
+Não há migração do IndexedDB nem alteração dos contratos Rust/IPC.

@@ -1,6 +1,7 @@
-import type { ImportHeader, ImportHistory } from '@cosmos/fs';
+import type { ImportHeader, ImportHistory, ImportInspection } from '@cosmos/fs';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ImportInspectionView } from './ImportInspectionView';
 import styles from './Workspace.module.css';
 
 export function ImportRecovery({
@@ -19,6 +20,10 @@ export function ImportRecovery({
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const [refresh, setRefresh] = useState(0);
+  const [inspection, setInspection] = useState<{
+    history: ImportHistory;
+    result: ImportInspection;
+  } | null>(null);
   // biome-ignore lint/correctness/useExhaustiveDependencies: refresh explicitly retries the persisted listing.
   useEffect(() => {
     if (busy) return;
@@ -83,6 +88,19 @@ export function ImportRecovery({
               disabled={busy}
               onClick={() =>
                 void run(async () => {
+                  setInspection(null);
+                  const result = await history.inspect(entry.id, entry.version);
+                  setInspection({ history, result });
+                })
+              }
+            >
+              {t('inspectImport')}
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() =>
+                void run(async () => {
                   const report = await history.read(entry.id, entry.version);
                   download(
                     new TextEncoder().encode(JSON.stringify(report, null, 2)),
@@ -106,6 +124,16 @@ export function ImportRecovery({
             >
               {t('forgetImportRecord')}
             </button>
+            {inspection?.history === history &&
+              inspection.result.header.id === entry.id &&
+              inspection.result.header.version === entry.version && (
+                <ImportInspectionView
+                  key={`${entry.id}:${inspection.result.checkedAt}`}
+                  result={inspection.result}
+                  busy={busy}
+                  download={download}
+                />
+              )}
           </article>
         ))}
     </section>

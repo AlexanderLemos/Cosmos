@@ -37,6 +37,7 @@ function adapt(fs: BrowserVaultFS): OpenVault {
       list: () => fs.listImports(),
       read: (id, version) => fs.readImport(id, version),
       forget: (id, version) => fs.forgetImport(id, version),
+      inspect: (id, version) => fs.inspectImport(id, version),
     },
   };
 }

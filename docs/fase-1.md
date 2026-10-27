@@ -15,7 +15,9 @@ foram aprovadas implicitamente pelo avanço da implementação.
   10 mil arquivos e 256 MiB. **Retomar importação** mantém arquivos com bytes
   idênticos e acrescenta apenas os ausentes, mediante nova seleção da origem.
   Importações gravam progresso local antes de escrever; **Importações pendentes**
-  permite conferir tentativas interrompidas e baixar relatórios sem conteúdo das notas.
+  permite revisar tentativas interrompidas e baixar relatórios sem conteúdo das notas.
+  **Conferir arquivos** compara os arquivos salvos com a origem registrada, sem
+  alterar o cofre ou o progresso da importação.
   Seletores de pasta podem omitir arquivos ocultos (WebKit); use ZIP para preservar `.obsidian`. A interface informa falhas, inclusive quota.
 - **Desktop:** escolher uma pasta em diálogo nativo; iniciar/reutilizar `cosmosd`;
   listar, editar e salvar notas; buscar; criar projetos manualmente; mover notas,
@@ -233,6 +235,43 @@ para recuperação sem nova seleção, migração do journal nativo ou nova perm
 no Desktop. Registros anteriores a esta entrega não são reconstruídos. Rollback,
 propriedade de arquivos e recuperação de arquivos parciais permanecem pendentes.
 Ver [ADR 0006](adr/0006-registro-importacoes-web.md).
+
+### Conferência dos arquivos registrados — 2026-10-27
+
+Em **Importações pendentes**, **Conferir arquivos** consulta o estado atual de
+cada caminho da tentativa selecionada, sem precisar selecionar a origem novamente.
+A comparação usa tamanhos e hashes SHA-256 registrados na importação; considera
+os arquivos salvos no cofre, preservando rascunhos abertos. Os resultados são:
+
+| Resultado            | Significado                                                                               |
+| -------------------- | ----------------------------------------------------------------------------------------- |
+| Idêntico à origem    | Tamanho e hash coincidem com a origem registrada.                                         |
+| Diferente da origem  | Tamanho ou hash divergem; pode ser uma edição legítima ou um arquivo incompleto.          |
+| Ausente              | O arquivo ou um diretório ancestral não foi encontrado.                                   |
+| Caminho incompatível | Há um diretório no lugar de um arquivo, ou um arquivo no lugar de um diretório ancestral. |
+| Não foi possível ler | A leitura ou verificação não pôde ser concluída, por exemplo por falta de permissão.      |
+
+A tabela mostra separadamente o estado registrado e o observado. Um arquivo
+**Sem confirmação** pode estar completo, e um arquivo **Confirmado** pode ter
+sido alterado ou removido. A conferência não reescreve esses estados nem autoriza
+reparos ou remoções. A interface oferece filtros e páginas de até 50 linhas.
+**Baixar conferência** exporta todos os resultados, incluindo tamanhos e hashes
+observados quando disponíveis, independentemente do filtro ou página visível.
+Não inclui conteúdo das notas ou anexos.
+
+O resultado é uma leitura durante um intervalo, com início e conclusão registrados;
+não é um snapshot atômico de todos os arquivos. Pode ficar desatualizado após uma
+edição. **Conferir arquivos** deve ser acionado novamente para obter outra leitura.
+A conferência fica apenas em memória na interface e no relatório baixado, sem
+alterar o journal. A versão do registro e a identidade do cofre são verificadas
+antes da leitura; registros concluídos em outra aba são recusados como obsoletos.
+
+Os caminhos, tamanhos, estados, contadores e a identidade da seleção persistida
+são validados antes de usar qualquer caminho do registro para acessar arquivos.
+Dados inconsistentes são recusados. A leitura é serializada com operações do
+COSMOS pelo Web Lock; editores externos em pasta real continuam fora desse lock.
+Arquivos cujo tamanho já diverge não precisam ter seus bytes lidos para detectar
+a diferença. Permanecem os limites de 10 mil arquivos e 256 MiB da seleção original.
 
 ## Limites da leitura Markdown
 
@@ -558,8 +597,18 @@ aba durante uma tentativa, relatório sem conteúdo, isolamento de pastas com o
 mesmo nome, falha antes de registrar, falha após escrever mas antes de confirmar,
 retomada da mesma seleção, versão obsoleta entre abas, limite de registros,
 acessibilidade nos dois temas e descarte de metadados sem apagar arquivos.
-O smoke Tauri Linux mantém os fluxos nativos existentes aprovados. A CI verifica
-a matriz completa após publicação; não houve mudança nos contratos Rust/IPC.
+O smoke Tauri Linux mantém os fluxos nativos existentes aprovados. A CI de
+`07c4029` passou nos três sistemas, incluindo 117 testes Web. Não houve mudança
+nos contratos Rust/IPC.
+
+Validação da conferência de importações (2026-10-27): `pnpm check` passou com
+43 testes unitários, tipos, lint e schemas; builds Web/Desktop e Tauri debug
+passaram. Passaram 43 E2E Chromium contra o build de produção, incluindo estados
+atuais diferentes do progresso registrado, preservação de rascunho e bytes,
+reconferência explícita, filtro/paginação, idiomas, acessibilidade nos dois temas,
+metadados inconsistentes sem acesso a arquivos e registros obsoletos entre abas.
+O smoke Tauri Linux também passou. A CI verifica os três sistemas e navegadores
+após publicação; o banco local e os contratos Rust/IPC permanecem nas mesmas versões.
 
 ## Fechamento ainda necessário
 
@@ -584,8 +633,9 @@ a matriz completa após publicação; não houve mudança nos contratos Rust/IPC
   cofres movidos e exportação global dessas cópias.
 - Rollback de importação interrompida com regras de propriedade dos arquivos,
   tratamento de arquivos ou manifestos parciais e projetos incompletos herdados
-  de versões anteriores. O registro local de progresso Web já está disponível,
-  mas não autoriza remoção ou substituição automática. Também falta exportação
+  de versões anteriores. O registro local de progresso Web e a conferência do
+  estado atual dos arquivos já estão disponíveis, mas não autorizam remoção ou
+  substituição automática. Também falta exportação
   incremental de cofres maiores. A publicação dos manifestos por último já evita
   bloquear documentos ainda não copiados nas novas importações. A retomada explícita
   de pasta/ZIP já mantém arquivos idênticos e

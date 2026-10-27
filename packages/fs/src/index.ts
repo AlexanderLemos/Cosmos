@@ -79,4 +79,21 @@ export interface ImportHistory {
   list(): Promise<ImportHeader[]>;
   read(id: string, version: string): Promise<ImportReport>;
   forget(id: string, version: string): Promise<void>;
+  inspect(id: string, version: string): Promise<ImportInspection>;
+}
+
+export type ImportFileState =
+  | 'matching'
+  | 'different'
+  | 'missing'
+  | 'incompatible'
+  | 'unreadable';
+export interface ImportInspection {
+  format: 1;
+  header: ImportHeader;
+  startedAt: number;
+  checkedAt: number;
+  entries: (ImportEntry & {
+    current: { state: ImportFileState; size?: number; rev?: string };
+  })[];
 }

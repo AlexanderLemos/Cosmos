@@ -13,6 +13,7 @@ import {
   type FsEvent,
   ImportConflict,
   type ImportEntry,
+  type ImportInspection,
   type ImportOptions,
   type ImportResult,
   RevisionConflict,
@@ -67,6 +68,23 @@ export function decodeVaultZip(bytes: Uint8Array) {
 async function rev(bytes: Uint8Array<ArrayBuffer>) {
   const hash = await crypto.subtle.digest('SHA-256', bytes);
   return `sha256:${Array.from(new Uint8Array(hash), (b) => b.toString(16).padStart(2, '0')).join('')}`;
+}
+function importSource(entries: ImportEntry[]) {
+  return rev(
+    new TextEncoder().encode(
+      JSON.stringify(
+        entries
+          .map(({ path, size, rev }) => [path, size, rev])
+          .sort((a, b) =>
+            String(a[0]) < String(b[0])
+              ? -1
+              : String(a[0]) > String(b[0])
+                ? 1
+                : 0,
+          ),
+      ),
+    ),
+  );
 }
 const missing = (error: unknown) =>
   error instanceof DOMException && error.name === 'NotFoundError';
@@ -287,6 +305,99 @@ export class BrowserVaultFS implements VaultFS {
       importJournal.forget(await this.importScope(), id, version),
     );
   }
+  inspectImport(id: string, version: string): Promise<ImportInspection> {
+    return this.lock(async () => {
+      const report = await importJournal.read(
+        await this.importScope(),
+        id,
+        version,
+      );
+      // Validate all persisted metadata before using any recorded path to read files.
+      // A report is evidence only; this inspection never mutates files or the journal.
+      try {
+        let total = 0;
+        const names = new Set<string>();
+        for (const entry of report.entries) {
+          if (
+            typeof entry.path !== 'string' ||
+            typeof entry.rev !== 'string' ||
+            !/^sha256:[a-f0-9]{64}$/.test(entry.rev) ||
+            !Number.isSafeInteger(entry.size) ||
+            entry.size < 0 ||
+            !['pending', 'kept', 'writing', 'written'].includes(entry.state)
+          )
+            throw new Error();
+          if (
+            validatePath(entry.path).some(
+              (part) => part.toLowerCase() === '.git',
+            )
+          )
+            throw new Error();
+          const key = entry.path.toLowerCase();
+          if (names.has(key)) throw new Error();
+          names.add(key);
+          total += entry.size;
+          if (total > MAX_ARCHIVE_BYTES) throw new Error();
+        }
+        const writing = report.entries.filter(
+          (entry) => entry.state === 'writing',
+        );
+        if (
+          writing.length > 1 ||
+          writing[0]?.path !== report.header.current ||
+          report.entries.filter((entry) => entry.state === 'written').length !==
+            report.header.imported ||
+          report.entries.filter((entry) => entry.state === 'kept').length !==
+            report.header.skipped
+        )
+          throw new Error();
+      } catch (error) {
+        throw new Error('IMPORT_RECORD_INVALID', { cause: error });
+      }
+      if ((await importSource(report.entries)) !== report.header.source)
+        throw new Error('IMPORT_RECORD_INVALID');
+      const startedAt = Date.now();
+      const entries: ImportInspection['entries'] = [];
+      for (const entry of report.entries) {
+        let current: ImportInspection['entries'][number]['current'];
+        try {
+          const file = await this.file(entry.path);
+          // Do not read an unexpectedly large replacement just to classify a mismatch.
+          if (file.size !== entry.size)
+            current = { state: 'different', size: file.size };
+          else {
+            const bytes = new Uint8Array(await file.arrayBuffer());
+            const actualRev = await rev(bytes);
+            current = {
+              state:
+                bytes.length === entry.size && actualRev === entry.rev
+                  ? 'matching'
+                  : 'different',
+              size: bytes.length,
+              rev: actualRev,
+            };
+          }
+        } catch (error) {
+          current = {
+            state: missing(error)
+              ? 'missing'
+              : error instanceof DOMException &&
+                  error.name === 'TypeMismatchError'
+                ? 'incompatible'
+                : 'unreadable',
+          };
+        }
+        entries.push({ ...entry, current });
+      }
+      return {
+        format: 1,
+        header: report.header,
+        startedAt,
+        checkedAt: Date.now(),
+        entries,
+      };
+    });
+  }
   async importFiles(
     files: { path: string; file: File }[],
     options: ImportOptions = {},
@@ -361,21 +472,7 @@ export class BrowserVaultFS implements VaultFS {
       }
       if (!entries.length) return { imported: 0, skipped: 0 };
       const scope = await this.importScope();
-      const source = await rev(
-        new TextEncoder().encode(
-          JSON.stringify(
-            entries
-              .map(({ path, size, rev }) => [path, size, rev])
-              .sort((a, b) =>
-                String(a[0]) < String(b[0])
-                  ? -1
-                  : String(a[0]) > String(b[0])
-                    ? 1
-                    : 0,
-              ),
-          ),
-        ),
-      );
+      const source = await importSource(entries);
       // Strict local transactions precede writes; failures leave conservative progress.
       const operation = planned.length
         ? await importJournal.start(scope, source, entries)

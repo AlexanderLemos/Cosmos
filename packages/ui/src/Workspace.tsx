@@ -84,23 +84,25 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
             ? t('importRecordChanged')
             : message.includes('IMPORT_RECORD_LIMIT')
               ? t('importRecordLimit')
-              : message.includes('IMPORT_RECORD_UNAVAILABLE')
-                ? t('importHistoryUnavailable')
-                : message.includes('IMPORT_TOO_LARGE') ||
-                    message.includes('TOO_MANY_FILES')
-                  ? t('importLimit')
-                  : message.includes('MEMORY_READ_ONLY')
-                    ? t('memoryReadOnly')
-                    : message.includes('DRAFT_CHANGED')
-                      ? t('draftChanged')
-                      : message.includes('CONFLICT') ||
-                          message.includes('Revision conflict')
-                        ? t('conflict')
-                        : message.includes('DESTINATION_EXISTS')
-                          ? t('destinationExists')
-                          : message.includes('PROJECT_STRUCTURE_PROTECTED')
-                            ? t('structureProtected')
-                            : `${t('operationFailed')} ${message}`,
+              : message.includes('IMPORT_RECORD_INVALID')
+                ? t('importRecordInvalid')
+                : message.includes('IMPORT_RECORD_UNAVAILABLE')
+                  ? t('importHistoryUnavailable')
+                  : message.includes('IMPORT_TOO_LARGE') ||
+                      message.includes('TOO_MANY_FILES')
+                    ? t('importLimit')
+                    : message.includes('MEMORY_READ_ONLY')
+                      ? t('memoryReadOnly')
+                      : message.includes('DRAFT_CHANGED')
+                        ? t('draftChanged')
+                        : message.includes('CONFLICT') ||
+                            message.includes('Revision conflict')
+                          ? t('conflict')
+                          : message.includes('DESTINATION_EXISTS')
+                            ? t('destinationExists')
+                            : message.includes('PROJECT_STRUCTURE_PROTECTED')
+                              ? t('structureProtected')
+                              : `${t('operationFailed')} ${message}`,
       );
     } finally {
       setBusy(false);
