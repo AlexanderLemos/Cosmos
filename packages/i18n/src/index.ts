@@ -87,8 +87,9 @@ export const resources = {
       viewMode: 'Modo de visualização',
       view_edit: 'Editar',
       view_live: 'Edição visual',
+      taskCheckbox: 'Tarefa',
       livePreviewHint:
-        'Títulos e formatação simples aparecem no editor. Os marcadores ficam visíveis nas linhas em edição ou selecionadas.',
+        'Títulos, formatação e caixas de tarefas aparecem no editor. Marcar uma tarefa altera o rascunho; salve para gravar. Os marcadores ficam visíveis nas linhas em edição ou selecionadas.',
       livePreviewTooLarge:
         'A edição visual está limitada a 256 mil unidades de texto. Esta nota permanece disponível em Markdown.',
       view_read: 'Ler',
@@ -331,8 +332,9 @@ export const resources = {
       viewMode: 'View mode',
       view_edit: 'Edit',
       view_live: 'Visual editing',
+      taskCheckbox: 'Task',
       livePreviewHint:
-        'Headings and basic formatting appear in the editor. Markers remain visible on edited or selected lines.',
+        'Headings, formatting and task checkboxes appear in the editor. Toggling a task changes the draft; save to write it. Markers remain visible on edited or selected lines.',
       livePreviewTooLarge:
         'Visual editing is limited to 256 thousand text units. This note remains available as Markdown.',
       view_read: 'Read',

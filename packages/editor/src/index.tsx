@@ -5,6 +5,7 @@ import { searchKeymap } from '@codemirror/search';
 import { Compartment, EditorState } from '@codemirror/state';
 import { EditorView, keymap, lineNumbers } from '@codemirror/view';
 import { tags } from '@lezer/highlight';
+import { Strikethrough, TaskList } from '@lezer/markdown';
 import { useEffect, useRef } from 'react';
 import { livePreview } from './live-preview';
 
@@ -16,6 +17,7 @@ export function MarkdownEditor({
   onSave,
   readOnly,
   label,
+  taskLabel,
   visual = false,
 }: {
   initialValue: string;
@@ -23,6 +25,7 @@ export function MarkdownEditor({
   onSave: () => void;
   readOnly: boolean;
   label: string;
+  taskLabel: string;
   visual?: boolean;
 }) {
   const parent = useRef<HTMLDivElement>(null);
@@ -44,8 +47,8 @@ export function MarkdownEditor({
       state: EditorState.create({
         doc: initial.current,
         extensions: [
-          markdown(),
-          presentation.current.of(visual ? livePreview : []),
+          markdown({ extensions: [TaskList, Strikethrough] }),
+          presentation.current.of(visual ? livePreview(taskLabel) : []),
           history(),
           lineNumbers(),
           syntaxHighlighting(
@@ -163,8 +166,10 @@ export function MarkdownEditor({
   }, [label, readOnly]);
   useEffect(() => {
     view.current?.dispatch({
-      effects: presentation.current.reconfigure(visual ? livePreview : []),
+      effects: presentation.current.reconfigure(
+        visual ? livePreview(taskLabel) : [],
+      ),
     });
-  }, [visual]);
+  }, [visual, taskLabel]);
   return <div ref={parent} />;
 }

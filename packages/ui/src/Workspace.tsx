@@ -996,6 +996,7 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
                         key={`${doc.draftId ?? doc.path}:${doc.generation}`}
                         initialValue={doc.content}
                         label={t('editor')}
+                        taskLabel={t('taskCheckbox')}
                         visual={
                           viewMode === 'live' &&
                           doc.content.length <= LIVE_PREVIEW_LIMIT

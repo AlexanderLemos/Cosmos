@@ -31,10 +31,11 @@ foram aprovadas implicitamente pelo avanço da implementação.
   recarga explícita. Alterar idioma ou tema preserva a edição. Texto não é
   serializado de volta de uma AST. Links de notas e backlinks ignoram código e
   frontmatter; alvos ambíguos não são escolhidos automaticamente.
-- **Edição visual inicial:** títulos ATX, negrito, itálico e código em linha
+- **Edição visual inicial:** títulos ATX, negrito, itálico, código em linha e tachado
   formatados no CodeMirror, no Web/Desktop. Linhas em edição/selecionadas revelam
   os marcadores; alternar modos mantém texto, histórico e rascunhos. É a primeira
-  etapa de live preview, com os limites descritos abaixo.
+  etapa de live preview, agora com caixas de tarefas editáveis por mouse/teclado,
+  com os limites descritos abaixo.
 - **Leitura:** modos Editar, Ler e Edição e leitura no Web e Desktop, com Markdown/GFM,
   tabelas, listas de tarefas, citações e blocos de código. A leitura acompanha o
   rascunho e as recargas externas aceitas. Alternar o modo mantém a instância do
@@ -304,10 +305,10 @@ notas maiores continuam editáveis dentro do limite geral de 8 MiB. A leitura
 separada não é uma garantia de performance para cofres grandes. A edição visual
 inicial dentro do CodeMirror está descrita a seguir.
 
-### Edição visual inicial — 2026-10-27
+### Edição visual inicial — atualizada em 2026-10-29
 
 O botão **Edição visual** formata títulos `#` a `######`, `**negrito**`,
-`*itálico*` e código entre crases diretamente no editor. Fora das linhas do cursor
+`*itálico*`, código entre crases e `~~tachado~~` diretamente no editor. Fora das linhas do cursor
 ou seleção, os marcadores ficam ocultos; ao entrar na linha, a sintaxe reaparece.
 Selecionar tudo revela o texto Markdown. Alternar para Editar, Ler ou Edição e
 leitura preserva a instância do editor, desfazer/refazer e o rascunho atual.
@@ -317,7 +318,21 @@ A transformação não reserializa Markdown nem altera BOM ou quebras de linha.
 Frontmatter YAML, blocos de código/HTML e formatação inline multilinha permanecem
 literais. O limite é de 262.144 unidades de texto UTF-16; notas maiores usam a
 edição Markdown com aviso. O modo não persiste após recarregar o aplicativo.
-Tabelas, tarefas, títulos Setext, tachado, links, callouts, transclusões e anexos
+Listas de tarefas com `[ ]`, `[x]` ou `[X]` oferecem caixas de seleção fora das
+linhas em edição/selecionadas, inclusive em listas numeradas, aninhadas e citações.
+Clique ou Espaço marca/desmarca; Tab navega entre as caixas. Ctrl/Cmd+S e os atalhos
+de desfazer/refazer continuam disponíveis quando uma caixa tem foco. Cada ativação
+altera apenas o caractere central do marcador, em uma transação independente de
+desfazer. O estado marcado novo usa `x` minúsculo; desfazer restaura o original,
+inclusive `X` maiúsculo. A mudança fica no rascunho até salvar explicitamente e
+usa as mesmas verificações de revisão. Durante operações e em notas protegidas,
+as caixas ficam desabilitadas e a ativação confere novamente o acesso.
+Os nomes acessíveis usam o prefixo Tarefa/Task e o texto da primeira linha.
+Estados personalizados como `[-]` continuam literais; não há organização,
+filtragem ou movimentação automática de tarefas. Tachado aceita dois tils por
+lado, em uma única linha; um til e formas multilinha permanecem literais.
+
+Tabelas, títulos Setext, links, callouts, transclusões e anexos
 no próprio editor ainda pendem. A leitura separada mantém seu suporte existente.
 Detalhes na [ADR 0008](adr/0008-edicao-visual-inicial.md).
 
@@ -708,12 +723,22 @@ de produção. Cobrem edição dentro de formatação, seleção, desfazer/refaz
 troca de modos/idioma/tema, acessibilidade, proteção de projetos, limite de tamanho
 e preservação de bytes no salvamento/exportação. O smoke Tauri Linux confirmou
 formatação no WebView, manutenção da instância do editor e arquivos intactos.
-A suíte completa nos três navegadores e sistemas é executada pela CI após publicar.
+A CI de `d5175d1` passou nos três sistemas, incluindo 141 testes Web.
+
+Validação de tarefas/tachado (2026-10-29): `pnpm check` passou com 47 testes
+unitários, tipos, lint e schemas; builds Web/Desktop e Tauri debug passaram.
+Os três cenários Chromium de edição visual passaram contra o build de produção,
+incluindo tarefas por clique/Tab/Espaço, atalhos a partir da caixa, desfazer/refazer,
+offset após inserir texto, seleção, somente leitura, idiomas, acessibilidade nos
+dois temas e preservação dos bytes em exportação antes/depois de salvar.
+O smoke Tauri Linux passou, confirmando tarefa no WebView, rascunho antes da
+escrita, salvamento pelo daemon e preservação dos demais bytes. A suíte completa
+nos três navegadores e os builds nos três sistemas serão verificados na CI.
 
 ## Fechamento ainda necessário
 
-- Ampliar a edição visual inicial do CodeMirror para tabelas, tarefas, títulos
-  Setext, tachado, links, callouts e anexos; formatos de anexos além das imagens
+- Ampliar a edição visual inicial do CodeMirror para tabelas, títulos
+  Setext, links, callouts e anexos; tarefas com estados personalizados; formatos de anexos além das imagens
   raster e PDFs sob demanda,
   recursos avançados do leitor PDF,
   transclusão/autocompletar de blocos, compatibilidade avançada de títulos/wikilinks, títulos formatados e

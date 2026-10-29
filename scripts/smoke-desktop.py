@@ -164,19 +164,29 @@ def main():
             (vault / 'Folder/Moved.md').write_bytes(external)
             wait('return document.querySelector(".cm-content")?.textContent.includes("Updated outside COSMOS.")')
             wait("""return document.querySelector('section[aria-label="Markdown preview"] h1')?.textContent === 'External note'""")
-            visual_note = b'# Native heading\r\n\r\n**Native bold** and *native emphasis* and `native code`.\n\nFinal'
+            visual_note = b'# Native heading\r\n\r\n**Native bold** and *native emphasis* and `native code`.\n\n- [ ] Native task\r\n\n~~Old~~\n\nFinal'
             (vault / 'Folder/Moved.md').write_bytes(visual_note)
             wait('return document.querySelector(".cm-content")?.textContent.includes("Native bold")')
             execute('window.nativeEditor = document.querySelector(".cm-content")')
             click('Visual editing')
             wait('return document.querySelector(".cm-live-strong")?.textContent === "Native bold"')
             assert execute('return document.querySelector(".cm-live-code")?.textContent === "native code"')
+            wait('return document.querySelector(".cm-live-task")?.disabled === false')
+            assert execute('return document.querySelector(".cm-live-strike")?.textContent === "Old"')
+            execute('document.querySelector(".cm-live-task").click()')
+            wait('return document.querySelector(".cm-live-task")?.checked === true')
+            wait('return document.body.innerText.includes("Draft protected on this device.")')
+            assert (vault / 'Folder/Moved.md').read_bytes() == visual_note
+            click('Save')
+            wait('return document.body.innerText.includes("Saved to vault.")')
+            visual_note = visual_note.replace(b'[ ] Native task', b'[x] Native task')
+            assert (vault / 'Folder/Moved.md').read_bytes() == visual_note
             click('Edit')
             wait('return document.querySelector(".cm-content")?.textContent.includes("**Native bold**")')
             assert execute('return document.querySelector(".cm-content") === window.nativeEditor')
             assert (vault / 'Folder/Moved.md').read_bytes() == visual_note
             click('Edit and read')
-            checks += ['visual editing formats inactive Markdown while preserving the editor instance and original vault bytes']
+            checks += ['visual editing formats Markdown and toggles tasks through drafts and explicit save, preserving other bytes and editor identity']
             # Obsidian anchors use the same display parser in the real native WebView.
             blocks = b'# External note\r\n\r\nUpdated outside COSMOS. ^native\r\n\r\n[[#^native|Local block]]\r\n\r\n[[Blocks#^target|Other block]]\r\n'
             block_target = b'Target block. ^target\n\n[Return to block](Folder/Moved.md#%5Enative)'
