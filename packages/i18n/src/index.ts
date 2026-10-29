@@ -90,12 +90,13 @@ export const resources = {
       taskCheckbox: 'Tarefa',
       tableSource: 'Mostrar Markdown da tabela',
       livePreviewHint:
-        'Títulos, formatação, tabelas e caixas de tarefas aparecem no editor. Marcar uma tarefa altera o rascunho; salve para gravar. Os marcadores ficam visíveis nas linhas em edição ou selecionadas.',
+        'Títulos, formatação, tabelas, callouts simples e caixas de tarefas aparecem no editor. Marcar uma tarefa altera o rascunho; salve para gravar. Os marcadores ficam visíveis nas linhas em edição ou selecionadas.',
       livePreviewTooLarge:
         'A edição visual está limitada a 256 mil unidades de texto. Esta nota permanece disponível em Markdown.',
       view_read: 'Ler',
       view_split: 'Edição e leitura',
       markdownPreview: 'Leitura Markdown',
+      calloutSource: 'Mostrar Markdown do callout',
       callout_note: 'Nota',
       callout_abstract: 'Resumo',
       callout_info: 'Informação',
@@ -336,12 +337,13 @@ export const resources = {
       taskCheckbox: 'Task',
       tableSource: 'Show table Markdown',
       livePreviewHint:
-        'Headings, formatting, tables and task checkboxes appear in the editor. Toggling a task changes the draft; save to write it. Markers remain visible on edited or selected lines.',
+        'Headings, formatting, tables, simple callouts and task checkboxes appear in the editor. Toggling a task changes the draft; save to write it. Markers remain visible on edited or selected lines.',
       livePreviewTooLarge:
         'Visual editing is limited to 256 thousand text units. This note remains available as Markdown.',
       view_read: 'Read',
       view_split: 'Edit and read',
       markdownPreview: 'Markdown preview',
+      calloutSource: 'Show callout Markdown',
       callout_note: 'Note',
       callout_abstract: 'Abstract',
       callout_info: 'Info',

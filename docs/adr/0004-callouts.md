@@ -27,3 +27,9 @@ com conferência do marcador na fonte bruta. Casos ambíguos de cabeçalho multi
 permanecem citações comuns. A conformidade TS/Rust cobre a inspeção do Markdown;
 o comportamento de exibição é coberto por testes do parser, Playwright e smoke do
 WebView nativo, incluindo teclado, foco, rascunhos e round-trip de bytes.
+
+
+Desde 2026-10-29, a normalização de tipos/aliases e o padrão do marcador ficam
+em `callout-marker.ts`, compartilhado com a apresentação inicial de callouts no
+editor. Essa extração preserva o comportamento de leitura descrito aqui.
+Os limites da edição visual estão na [ADR 0008](0008-edicao-visual-inicial.md).

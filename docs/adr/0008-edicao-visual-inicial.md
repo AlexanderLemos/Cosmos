@@ -89,3 +89,32 @@ mudanças no documento, seleção e árvore sintática, inclusive a análise ass
 do CodeMirror; a criação de DOM continua sob a virtualização do editor. Estes
 limites não substituem benchmarks de cofres grandes. Nenhum contrato de daemon,
 IPC, armazenamento, esquema ou dependência foi alterado neste incremento.
+
+## Evolução — callouts simples, 2026-10-29
+
+Tipos, aliases e reconhecimento do marcador vêm de um módulo puro em
+`@cosmos/core/callout-marker`, compartilhado com a transformação de leitura.
+O editor passa a depender do pacote interno core; nenhuma biblioteca externa
+foi adicionada. A gramática de leitura e seus títulos não foram modificados.
+
+No CodeMirror, citações simples no nível principal usam decorações de linha
+para título/corpo e um widget inline no marcador, com botão de tipo traduzido
+para revelar a fonte. As marcas `>` ficam ocultas fora da seleção; o corpo
+continua no documento editável e recebe a formatação inline/tarefas existente.
+Qualquer seleção no bloco suspende suas decorações, revelando toda a fonte.
+O botão verifica o marcador antes de posicionar a seleção, devolve foco ao editor
+e não altera o documento. O caminho de salvar/desfazer/rascunhos é o já existente.
+
+A transformação é limitada a 200 linhas com citações explícitas, dentro do limite
+geral de edição visual. Callouts aninhados ou dentro de listas, tabelas, blocos
+de código/HTML, continuação implícita e cabeçalhos inline ambíguos ficam literais.
+Referências de link que definem o marcador também impedem a transformação. O
+levantamento dessas referências acontece no máximo uma vez por atualização das
+decorações, e ignora o frontmatter. Isso não promete equivalência completa aos
+parsers de leitura e edição. Fronteiras mais complexas ficam para outro incremento.
+
+O corpo permanece aberto; `+`/`-` não são reescritos e ainda controlam o estado
+inicial no modo Ler. Recolhimento no editor, blocos aninhados e renderização de
+links/anexos continuam pendentes. Temas e rótulos são reconfigurados sem recriar
+o editor. O botão funciona em notas protegidas apenas para navegar na fonte.
+Não há alteração de daemon, IPC, schemas ou armazenamento.

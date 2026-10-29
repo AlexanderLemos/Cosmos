@@ -422,3 +422,139 @@ test('visual tables keep oversized, nested and unterminated frontmatter tables a
   await expect(editor.getByRole('table')).toHaveCount(0);
   await expect(editor).toContainText('| Pequena |');
 });
+
+test('visual callouts share aliases and reveal their complete source without changing original bytes', async ({
+  page,
+}) => {
+  const source =
+    '\ufeff---\r\ntitle: callouts\n---\r\n\n> [!caution]- Decisão **importante**\r\n> Corpo com *ênfase* e `código`.\n>\n> - [ ] Revisar\r\n>\n> Fim.\n\n> [!hint]+\n> Dica.\n\n> [!custom] Personalizado\n> Texto.\n\nFinal';
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await importNotes(page, { 'Callout.md': Buffer.from(source) });
+  await page
+    .getByRole('navigation', { name: 'Notas' })
+    .getByRole('button', { name: 'Callout.md', exact: true })
+    .click();
+  const editor = page.locator('.cm-content');
+  await expect(editor).toHaveAttribute('contenteditable', 'true');
+  await editor.press('ControlOrMeta+End');
+  await page
+    .getByRole('button', { name: 'Edição visual', exact: true })
+    .click();
+  await expect(editor.locator('.cm-live-callout-source')).toHaveText([
+    'Aviso',
+    'Dica',
+    'Nota',
+  ]);
+  await expect(editor.locator('.cm-live-callout-title').first()).toHaveText(
+    'Aviso Decisão importante',
+  );
+  await expect(editor).toContainText('Corpo com ênfase e código.');
+  await expect(editor).not.toContainText('[!caution]');
+  await expect(editor).toContainText('Dica.');
+  const task = editor.getByRole('checkbox', {
+    name: 'Tarefa: Revisar',
+    exact: true,
+  });
+  await task.click();
+  await expect(task).toBeChecked();
+  await task.press('ControlOrMeta+z');
+  await expect(task).not.toBeChecked();
+  for (const theme of ['nyx', 'hemera']) {
+    await page.getByLabel('Tema').selectOption(theme);
+    expect(
+      (
+        await new AxeBuilder({ page })
+          .withTags(['wcag2a', 'wcag2aa', 'wcag21aa'])
+          .analyze()
+      ).violations,
+    ).toEqual([]);
+  }
+  await page.getByLabel('Idioma').selectOption('en');
+  const button = editor.getByRole('button', {
+    name: 'Show callout Markdown: Warning',
+    exact: true,
+  });
+  await button.focus();
+  await button.press('Enter');
+  await expect(editor).toBeFocused();
+  await expect(editor).toContainText('> [!caution]- Decisão **importante**');
+  await expect(editor).toContainText('> Corpo com *ênfase* e `código`.');
+  await expect(editor).toContainText('> - [ ] Revisar');
+  await editor.press('End');
+  await editor.pressSequentially(' revisto');
+  await editor.press('ControlOrMeta+End');
+  await expect(editor.locator('.cm-live-callout-title').first()).toContainText(
+    'importante revisto',
+  );
+  await editor.press('ControlOrMeta+z');
+  await editor.press('ControlOrMeta+End');
+  await expect(editor).not.toContainText('revisto');
+  await editor.press('ControlOrMeta+Shift+z');
+  await editor.press('ControlOrMeta+End');
+  await expect(editor).toContainText('importante revisto');
+  await page.getByLabel('Language').selectOption('pt-BR');
+  await expect(
+    page.getByText('Rascunho protegido neste dispositivo.'),
+  ).toBeVisible();
+  expect(Buffer.from((await exported(page))['Callout.md'] ?? [])).toEqual(
+    Buffer.from(source),
+  );
+  await editor.press('ControlOrMeta+a');
+  await expect(editor.locator('.cm-live-callout-source')).toHaveCount(0);
+  await expect(editor).toContainText('> [!hint]+');
+  await editor.press('ControlOrMeta+End');
+  for (const name of ['Editar', 'Ler', 'Edição e leitura', 'Edição visual'])
+    await page.getByRole('button', { name, exact: true }).click();
+  await editor.press('ControlOrMeta+s');
+  await expect(
+    page.getByText('Salvo no cofre.', { exact: true }),
+  ).toBeVisible();
+  expect(Buffer.from((await exported(page))['Callout.md'] ?? [])).toEqual(
+    Buffer.from(source.replace('**importante**', '**importante** revisto')),
+  );
+  expect(errors).toEqual([]);
+});
+
+test('visual callouts leave complex, escaped and reference-defined blocks literal and preserve protected access', async ({
+  page,
+}) => {
+  const source =
+    '---\n> [!note] YAML\n---\n\n> [!note] Outer\n> > [!tip] Inner\n> > text\n\n> \\[!tip] Escapado\n> text\n\n> [!tip] Com código\n> ```md\n> código\n> ```\n\n> [!tip] Continuação\nsem marcador\n\n> [!note] Referência\n> texto\n\n[!note]: Outra.md\n\n> [!tip] Tabela\n> | a |\n> | --- |\n\n> [!tip] Longo\n' +
+    '> linha\n'.repeat(200) +
+    '\nFinal';
+  await importNotes(page, {
+    'Literal.md': Buffer.from(source),
+    'Projeto/project.cosmos.json': Buffer.from('{}'),
+    'Projeto/Nota.md': Buffer.from(
+      '# Protegida\n\n> [!TIP]+ Conselho\n> **Texto**\n\nFinal',
+    ),
+  });
+  const notes = page.getByRole('navigation', { name: 'Notas' });
+  await notes.getByRole('button', { name: 'Literal.md', exact: true }).click();
+  const editor = page.locator('.cm-content');
+  await expect(editor).toHaveAttribute('contenteditable', 'true');
+  await editor.press('ControlOrMeta+End');
+  await page
+    .getByRole('button', { name: 'Edição visual', exact: true })
+    .click();
+  await expect(editor.locator('.cm-live-callout-source')).toHaveCount(0);
+  expect(Buffer.from((await exported(page))['Literal.md'] ?? [])).toEqual(
+    Buffer.from(source),
+  );
+  await notes
+    .getByRole('button', { name: 'Projeto/Nota.md', exact: true })
+    .click();
+  await expect(editor).toHaveAttribute('contenteditable', 'false');
+  await editor
+    .getByRole('button', {
+      name: 'Mostrar Markdown do callout: Dica',
+      exact: true,
+    })
+    .click();
+  await expect(editor).toContainText('> [!TIP]+ Conselho');
+  await expect(editor).toHaveAttribute('contenteditable', 'false');
+  await expect(
+    page.getByRole('button', { name: 'Salvar', exact: true }),
+  ).toBeDisabled();
+});

@@ -164,7 +164,7 @@ def main():
             (vault / 'Folder/Moved.md').write_bytes(external)
             wait('return document.querySelector(".cm-content")?.textContent.includes("Updated outside COSMOS.")')
             wait("""return document.querySelector('section[aria-label="Markdown preview"] h1')?.textContent === 'External note'""")
-            visual_note = b'# Native heading\r\n\r\n**Native bold** and *native emphasis* and `native code`.\n\n- [ ] Native task\r\n\n~~Old~~\n\n| Column | Value |\r\n| :--- | ---: |\n| **Cell** | 42 |\n\nFinal'
+            visual_note = b'# Native heading\r\n\r\n**Native bold** and *native emphasis* and `native code`.\n\n- [ ] Native task\r\n\n~~Old~~\n\n| Column | Value |\r\n| :--- | ---: |\n| **Cell** | 42 |\n\n> [!hint]- Native advice\n> **Native callout body**\r\n\nFinal'
             (vault / 'Folder/Moved.md').write_bytes(visual_note)
             wait('return document.querySelector(".cm-content")?.textContent.includes("Native bold")')
             execute('window.nativeEditor = document.querySelector(".cm-content")')
@@ -187,12 +187,18 @@ def main():
             wait('return !document.querySelector(".cm-live-table")')
             assert execute('return document.querySelector(".cm-content")?.textContent.includes("| **Cell** | 42 |")')
             assert execute('return document.activeElement === document.querySelector(".cm-content")')
+            wait('return document.querySelector(".cm-live-callout-source")?.textContent === "Tip"')
+            click('Tip')
+            wait('return !document.querySelector(".cm-live-callout-source")')
+            assert execute('return document.querySelector(".cm-content")?.textContent.includes("> [!hint]- Native advice")')
+            assert execute('return document.querySelector(".cm-content")?.textContent.includes("> **Native callout body**")')
+            assert execute('return document.activeElement === document.querySelector(".cm-content")')
             click('Edit')
             wait('return document.querySelector(".cm-content")?.textContent.includes("**Native bold**")')
             assert execute('return document.querySelector(".cm-content") === window.nativeEditor')
             assert (vault / 'Folder/Moved.md').read_bytes() == visual_note
             click('Edit and read')
-            checks += ['visual editing renders tables with source reveal and toggles tasks through drafts and explicit save, preserving other bytes and editor identity']
+            checks += ['visual editing renders tables and simple callouts with source reveal and toggles tasks through drafts and explicit save, preserving other bytes and editor identity']
             # Obsidian anchors use the same display parser in the real native WebView.
             blocks = b'# External note\r\n\r\nUpdated outside COSMOS. ^native\r\n\r\n[[#^native|Local block]]\r\n\r\n[[Blocks#^target|Other block]]\r\n'
             block_target = b'Target block. ^target\n\n[Return to block](Folder/Moved.md#%5Enative)'

@@ -11,6 +11,13 @@ import {
 } from '@codemirror/view';
 
 import {
+  type CalloutLabels,
+  calloutReferences,
+  calloutTheme,
+  decorateCallout,
+} from './callout-preview';
+
+import {
   frontmatterEnd,
   LIVE_PREVIEW_LIMIT,
   selectedLines,
@@ -81,12 +88,17 @@ class TaskCheckbox extends WidgetType {
 }
 
 /** Decorations and task widgets. All edits go through the original document. */
-function decorate(view: EditorView, taskLabel: string): DecorationSet {
+function decorate(
+  view: EditorView,
+  taskLabel: string,
+  calloutLabels: CalloutLabels,
+): DecorationSet {
   const { state } = view;
   if (state.doc.length > LIVE_PREVIEW_LIMIT || view.composing)
     return Decoration.none;
   const excluded = frontmatterEnd(state);
   const active = selectedLines(state);
+  let references: Set<string> | undefined;
   const ranges: Range<Decoration>[] = [];
   const seen = new Set<string>();
   const add = (
@@ -110,6 +122,20 @@ function decorate(view: EditorView, taskLabel: string): DecorationSet {
           ['FencedCode', 'CodeBlock', 'HTMLBlock', 'Table'].includes(node.name)
         )
           return false;
+        if (node.name === 'Blockquote') {
+          references ??= calloutReferences(state, excluded);
+          if (
+            decorateCallout(
+              state,
+              node.node,
+              active,
+              calloutLabels,
+              references,
+              add,
+            )
+          )
+            return false;
+        }
         if (node.name === 'TaskMarker' && !active(node.from, node.to)) {
           const line = state.doc.lineAt(node.to);
           const text = state.sliceDoc(node.to, line.to).trim();
@@ -189,12 +215,16 @@ function decorate(view: EditorView, taskLabel: string): DecorationSet {
   return Decoration.set(ranges, true);
 }
 
-export const livePreview = (taskLabel: string) => [
+export const livePreview = (
+  taskLabel: string,
+  calloutLabels: CalloutLabels,
+) => [
+  calloutTheme,
   ViewPlugin.fromClass(
     class {
       decorations: DecorationSet;
       constructor(view: EditorView) {
-        this.decorations = decorate(view, taskLabel);
+        this.decorations = decorate(view, taskLabel, calloutLabels);
       }
       update(update: ViewUpdate) {
         if (
@@ -207,7 +237,7 @@ export const livePreview = (taskLabel: string) => [
             update.state.facet(EditorView.editable) ||
           syntaxTree(update.startState) !== syntaxTree(update.state)
         )
-          this.decorations = decorate(update.view, taskLabel);
+          this.decorations = decorate(update.view, taskLabel, calloutLabels);
       }
     },
     { decorations: (plugin) => plugin.decorations },

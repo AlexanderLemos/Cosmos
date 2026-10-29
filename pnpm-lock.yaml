@@ -158,6 +158,9 @@ importers:
       '@codemirror/view':
         specifier: 6.43.15
         version: 6.43.15
+      '@cosmos/core':
+        specifier: workspace:*
+        version: link:../core
       '@lezer/highlight':
         specifier: 1.2.5
         version: 1.2.5

@@ -1,37 +1,7 @@
 import type { PhrasingContent, Root, RootContent } from 'mdast';
 import { toString as nodeText } from 'mdast-util-to-string';
 
-const aliases = new Map([
-  ['summary', 'abstract'],
-  ['tldr', 'abstract'],
-  ['hint', 'tip'],
-  ['important', 'tip'],
-  ['check', 'success'],
-  ['done', 'success'],
-  ['help', 'question'],
-  ['faq', 'question'],
-  ['caution', 'warning'],
-  ['attention', 'warning'],
-  ['fail', 'failure'],
-  ['missing', 'failure'],
-  ['error', 'danger'],
-  ['cite', 'quote'],
-]);
-const types = new Set([
-  'note',
-  'abstract',
-  'info',
-  'todo',
-  'tip',
-  'success',
-  'question',
-  'warning',
-  'failure',
-  'danger',
-  'bug',
-  'example',
-  'quote',
-]);
+import { calloutMarker, calloutType } from './callout-marker';
 
 function titleText(node: PhrasingContent): string {
   if (node.type === 'html') return '';
@@ -106,9 +76,7 @@ export function remarkCallouts() {
         const first =
           paragraph?.type === 'paragraph' ? paragraph.children[0] : undefined;
         if (paragraph?.type === 'paragraph' && first?.type === 'text') {
-          const marker = /^\[!([a-z][a-z\d-]{0,63})\]([+-]?)(?=\s|$)/i.exec(
-            first.value,
-          );
+          const marker = calloutMarker.exec(first.value);
           const start = first.position?.start.offset;
           if (
             marker &&
@@ -121,9 +89,7 @@ export function remarkCallouts() {
               : source.length;
             const split = splitHeader(paragraph.children, boundary, source);
             if (split) {
-              const rawType = marker[1]?.toLowerCase() ?? 'note';
-              const type =
-                aliases.get(rawType) ?? (types.has(rawType) ? rawType : 'note');
+              const type = calloutType(marker[1] ?? 'note');
               const title = split.title
                 .map(titleText)
                 .join('')

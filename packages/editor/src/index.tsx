@@ -7,6 +7,7 @@ import { EditorView, keymap, lineNumbers } from '@codemirror/view';
 import { tags } from '@lezer/highlight';
 import { Strikethrough, Table, TaskList } from '@lezer/markdown';
 import { useEffect, useRef } from 'react';
+import type { CalloutLabels } from './callout-preview';
 import { livePreview } from './live-preview';
 import { tablePreview } from './table-preview';
 
@@ -20,6 +21,7 @@ export function MarkdownEditor({
   label,
   taskLabel,
   tableLabel,
+  calloutLabels,
   visual = false,
 }: {
   initialValue: string;
@@ -29,6 +31,7 @@ export function MarkdownEditor({
   label: string;
   taskLabel: string;
   tableLabel: string;
+  calloutLabels: CalloutLabels;
   visual?: boolean;
 }) {
   const parent = useRef<HTMLDivElement>(null);
@@ -52,7 +55,12 @@ export function MarkdownEditor({
         extensions: [
           markdown({ extensions: [TaskList, Strikethrough, Table] }),
           presentation.current.of(
-            visual ? [livePreview(taskLabel), tablePreview(tableLabel)] : [],
+            visual
+              ? [
+                  livePreview(taskLabel, calloutLabels),
+                  tablePreview(tableLabel),
+                ]
+              : [],
           ),
           history(),
           lineNumbers(),
@@ -172,9 +180,11 @@ export function MarkdownEditor({
   useEffect(() => {
     view.current?.dispatch({
       effects: presentation.current.reconfigure(
-        visual ? [livePreview(taskLabel), tablePreview(tableLabel)] : [],
+        visual
+          ? [livePreview(taskLabel, calloutLabels), tablePreview(tableLabel)]
+          : [],
       ),
     });
-  }, [visual, taskLabel, tableLabel]);
+  }, [visual, taskLabel, tableLabel, calloutLabels]);
   return <div ref={parent} />;
 }

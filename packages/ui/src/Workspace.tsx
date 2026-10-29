@@ -14,6 +14,29 @@ import styles from './Workspace.module.css';
 
 export function Workspace({ platform }: { platform: VaultPlatform }) {
   const { t } = useTranslation();
+  const calloutLabels = useMemo(
+    () => ({
+      source: t('calloutSource'),
+      types: Object.fromEntries(
+        [
+          'note',
+          'abstract',
+          'info',
+          'todo',
+          'tip',
+          'success',
+          'question',
+          'warning',
+          'failure',
+          'danger',
+          'bug',
+          'example',
+          'quote',
+        ].map((type) => [type, t(`callout_${type}`)]),
+      ),
+    }),
+    [t],
+  );
   const [vault, setVault] = useState<OpenVault | null>(null);
   const [paths, setPaths] = useState<string[]>([]);
   const [doc, setDoc] = useState<DocumentState | null>(null);
@@ -998,6 +1021,7 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
                         label={t('editor')}
                         taskLabel={t('taskCheckbox')}
                         tableLabel={t('tableSource')}
+                        calloutLabels={calloutLabels}
                         visual={
                           viewMode === 'live' &&
                           doc.content.length <= LIVE_PREVIEW_LIMIT

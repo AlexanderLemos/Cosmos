@@ -35,7 +35,8 @@ foram aprovadas implicitamente pelo avanço da implementação.
   formatados no CodeMirror, no Web/Desktop. Linhas em edição/selecionadas revelam
   os marcadores; alternar modos mantém texto, histórico e rascunhos. É a primeira
   etapa de live preview, agora com caixas de tarefas editáveis por mouse/teclado,
-  e tabelas com retorno ao Markdown para editar, com os limites descritos abaixo.
+  tabelas e callouts simples com retorno ao Markdown para editar, com os limites
+  descritos abaixo.
 - **Leitura:** modos Editar, Ler e Edição e leitura no Web e Desktop, com Markdown/GFM,
   tabelas, listas de tarefas, citações e blocos de código. A leitura acompanha o
   rascunho e as recargas externas aceitas. Alternar o modo mantém a instância do
@@ -350,7 +351,23 @@ A formatação inline tem limite de profundidade; os trechos excedentes ficam
 literais. Células ausentes aparecem vazias e colunas extras não aparecem na
 apresentação GFM, mas todos os bytes continuam disponíveis na fonte.
 
-Títulos Setext, links, callouts, transclusões e anexos
+Callouts simples no nível principal ganham destaque de título e corpo. O botão
+com o tipo traduzido (Nota, Dica, Aviso etc.) oferece **Mostrar Markdown do callout**;
+ativá-lo por mouse/teclado revela o bloco completo e posiciona o cursor no
+marcador. Selecionar qualquer linha do bloco também revela sua fonte inteira.
+Tipos, aliases e regra de tipo desconhecido são compartilhados com a leitura.
+O título personalizado mantém a formatação inline já suportada no editor;
+tarefas no corpo continuam editáveis pelo mesmo fluxo de rascunhos.
+
+Neste incremento visual, os sufixos `+`/`-` são preservados e o corpo permanece
+aberto. Recolhimento continua no modo Ler. Aceitamos até 200 linhas, todas com
+marcador de citação explícito. Callouts aninhados, dentro de listas, com tabelas,
+código/HTML em bloco, continuação sem `>` ou cabeçalhos multilinha ambíguos
+permanecem na apresentação Markdown. YAML, escapes e marcadores definidos como
+referências de links não viram controles de callout. O botão de fonte não grava
+nem libera notas protegidas. HTML inline, links e anexos seguem literais no editor.
+
+Títulos Setext, links, transclusões e anexos, além de callouts complexos/recolhíveis
 no próprio editor ainda pendem. A leitura separada mantém seu suporte existente.
 Detalhes na [ADR 0008](adr/0008-edicao-visual-inicial.md).
 
@@ -763,12 +780,22 @@ confirma também que HTML e links nas células continuam literais. O smoke Tauri
 Linux passou com tabela, retorno à fonte, foco e bytes preservados. A primeira
 execução perdeu a conexão com o driver WebKit depois desses checks, no cenário
 preexistente de callouts; a repetição completa passou sem mudança de código.
-A CI executará os três navegadores e os builds nos três sistemas após publicar.
+A CI de `bc6c228` passou nos três sistemas, incluindo 150 testes Web.
+
+Validação de callouts simples no editor (2026-10-29): `pnpm check` passou com
+47 testes unitários, tipos, lint e schemas; builds Web/Desktop e Tauri debug
+passaram. Passaram oito cenários Chromium de edição visual e callouts na leitura,
+incluindo aliases, teclado, seleção do bloco, tarefas, desfazer/refazer,
+rascunhos, notas protegidas, idiomas, acessibilidade nos dois temas e bytes
+originais antes/depois de salvar. Casos complexos, escapados e definidos como
+referências continuam na fonte. O smoke Tauri Linux passou com callout simples,
+retorno ao Markdown, foco e bytes preservados, além dos fluxos nativos anteriores.
+A CI verificará os três navegadores e os builds nos três sistemas após publicar.
 
 ## Fechamento ainda necessário
 
 - Ampliar a edição visual inicial do CodeMirror para títulos
-  Setext, links, callouts e anexos; tabelas aninhadas e conteúdo avançado nas células; tarefas com estados personalizados; formatos de anexos além das imagens
+  Setext, links e anexos; callouts complexos/recolhíveis; tabelas aninhadas e conteúdo avançado nas células; tarefas com estados personalizados; formatos de anexos além das imagens
   raster e PDFs sob demanda,
   recursos avançados do leitor PDF,
   transclusão/autocompletar de blocos, compatibilidade avançada de títulos/wikilinks, títulos formatados e
