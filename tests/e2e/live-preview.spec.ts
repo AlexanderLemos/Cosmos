@@ -118,7 +118,7 @@ test('visual editing keeps protected notes read-only and uses raw Markdown above
   await importNotes(page, {
     'Projeto/project.cosmos.json': Buffer.from('{}'),
     'Projeto/Nota.md': Buffer.from(
-      '# Protegida\n\n**Forte**\n\n- [ ] Protegida\n\nFinal',
+      '# Protegida\n\n**Forte**\n\n- [ ] Protegida\n\n| Campo |\n| --- |\n| Protegido |\n\nFinal',
     ),
     'Grande.md': Buffer.from(large),
   });
@@ -137,6 +137,13 @@ test('visual editing keeps protected notes read-only and uses raw Markdown above
   await expect(
     page.getByRole('button', { name: 'Salvar', exact: true }),
   ).toBeDisabled();
+  await expect(editor.getByRole('table')).toHaveCount(1);
+  await editor
+    .getByRole('button', { name: 'Mostrar Markdown da tabela', exact: true })
+    .click();
+  await expect(editor.getByRole('table')).toHaveCount(0);
+  await expect(editor).toHaveAttribute('contenteditable', 'false');
+  await expect(editor).toContainText('| Protegido |');
   await page
     .getByRole('navigation', { name: 'Notas' })
     .getByRole('button', { name: 'Grande.md', exact: true })
@@ -261,4 +268,157 @@ test('visual tasks support mouse, keyboard and undo without rewriting other Mark
   await page.getByRole('button', { name: 'Editar', exact: true }).click();
   await expect(editor).toContainText('- [x] Comprar pão');
   await expect(editor).toContainText('- [ ] Feita');
+});
+
+test('visual tables reveal source for keyboard and cell edits while preserving exact Markdown', async ({
+  page,
+}) => {
+  const source =
+    '\ufeff---\r\ntitle: tabela\n---\r\n\n| Nome | Centro | Valor |\r\n| :--- | :---: | ---: |\n| **Forte** | *Meio* | ` código ` |\r\n| | b\\|c | ~~Antigo~~ |\n| Curta |\n| [link](https://example.test) | <b>HTML</b> | &amp; |\n\n> | Citada | Valor |\n> | --- | --- |\n> | literal | 1 |\n\n```md\n| Código | Valor |\n| --- | --- |\n```\n\nFinal';
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await importNotes(page, { 'Tabela.md': Buffer.from(source) });
+  await page
+    .getByRole('navigation', { name: 'Notas' })
+    .getByRole('button', { name: 'Tabela.md', exact: true })
+    .click();
+  const editor = page.locator('.cm-content');
+  await expect(editor).toHaveAttribute('contenteditable', 'true');
+  await editor.evaluate((element) =>
+    Reflect.set(window, 'tableEditor', element),
+  );
+  await editor.press('ControlOrMeta+End');
+  await page
+    .getByRole('button', { name: 'Edição visual', exact: true })
+    .click();
+  const table = editor.getByRole('table');
+  await expect(table).toHaveCount(1);
+  await expect(table.getByRole('columnheader')).toHaveText([
+    'Nome',
+    'Centro',
+    'Valor',
+  ]);
+  await expect(table.getByRole('columnheader').nth(1)).toHaveCSS(
+    'text-align',
+    'center',
+  );
+  await expect(table.getByRole('columnheader').nth(2)).toHaveCSS(
+    'text-align',
+    'right',
+  );
+  await expect(table.locator('strong')).toHaveText('Forte');
+  await expect(table.locator('em')).toHaveText('Meio');
+  await expect(table.locator('code')).toHaveText('código');
+  await expect(table.locator('s')).toHaveText('Antigo');
+  await expect(table.locator('tbody tr').nth(1).getByRole('cell')).toHaveText([
+    '',
+    'b|c',
+    'Antigo',
+  ]);
+  await expect(table.locator('tbody tr').nth(2).getByRole('cell')).toHaveText([
+    'Curta',
+    '',
+    '',
+  ]);
+  await expect(table.getByRole('link')).toHaveCount(0);
+  await expect(table.locator('b, img')).toHaveCount(0);
+  await expect(table).toContainText('<b>HTML</b>');
+  await expect(table).toContainText('&amp;');
+  await expect(editor).toContainText('> | Citada | Valor |');
+  await expect(editor).toContainText('| Código | Valor |');
+  for (const theme of ['nyx', 'hemera']) {
+    await page.getByLabel('Tema').selectOption(theme);
+    expect(
+      (
+        await new AxeBuilder({ page })
+          .withTags(['wcag2a', 'wcag2aa', 'wcag21aa'])
+          .analyze()
+      ).violations,
+    ).toEqual([]);
+  }
+  await page.getByLabel('Idioma').selectOption('en');
+  const reveal = table.getByRole('button', {
+    name: 'Show table Markdown',
+    exact: true,
+  });
+  await reveal.focus();
+  await reveal.press('Enter');
+  await expect(table).toHaveCount(0);
+  await expect(editor).toBeFocused();
+  await editor.pressSequentially('Novo ');
+  await expect(editor).toContainText('| Novo Nome | Centro | Valor |');
+  await editor.press('ControlOrMeta+z');
+  await editor.press('ControlOrMeta+End');
+  await expect(table).toHaveCount(1);
+  await page.getByLabel('Language').selectOption('pt-BR');
+  expect(Buffer.from((await exported(page))['Tabela.md'] ?? [])).toEqual(
+    Buffer.from(source),
+  );
+  await table.getByRole('cell', { name: 'b|c', exact: true }).click();
+  await expect(table).toHaveCount(0);
+  await editor.pressSequentially('novo ');
+  await editor.press('ControlOrMeta+End');
+  await expect(
+    table.getByRole('cell', { name: 'novo b|c', exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText('Rascunho protegido neste dispositivo.'),
+  ).toBeVisible();
+  await editor.press('ControlOrMeta+a');
+  await expect(table).toHaveCount(0);
+  await expect(editor).toContainText('| | novo b\\|c | ~~Antigo~~ |');
+  await editor.press('ControlOrMeta+End');
+  for (const name of ['Editar', 'Ler', 'Edição e leitura', 'Edição visual'])
+    await page.getByRole('button', { name, exact: true }).click();
+  expect(
+    await editor.evaluate(
+      (element) => element === Reflect.get(window, 'tableEditor'),
+    ),
+  ).toBe(true);
+  await editor.press('ControlOrMeta+s');
+  await expect(
+    page.getByText('Salvo no cofre.', { exact: true }),
+  ).toBeVisible();
+  expect(Buffer.from((await exported(page))['Tabela.md'] ?? [])).toEqual(
+    Buffer.from(source.replace('b\\|c', 'novo b\\|c')),
+  );
+  expect(errors).toEqual([]);
+});
+
+test('visual tables keep oversized, nested and unterminated frontmatter tables as Markdown', async ({
+  page,
+}) => {
+  const rows = `A | B\n--- | ---\n${'linha | valor\n'.repeat(200)}`;
+  const columns = `${Array(33).fill('Coluna').join(' | ')}\n${Array(33).fill('---').join(' | ')}\n`;
+  const budget = `${Array(25).fill('Coluna').join(' | ')}\n${Array(25).fill('---').join(' | ')}\n${`${Array(25).fill('valor').join(' | ')}\n`.repeat(99)}`;
+  const small = '| Pequena |\n| --- |\n| visível |';
+  const source = `${rows}\n${columns}\n${budget}\n${small}\n\nFinal`;
+  await importNotes(page, {
+    'Limites.md': Buffer.from(source),
+    'YAML.md': Buffer.from(`---\n${small}\n\nFinal`),
+  });
+  await page
+    .getByRole('navigation', { name: 'Notas' })
+    .getByRole('button', { name: 'Limites.md', exact: true })
+    .click();
+  const editor = page.locator('.cm-content');
+  await expect(editor).toHaveAttribute('contenteditable', 'true');
+  await editor.press('ControlOrMeta+End');
+  await page
+    .getByRole('button', { name: 'Edição visual', exact: true })
+    .click();
+  await editor.press('ControlOrMeta+End');
+  await expect(editor.getByRole('table')).toHaveCount(1);
+  await expect(editor.getByRole('columnheader')).toHaveText('Pequena');
+  expect(Buffer.from((await exported(page))['Limites.md'] ?? [])).toEqual(
+    Buffer.from(source),
+  );
+  await page
+    .getByRole('navigation', { name: 'Notas' })
+    .getByRole('button', { name: 'YAML.md', exact: true })
+    .click();
+  await expect(editor).toHaveAttribute('contenteditable', 'true');
+  await editor.press('ControlOrMeta+End');
+  await expect(editor.getByRole('table')).toHaveCount(0);
+  await expect(editor).toContainText('| Pequena |');
 });

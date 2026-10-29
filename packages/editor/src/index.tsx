@@ -5,9 +5,10 @@ import { searchKeymap } from '@codemirror/search';
 import { Compartment, EditorState } from '@codemirror/state';
 import { EditorView, keymap, lineNumbers } from '@codemirror/view';
 import { tags } from '@lezer/highlight';
-import { Strikethrough, TaskList } from '@lezer/markdown';
+import { Strikethrough, Table, TaskList } from '@lezer/markdown';
 import { useEffect, useRef } from 'react';
 import { livePreview } from './live-preview';
+import { tablePreview } from './table-preview';
 
 export { LIVE_PREVIEW_LIMIT } from './live-preview';
 
@@ -18,6 +19,7 @@ export function MarkdownEditor({
   readOnly,
   label,
   taskLabel,
+  tableLabel,
   visual = false,
 }: {
   initialValue: string;
@@ -26,6 +28,7 @@ export function MarkdownEditor({
   readOnly: boolean;
   label: string;
   taskLabel: string;
+  tableLabel: string;
   visual?: boolean;
 }) {
   const parent = useRef<HTMLDivElement>(null);
@@ -47,8 +50,10 @@ export function MarkdownEditor({
       state: EditorState.create({
         doc: initial.current,
         extensions: [
-          markdown({ extensions: [TaskList, Strikethrough] }),
-          presentation.current.of(visual ? livePreview(taskLabel) : []),
+          markdown({ extensions: [TaskList, Strikethrough, Table] }),
+          presentation.current.of(
+            visual ? [livePreview(taskLabel), tablePreview(tableLabel)] : [],
+          ),
           history(),
           lineNumbers(),
           syntaxHighlighting(
@@ -167,9 +172,9 @@ export function MarkdownEditor({
   useEffect(() => {
     view.current?.dispatch({
       effects: presentation.current.reconfigure(
-        visual ? livePreview(taskLabel) : [],
+        visual ? [livePreview(taskLabel), tablePreview(tableLabel)] : [],
       ),
     });
-  }, [visual, taskLabel]);
+  }, [visual, taskLabel, tableLabel]);
   return <div ref={parent} />;
 }

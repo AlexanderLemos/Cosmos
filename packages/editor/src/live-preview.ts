@@ -10,7 +10,13 @@ import {
   WidgetType,
 } from '@codemirror/view';
 
-export const LIVE_PREVIEW_LIMIT = 256 * 1024;
+import {
+  frontmatterEnd,
+  LIVE_PREVIEW_LIMIT,
+  selectedLines,
+} from './preview-state';
+
+export { LIVE_PREVIEW_LIMIT } from './preview-state';
 
 class TaskCheckbox extends WidgetType {
   constructor(
@@ -79,23 +85,8 @@ function decorate(view: EditorView, taskLabel: string): DecorationSet {
   const { state } = view;
   if (state.doc.length > LIVE_PREVIEW_LIMIT || view.composing)
     return Decoration.none;
-  let frontmatterEnd = 0;
-  if (state.doc.line(1).text.replace(/^\ufeff/, '') === '---') {
-    frontmatterEnd = state.doc.length;
-    for (let i = 2; i <= state.doc.lines; i++) {
-      const line = state.doc.line(i);
-      if (/^(---|\.\.\.)\s*$/.test(line.text)) {
-        frontmatterEnd = line.to;
-        break;
-      }
-    }
-  }
-  const selected = state.selection.ranges.map((range) => ({
-    from: state.doc.lineAt(range.from).from,
-    to: state.doc.lineAt(range.to).to,
-  }));
-  const active = (from: number, to: number) =>
-    selected.some((range) => from <= range.to && to >= range.from);
+  const excluded = frontmatterEnd(state);
+  const active = selectedLines(state);
   const ranges: Range<Decoration>[] = [];
   const seen = new Set<string>();
   const add = (
@@ -114,8 +105,10 @@ function decorate(view: EditorView, taskLabel: string): DecorationSet {
       from: visible.from,
       to: visible.to,
       enter(node) {
-        if (node.to <= frontmatterEnd) return false;
-        if (['FencedCode', 'CodeBlock', 'HTMLBlock'].includes(node.name))
+        if (node.to <= excluded) return false;
+        if (
+          ['FencedCode', 'CodeBlock', 'HTMLBlock', 'Table'].includes(node.name)
+        )
           return false;
         if (node.name === 'TaskMarker' && !active(node.from, node.to)) {
           const line = state.doc.lineAt(node.to);

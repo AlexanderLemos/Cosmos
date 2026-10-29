@@ -997,6 +997,7 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
                         initialValue={doc.content}
                         label={t('editor')}
                         taskLabel={t('taskCheckbox')}
+                        tableLabel={t('tableSource')}
                         visual={
                           viewMode === 'live' &&
                           doc.content.length <= LIVE_PREVIEW_LIMIT

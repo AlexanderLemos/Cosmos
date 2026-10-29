@@ -57,3 +57,35 @@ Frontmatter e blocos de código/HTML mantêm as exclusões anteriores. Tachado
 `~~texto~~` usa decorações como negrito/itálico, limitado a uma linha e com
 marcadores visíveis na seleção. Tabelas, títulos Setext, links, callouts,
 transclusões e anexos no editor permanecem fora deste incremento.
+
+## Evolução — tabelas na edição visual, 2026-10-29
+
+A extensão `Table` do parser Lezer já instalado reconhece tabelas GFM. A
+apresentação usa `StateField` com decorações de substituição em bloco, pois
+widgets que substituem quebras de linha precisam ser fornecidos diretamente ao
+CodeMirror antes do cálculo da região visível. O plugin inline ignora os nós
+Table; o campo específico decide entre fonte literal e widget. Frontmatter,
+seleção e limite de tamanho usam funções compartilhadas com a apresentação inline.
+
+Somente tabelas no nível principal são substituídas. Qualquer seleção que toque
+suas linhas revela a tabela inteira; o botão de fonte ou um clique em célula
+posiciona o cursor no Markdown original. A ação confere o trecho atual antes de
+navegar, não altera o documento nem libera edição em notas protegidas. A mudança
+de seleção remove o widget e devolve foco ao editor. Salvar e desfazer continuam
+usando o editor existente. Não há serialização reversa ou editor de planilha.
+
+A apresentação cria elementos DOM conhecidos com `textContent`/nós de texto,
+sem interpretar HTML da nota. Tabelas têm caption com ação traduzida, cabeçalhos
+com escopo de coluna, alinhamento, células vazias e formatação inline limitada a
+negrito, itálico, código e tachado. Pipes escapados são conteúdo; delimitadores
+vêm dos nós sintáticos. Links, imagens, wikilinks, entidades e HTML ficam literais.
+Não há carregamento de recursos por uma célula. Cabeçalhos vazios recebem o
+número da coluna como nome acessível. Formatação recursiva limita-se a 16 níveis.
+
+Os limites iniciais são 200 linhas incluindo cabeçalho, 32 colunas e 2.000 células
+apresentadas por nota, além das 262.144 unidades UTF-16 existentes. Tabelas acima
+desses limites e tabelas em listas/citações permanecem na fonte. O campo acompanha
+mudanças no documento, seleção e árvore sintática, inclusive a análise assíncrona
+do CodeMirror; a criação de DOM continua sob a virtualização do editor. Estes
+limites não substituem benchmarks de cofres grandes. Nenhum contrato de daemon,
+IPC, armazenamento, esquema ou dependência foi alterado neste incremento.

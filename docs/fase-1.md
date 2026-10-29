@@ -35,7 +35,7 @@ foram aprovadas implicitamente pelo avanço da implementação.
   formatados no CodeMirror, no Web/Desktop. Linhas em edição/selecionadas revelam
   os marcadores; alternar modos mantém texto, histórico e rascunhos. É a primeira
   etapa de live preview, agora com caixas de tarefas editáveis por mouse/teclado,
-  com os limites descritos abaixo.
+  e tabelas com retorno ao Markdown para editar, com os limites descritos abaixo.
 - **Leitura:** modos Editar, Ler e Edição e leitura no Web e Desktop, com Markdown/GFM,
   tabelas, listas de tarefas, citações e blocos de código. A leitura acompanha o
   rascunho e as recargas externas aceitas. Alternar o modo mantém a instância do
@@ -332,7 +332,25 @@ Estados personalizados como `[-]` continuam literais; não há organização,
 filtragem ou movimentação automática de tarefas. Tachado aceita dois tils por
 lado, em uma única linha; um til e formas multilinha permanecem literais.
 
-Tabelas, títulos Setext, links, callouts, transclusões e anexos
+Tabelas Markdown/GFM no nível principal da nota aparecem como tabelas HTML
+semânticas fora da seleção, com cabeçalhos, alinhamento e células vazias. Negrito,
+itálico, código inline e tachado são apresentados nas células; pipes escapados
+continuam no conteúdo. Clique em uma célula para revelar a fonte na posição
+correspondente, ou use **Mostrar Markdown da tabela** com mouse/teclado. Toda a
+tabela volta ao Markdown quando o cursor ou a seleção toca suas linhas; sair dela
+restaura a apresentação. Não há editor de planilha nem reserialização de tabela.
+O botão também funciona em notas somente leitura, sem torná-las editáveis.
+
+A apresentação aceita até 200 linhas (incluindo cabeçalho), 32 colunas e um total
+de 2.000 células renderizadas por nota. Tabelas maiores ou aninhadas em
+listas/citações ficam em Markdown. Esses limites se somam ao limite geral da
+edição visual. HTML, entidades, links, imagens e wikilinks nas células permanecem
+como texto de origem, sem execução, navegação ou carregamento de anexos.
+A formatação inline tem limite de profundidade; os trechos excedentes ficam
+literais. Células ausentes aparecem vazias e colunas extras não aparecem na
+apresentação GFM, mas todos os bytes continuam disponíveis na fonte.
+
+Títulos Setext, links, callouts, transclusões e anexos
 no próprio editor ainda pendem. A leitura separada mantém seu suporte existente.
 Detalhes na [ADR 0008](adr/0008-edicao-visual-inicial.md).
 
@@ -733,12 +751,24 @@ offset após inserir texto, seleção, somente leitura, idiomas, acessibilidade 
 dois temas e preservação dos bytes em exportação antes/depois de salvar.
 O smoke Tauri Linux passou, confirmando tarefa no WebView, rascunho antes da
 escrita, salvamento pelo daemon e preservação dos demais bytes. A suíte completa
-nos três navegadores e os builds nos três sistemas serão verificados na CI.
+nos três navegadores e os builds nos três sistemas passaram na CI de `98709e4`,
+com 144 testes Web.
+
+Validação de tabelas (2026-10-29): `pnpm check` passou com 47 testes unitários,
+tipos, lint e schemas. Builds Web/Desktop e Tauri debug passaram. Passaram os
+cinco cenários Chromium de edição visual contra o build de produção, incluindo
+tabelas por mouse/teclado, seleção, desfazer, rascunhos, bytes mistos, alinhamento,
+células vazias, proteção, limites e acessibilidade nos dois temas. A cobertura
+confirma também que HTML e links nas células continuam literais. O smoke Tauri
+Linux passou com tabela, retorno à fonte, foco e bytes preservados. A primeira
+execução perdeu a conexão com o driver WebKit depois desses checks, no cenário
+preexistente de callouts; a repetição completa passou sem mudança de código.
+A CI executará os três navegadores e os builds nos três sistemas após publicar.
 
 ## Fechamento ainda necessário
 
-- Ampliar a edição visual inicial do CodeMirror para tabelas, títulos
-  Setext, links, callouts e anexos; tarefas com estados personalizados; formatos de anexos além das imagens
+- Ampliar a edição visual inicial do CodeMirror para títulos
+  Setext, links, callouts e anexos; tabelas aninhadas e conteúdo avançado nas células; tarefas com estados personalizados; formatos de anexos além das imagens
   raster e PDFs sob demanda,
   recursos avançados do leitor PDF,
   transclusão/autocompletar de blocos, compatibilidade avançada de títulos/wikilinks, títulos formatados e
