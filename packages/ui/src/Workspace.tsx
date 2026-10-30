@@ -5,7 +5,7 @@ import {
   resolveNoteLink,
 } from '@cosmos/core';
 import { LIVE_PREVIEW_LIMIT, MarkdownEditor } from '@cosmos/editor';
-import { ImportConflict, type ImportResult } from '@cosmos/fs';
+import { ImportConflict, type ImportResult, MoveIncomplete } from '@cosmos/fs';
 import { type DraftHeader, draftStore } from '@cosmos/fs/drafts';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -153,6 +153,10 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
       await action();
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+      if (error instanceof MoveIncomplete) {
+        setError(t('moveIncomplete', { path: error.backupPath }));
+        return;
+      }
       setError(
         error instanceof ImportConflict
           ? t('importConflict', { path: error.path })
@@ -1006,6 +1010,9 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
                   }}
                 >
                   {fileAction === 'copy' && <p>{t('copyHint')}</p>}
+                  {fileAction === 'move' && platform.kind === 'web' && (
+                    <p>{t('webMoveRecovery')}</p>
+                  )}
                   {fileAction !== 'trash' ? (
                     <label>
                       {t('destinationPath')}

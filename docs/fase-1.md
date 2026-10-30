@@ -8,7 +8,10 @@ foram aprovadas implicitamente pelo avanço da implementação.
 
 - **Web:** escolher o cofre OPFS ou uma pasta real em navegadores com File System
   Access. Criar notas e pastas pelo caminho, editar com CodeMirror 6, salvar,
-  reabrir, buscar e exportar ZIP. Importar uma pasta ou ZIP do Obsidian sem modificar a
+  reabrir, buscar e exportar ZIP. **Mover nota** renomeia ou muda o caminho de notas
+  salvas no cofre do navegador (OPFS), com revisão obrigatória, destino livre e
+  cópia de recuperação incluída no ZIP. Pastas reais ainda não oferecem essa ação.
+  Importar uma pasta ou ZIP do Obsidian sem modificar a
   origem nem sobrescrever arquivos existentes. Anexos, `.canvas`, frontmatter,
   BOM e terminações de linha são preservados. Notas têm limite de 8 MiB; exportação
   ZIP, 256 MiB descomprimidos; importação ZIP, até 10 mil entradas; pasta, até
@@ -75,6 +78,22 @@ foram aprovadas implicitamente pelo avanço da implementação.
   frase literal e BM25, com desempate por caminho. A reconciliação por revisão
   atualiza somente documentos novos/alterados e remove os que saíram do cofre.
   Web Locks serializam o VFS entre abas; o worker libera os handles.
+
+## Movimentação na Web
+
+O cofre do navegador permite mover/renomear notas salvas, preservando seus bytes.
+Salve antes de organizar: rascunhos em edição e notas de projetos bloqueiam a ação.
+Cada movimentação mantém uma cópia verificada e a intenção em
+`.cosmos/moves/<UUID>/`, incluídas na exportação ZIP e excluídas da navegação/busca.
+Falhas não apagam cópias nem retomam a operação automaticamente. A recuperação
+é manual pelo ZIP; inspeção/restauração pela interface e limpeza dessas cópias
+continuam pendentes. Elas consomem espaço e contam no limite de exportação.
+
+Web Locks coordenam abas do adaptador atual. Uma aba com revisão antiga mantém seu
+texto e recebe conflito ao tentar salvar depois da movimentação. Links e rascunhos
+não são reassociados automaticamente; referências relativas a notas e anexos
+podem precisar de ajuste. A ação não está disponível para pastas reais na Web,
+pois editores externos não participam do bloqueio. Ver [ADR 0009](adr/0009-mover-notas-web.md).
 
 ## Recuperação de rascunhos
 
@@ -886,8 +905,20 @@ Cobrem dimensões, carregamento por teclado, liberação de URLs, leituras tardi
 fonte/foco, rascunhos, salvamento, notas protegidas, tema/idioma, acessibilidade e
 bytes exatos na exportação. O smoke completo Tauri Linux via WebKitGTK direto
 passou com imagem Markdown e embed Obsidian no editor, dimensões, retorno à fonte
-e nota/anexo preservados. A CI verificará os três navegadores e os builds nos três
-sistemas após publicar.
+e nota/anexo preservados. A CI de `1b5e34f` passou nos três sistemas, incluindo
+177 testes Web.
+
+Validação de movimentação OPFS (2026-10-30): `pnpm check` passou com 48 testes
+unitários, tipos, lint e schemas; builds Web/Desktop passaram. Os oito cenários
+Chromium de movimentação passaram: renomear/mover, bytes exatos, cópia exportada,
+projetos, colisões de nomes/ancestrais, busca, pt/en, acessibilidade nos dois temas,
+concorrência entre abas, rascunho antigo, falhas de quota/verificação/remoção,
+alteração da origem e fechamento da aba antes de remover. Nove cenários existentes
+de cópias, rascunhos e busca também passaram. A validação inicial identificou uma
+mensagem genérica quando um ancestral do destino era arquivo; a conferência de
+colisões agora ocorre antes da consulta de proteção do destino. O teste também
+passou a aguardar o término da troca de nota antes de digitar. A CI verificará os
+três navegadores e os builds nativos nos três sistemas após publicar.
 
 ## Fechamento ainda necessário
 
@@ -900,9 +931,10 @@ sistemas após publicar.
 - Concluir o adaptador Tauri do contrato `VaultFS`, especialmente `watch` e listagem
   de diretórios. A observação nativa já chega à UI por token IPC, mas ainda precisa
   ser unificada com a assinatura de callbacks `VaultFS.watch`. A UI Desktop já
-  expõe mover, lixeira e restauração via IPC; a Web
-  ainda não expõe esses fluxos e seus métodos internos precisam da mesma proteção
-  de revisão/recuperação antes de serem disponibilizados. Atualização automática
+  expõe mover, lixeira e restauração via IPC; a Web já move notas no OPFS com
+  revisão e cópia de recuperação. Ainda faltam mover em pastas reais, lixeira e
+  restauração na Web, além de inspeção/restauração e limpeza das cópias de movimentação.
+  Os métodos internos ainda não expostos precisam da mesma proteção de revisão/recuperação. Atualização automática
   de links após mover notas e revisão de conflitos de movimentação também pendem.
 - Leitura incremental por eventos com reconciliação de segurança, cache de backlinks
   e ensaios de performance em cofres grandes. A atualização incremental do FTS por

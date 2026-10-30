@@ -222,6 +222,10 @@ export const resources = {
       trashPrompt:
         'Enviar “{{path}}” à lixeira? Você poderá restaurar a nota depois.',
       moved: 'Nota movida.',
+      webMoveRecovery:
+        'Uma cópia de recuperação será mantida no cofre e incluída ao exportar o ZIP. Links relativos a notas e anexos podem precisar de ajuste após mover.',
+      moveIncomplete:
+        'A movimentação não foi concluída. Uma cópia verificada foi preservada em {{path}}, disponível ao exportar o cofre. Atualize a lista e confira a origem e o destino antes de tentar novamente.',
       trashed: 'Nota enviada à lixeira.',
       restored: 'Nota restaurada.',
       destinationExists:
@@ -468,6 +472,10 @@ export const resources = {
       confirmTrash: 'Confirm move to trash',
       trashPrompt: 'Move “{{path}}” to the trash? You can restore it later.',
       moved: 'Note moved.',
+      webMoveRecovery:
+        'A recovery copy will remain in the vault and be included in ZIP exports. Relative links to notes and attachments may need adjustment after moving.',
+      moveIncomplete:
+        'The move did not complete. A verified copy was preserved at {{path}}, available in vault exports. Refresh the list and check the source and destination before trying again.',
       trashed: 'Note moved to trash.',
       restored: 'Note restored.',
       destinationExists:

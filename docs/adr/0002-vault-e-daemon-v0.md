@@ -23,7 +23,9 @@ nativo nem transação atômica de múltiplos arquivos. Não escondemos esses li
 Na Web, OPFS e File System Access usam um adaptador comum; Web Locks coordenam
 abas e `createWritable` confirma a escrita em `close`. Memória gerenciada fica
 somente leitura. O índice SQLite-WASM usa SAH Pool em worker e libera handles no
-fim da consulta. Os arquivos SQL são compartilhados com `rusqlite`. O índice é
+fim da consulta. Mover notas no OPFS agora exige revisão, destino livre e cópia
+verificada antes de remover a origem; pastas reais, lixeira e restauração na Web
+continuam pendentes, conforme [ADR 0009](0009-mover-notas-web.md). Os arquivos SQL são compartilhados com `rusqlite`. O índice é
 reconstruível; notas e anexos são a fonte portátil e permanecem fora do VFS SQL.
 A reconciliação incremental mantém uma tabela de documentos com revisão e FTS5
 de conteúdo externo, atualizado por triggers na mesma transação. Os dois backends

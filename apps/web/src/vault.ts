@@ -15,7 +15,14 @@ function adapt(fs: BrowserVaultFS): OpenVault {
     readPdf: (path) => fs.readPdf(path),
     imagePaths: () => fs.imagePaths(),
     readImage: (path) => fs.readImage(path),
-    read: (path) => fs.read(path),
+    read: async (path) => ({
+      ...(await fs.read(path)),
+      canOrganize: !fs.realFolder && !(await fs.isReadOnly(path)),
+    }),
+    ...(!fs.realFolder && {
+      move: (from: string, to: string, expectedRev: string) =>
+        fs.move(from, to, expectedRev),
+    }),
     write: (path, content, opts) => fs.write(path, content, opts),
     isReadOnly: (path) => fs.isReadOnly(path),
     search: async (query) => {

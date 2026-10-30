@@ -1,4 +1,4 @@
-/** Vault capabilities. remove() means trash; native organization is exposed via typed IPC; the full watch adapter remains pending. */
+/** Vault capabilities. move() requires a revision; remove() means trash (legacy Web implementation is not exposed). Native organization uses typed IPC; the full watch adapter remains pending. */
 export interface Entry {
   path: string;
   kind: 'file' | 'directory';
@@ -21,7 +21,7 @@ export interface VaultFS {
     content: string,
     opts?: { expectedRev?: string },
   ): Promise<{ rev: string }>;
-  move(from: string, to: string): Promise<void>;
+  move(from: string, to: string, expectedRev: string): Promise<void>;
   remove(path: string): Promise<void>;
   watch(cb: (event: FsEvent) => void): Unsubscribe;
   capabilities(): FsCapabilities;
@@ -34,6 +34,16 @@ export class RevisionConflict extends Error {
     readonly actualRev: string,
   ) {
     super(`Revision conflict: ${path}`);
+  }
+}
+
+/** A move stopped after retaining a verified copy. Never implies rollback. */
+export class MoveIncomplete extends Error {
+  constructor(
+    readonly backupPath: string,
+    cause: unknown,
+  ) {
+    super('MOVE_INCOMPLETE', { cause });
   }
 }
 

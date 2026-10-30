@@ -16,6 +16,7 @@ import {
   type ImportInspection,
   type ImportOptions,
   type ImportResult,
+  MoveIncomplete,
   RevisionConflict,
   type VaultFS,
 } from './index';
@@ -266,20 +267,84 @@ export class BrowserVaultFS implements VaultFS {
       return { rev: await rev(bytes) };
     });
   }
-  async move(from: string, to: string) {
+  private async vacantDestination(path: string) {
+    const parts = validatePath(path);
+    let dir = this.root;
+    for (const [index, part] of parts.entries()) {
+      let next: FileSystemDirectoryHandle | undefined;
+      for await (const [name, entry] of dir.entries()) {
+        if (name.toLowerCase() !== part.toLowerCase()) continue;
+        if (
+          name !== part ||
+          index === parts.length - 1 ||
+          entry.kind !== 'directory'
+        )
+          throw new Error('DESTINATION_EXISTS');
+        next = entry as FileSystemDirectoryHandle;
+      }
+      if (!next) return;
+      dir = next;
+    }
+  }
+  private async atRevision(path: string, expectedRev: string) {
+    let note: Awaited<ReturnType<BrowserVaultFS['read']>> | undefined;
+    try {
+      note = await this.read(path);
+    } catch (error) {
+      if (!missing(error)) throw error;
+    }
+    if (!note || note.rev !== expectedRev)
+      throw new RevisionConflict(path, expectedRev, note?.rev ?? '');
+    return note;
+  }
+  async move(from: string, to: string, expectedRev: string) {
+    // External editors cannot join Web Locks or an atomic compare-and-delete.
+    if (this.realFolder) throw new Error('FOLDER_MOVE_UNAVAILABLE');
+    if (!expectedRev) throw new Error('EXPECTED_REV_REQUIRED');
+    for (const path of [from, to]) {
+      if (
+        validatePath(path).some((part) =>
+          ['.cosmos', '.git', '.obsidian'].includes(part.toLowerCase()),
+        )
+      )
+        throw new Error('INVALID_PATH');
+    }
     return this.lock(async () => {
       await this.writable(from);
+      const note = await this.atRevision(from, expectedRev);
+      await this.vacantDestination(to);
       await this.writable(to);
+      const bytes = new TextEncoder().encode(note.content);
+      const operation = `.cosmos/moves/${crypto.randomUUID()}`;
+      const backupPath = `${operation}/note.md`;
+      // Keep both the intent and exact source bytes in the portable vault. A
+      // failed/interrupted operation never automatically deletes either copy.
+      await this.put(
+        `${operation}/operation.json`,
+        new TextEncoder().encode(
+          JSON.stringify({
+            format: 1,
+            from,
+            to,
+            rev: note.rev,
+            backup: 'note.md',
+          }),
+        ),
+      );
+      await this.put(backupPath, bytes);
+      await this.atRevision(backupPath, expectedRev);
       try {
-        await this.file(to);
-        throw new Error('DESTINATION_EXISTS');
+        await this.writable(to);
+        await this.vacantDestination(to);
+        await this.put(to, bytes);
+        await this.atRevision(to, expectedRev);
+        await this.writable(from);
+        await this.atRevision(from, expectedRev);
+        const { dir, name } = await this.parent(from);
+        await dir.removeEntry(name);
       } catch (error) {
-        if (!missing(error)) throw error;
+        throw new MoveIncomplete(backupPath, error);
       }
-      const bytes = new Uint8Array(await (await this.file(from)).arrayBuffer());
-      await this.put(to, bytes);
-      const { dir, name } = await this.parent(from);
-      await dir.removeEntry(name);
       this.emit({ path: to, kind: 'moved' });
     });
   }
