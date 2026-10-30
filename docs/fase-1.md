@@ -858,8 +858,13 @@ pt/en, acessibilidade nos dois temas e exportação com bytes exatos. O cenário
 visual foi repetido após restringir a transformação ao embed PDF completo;
 links dentro de rótulos de imagens continuam literais. O smoke Tauri Linux via
 WebKitGTK direto passou com PDF aberto pelo editor visual, embed na página 2,
-foco restaurado e bytes preservados, além dos fluxos anteriores. A CI verificará
-os três navegadores e os builds nos três sistemas após publicar.
+foco restaurado e bytes preservados, além dos fluxos anteriores. A primeira CI
+de `373df1d` passou nos builds dos três sistemas e em 170 testes Web. O cenário
+de cancelamento visual no WebKit falhou antes de iniciar o aplicativo: o nome
+acentuado do teste gerou um caminho de perfil recusado pelo navegador
+(`Invalid byte sequence in conversion input`). O identificador do teste foi
+ajustado para ASCII, preservando o rótulo português da interface e as asserções.
+A próxima CI verificará novamente a matriz completa.
 
 ## Fechamento ainda necessário
 

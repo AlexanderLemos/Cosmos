@@ -132,7 +132,10 @@ test('local PDFs open on demand with page navigation, text and keyboard focus wh
   await expect(editor).not.toContainText('Rascunho PDF');
 });
 
-for (const mode of ['Ler', 'Edição visual']) {
+for (const [mode, label] of [
+  ['reading', 'Ler'],
+  ['visual', 'Edição visual'],
+]) {
   test(`closing a PDF in ${mode} cancels late reads and releases its worker without losing the note`, async ({
     page,
   }) => {
@@ -160,7 +163,7 @@ for (const mode of ['Ler', 'Edição visual']) {
       'true',
     );
     await page.locator('.cm-content').press('ControlOrMeta+End');
-    await page.getByRole('button', { name: mode, exact: true }).click();
+    await page.getByRole('button', { name: label, exact: true }).click();
     await page.evaluate(() => {
       Reflect.set(window, 'pdfWorkers', new Set<Worker>());
       const Original = window.Worker;
