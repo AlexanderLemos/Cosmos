@@ -1,7 +1,7 @@
 import type { syntaxTree } from '@codemirror/language';
 import type { EditorState } from '@codemirror/state';
 import { Decoration, EditorView, WidgetType } from '@codemirror/view';
-import { inspectMarkdown, previewLink } from '@cosmos/core';
+import { inspectMarkdown, pdfTarget, previewLink } from '@cosmos/core';
 import { calloutMarker } from '@cosmos/core/callout-marker';
 
 type Node = ReturnType<typeof syntaxTree>['topNode'];
@@ -11,7 +11,10 @@ export type LinkContext = {
   busy: boolean;
   sourceLabel: string;
   unresolvedLabel: string;
+  pdfLabel: string;
+  pdfAvailable: boolean;
 };
+export type OpenVisualLink = (url: string, restoreFocus: () => void) => void;
 type ParsedLink = { from: number; to: number; url: string; text: string };
 const referenceKey = (value: string) =>
   value.replace(/\s+/g, ' ').toLowerCase();
@@ -21,7 +24,18 @@ export function visualLink(
   state: EditorState,
   node: Node,
   references: Set<string>,
+  allowEmbed = false,
 ): ParsedLink | undefined {
+  if (node.name === 'Image') {
+    const inner = node.getChild('Link');
+    const link = inner ? visualLink(state, inner, references, true) : undefined;
+    // Only replace a complete PDF embed, never a link inside an image label.
+    return link?.url.startsWith('cosmos-pdf:') &&
+      link.from === node.from &&
+      link.to === node.to
+      ? link
+      : undefined;
+  }
   let from = node.from;
   let to = node.to;
   if (state.doc.lineAt(from).number !== state.doc.lineAt(to).number) return;
@@ -54,8 +68,8 @@ export function visualLink(
     if (child.name !== 'LinkMark') return;
   from--;
   to++;
-  // Escapes, embeds and adjacent link destinations/references are not wiki notes.
-  if (state.sliceDoc(Math.max(0, from - 1), from) === '!') return;
+  const embed = state.sliceDoc(Math.max(0, from - 1), from) === '!';
+  if (embed && !allowEmbed) return;
   let escapes = 0;
   for (let i = from - 1; i >= 0 && state.sliceDoc(i, i + 1) === '\\'; i--)
     escapes++;
@@ -72,10 +86,16 @@ export function visualLink(
     return;
   const [target, ...alias] = (match[1] ?? '').split('|');
   if (!target?.trim()) return;
+  const pdf = `cosmos-pdf:${encodeURIComponent(target.trim())}`;
+  const isPdf = !!pdfTarget(pdf);
+  if (embed) {
+    if (!isPdf) return;
+    from--;
+  }
   return {
     from,
     to,
-    url: `cosmos-note:${encodeURIComponent(target.trim())}`,
+    url: isPdf ? pdf : `cosmos-note:${encodeURIComponent(target.trim())}`,
     text: alias.join('|') || target,
   };
 }
@@ -85,8 +105,9 @@ class NoteLink extends WidgetType {
     readonly link: ParsedLink,
     readonly source: string,
     readonly context: LinkContext,
-    readonly open: (url: string) => void,
+    readonly open: OpenVisualLink,
     readonly unresolved: boolean,
+    readonly pdf: boolean,
   ) {
     super();
   }
@@ -96,6 +117,7 @@ class NoteLink extends WidgetType {
       this.source === other.source &&
       this.context === other.context &&
       this.open === other.open &&
+      this.pdf === other.pdf &&
       this.unresolved === other.unresolved
     );
   }
@@ -114,8 +136,13 @@ class NoteLink extends WidgetType {
     const [link, source] = Array.from(dom.children) as HTMLButtonElement[];
     if (!link || !source) return false;
     link.className = 'cm-live-link-open';
-    link.textContent = this.link.text;
-    link.disabled = this.context.busy || this.unresolved;
+    link.textContent = this.pdf
+      ? `${this.context.pdfLabel}: ${this.link.text}`
+      : this.link.text;
+    link.disabled =
+      this.context.busy ||
+      this.unresolved ||
+      (this.pdf && !this.context.pdfAvailable);
     link.title = this.unresolved
       ? this.context.unresolvedLabel
       : this.link.text;
@@ -124,7 +151,11 @@ class NoteLink extends WidgetType {
     const current = () =>
       view.state.sliceDoc(this.link.from, this.link.to) === this.source;
     link.onclick = () => {
-      if (!link.disabled && current()) this.open(this.link.url);
+      if (!link.disabled && current())
+        this.open(this.link.url, () => {
+          if (link.isConnected) link.focus();
+          else if (view.dom.isConnected) view.focus();
+        });
     };
     source.className = 'cm-live-link-source';
     source.textContent = '✎';
@@ -157,19 +188,21 @@ export function linkDecoration(
   state: EditorState,
   link: ParsedLink,
   context: LinkContext,
-  open: (url: string) => void,
+  open: OpenVisualLink,
 ): Decoration | undefined {
+  const pdf = !!pdfTarget(link.url);
   const target = previewLink(link.url, context.path, context.paths);
-  if (target.kind === 'external') return;
-  // Attachments and protocols retain their source, with no resource loading.
+  if (!pdf && target.kind === 'external') return;
+  // Other attachments and protocols retain their source. PDFs load only on click.
   try {
     const raw = link.url.startsWith('cosmos-note:')
       ? decodeURIComponent(link.url.slice(12))
       : decodeURIComponent(link.url);
     const path = raw.split('#')[0] ?? '';
     if (
-      /^[a-z][a-z\d+.-]*:|^\/\//i.test(path) ||
-      (target.kind !== 'note' && /\.(?!md$)[^./]+$/i.test(path))
+      !pdf &&
+      (/^[a-z][a-z\d+.-]*:|^\/\//i.test(path) ||
+        (target.kind !== 'note' && /\.(?!md$)[^./]+$/i.test(path)))
     )
       return;
   } catch {
@@ -181,7 +214,8 @@ export function linkDecoration(
       state.sliceDoc(link.from, link.to),
       context,
       open,
-      target.kind !== 'note',
+      !pdf && target.kind !== 'note',
+      pdf,
     ),
   });
 }

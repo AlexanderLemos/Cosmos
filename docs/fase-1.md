@@ -35,7 +35,7 @@ foram aprovadas implicitamente pelo avanço da implementação.
   formatados no CodeMirror, no Web/Desktop. Linhas em edição/selecionadas revelam
   os marcadores; alternar modos mantém texto, histórico e rascunhos. É a primeira
   etapa de live preview, agora com caixas de tarefas editáveis por mouse/teclado,
-  links locais/wikilinks simples navegáveis, tabelas e callouts simples com retorno ao Markdown para editar, com os limites
+  links locais/wikilinks simples navegáveis, PDFs sob demanda, tabelas e callouts simples com retorno ao Markdown para editar, com os limites
   descritos abaixo.
 - **Leitura:** modos Editar, Ler e Edição e leitura no Web e Desktop, com Markdown/GFM,
   tabelas, listas de tarefas, citações e blocos de código. A leitura acompanha o
@@ -60,7 +60,7 @@ foram aprovadas implicitamente pelo avanço da implementação.
   confirmação visível da proteção. Reabrir o cofre oferece recuperar, baixar ou
   excluir cada cópia. A recuperação não grava no cofre e mantém o rascunho original.
 - **PDFs locais:** links Markdown e referências/embeds Obsidian oferecem **Abrir
-  PDF** no Web/Desktop, com navegação por páginas, `#page=N` e texto extraído.
+  PDF** na leitura e edição visual Web/Desktop, com navegação por páginas, `#page=N` e texto extraído.
   Leitura sob demanda, até 16 MiB e 2.000 páginas; sem modificar notas ou anexos.
   PDFs com senha e recursos avançados ainda têm limitações descritas abaixo.
 - **Organização:** caminhos `Universos/<universo>/<galáxia>/nota.md`; criação de
@@ -306,7 +306,7 @@ notas maiores continuam editáveis dentro do limite geral de 8 MiB. A leitura
 separada não é uma garantia de performance para cofres grandes. A edição visual
 inicial dentro do CodeMirror está descrita a seguir.
 
-### Edição visual inicial — atualizada em 2026-10-29
+### Edição visual inicial — atualizada em 2026-10-30
 
 O botão **Edição visual** formata títulos `#` a `######`, títulos Setext
 (sublinhados com `===` ou `---`), `**negrito**`,
@@ -366,7 +366,7 @@ marcador de citação explícito. Callouts aninhados, dentro de listas, com tabe
 código/HTML em bloco, continuação sem `>` ou cabeçalhos multilinha ambíguos
 permanecem na apresentação Markdown. YAML, escapes e marcadores definidos como
 referências de links não viram controles de callout. O botão de fonte não grava
-nem libera notas protegidas. HTML inline e anexos seguem literais no editor.
+nem libera notas protegidas. HTML inline e imagens seguem literais no editor.
 
 Títulos Setext recebem nível 1 (`=`) ou 2 (`-`), inclusive com várias linhas e
 em listas/citações. A seleção de qualquer linha do título ou de seu sublinhado
@@ -387,10 +387,19 @@ Trocar de nota respeita a confirmação de rascunho. Links para títulos/blocos 
 existentes de seção/bloco ausente; um destino na mesma nota mantém o editor e seu
 rascunho. Navegação e acesso à fonte continuam disponíveis em notas protegidas.
 
+PDFs locais também oferecem **Abrir PDF** no editor visual, em links Markdown com
+destino inline, `[[arquivo.pdf|alias]]` e `![[arquivo.pdf|alias]]`, inclusive com
+`#page=N`. O mesmo leitor modal da leitura abre sob demanda; fechar devolve foco
+ao controle sem trocar o modo ou alterar nota/rascunho. O botão de fonte revela
+também o `!` dos embeds. Os limites de 16 MiB/2.000 páginas, validação de arquivo,
+avisos de ausência/ambiguidade e recursos não suportados permanecem os do leitor
+existente. Notas protegidas também permitem abrir PDFs. Trocar nota, cofre, versão
+recarregada ou modo encerra a visualização, cancela o worker e descarta leituras tardias.
+
 Links por referência, wikilinks com formatação interna, links em tabelas e
-cabeçalhos de callouts, embeds, anexos e links externos/protocolos permanecem
+cabeçalhos de callouts, outros embeds/anexos e links externos/protocolos permanecem
 literais neste incremento. YAML, código e escapes mantêm suas exclusões. Não há
-carregamento de recursos pelos novos controles. Transclusões e anexos, além de callouts complexos/recolhíveis
+carregamento automático de anexos. Transclusões e imagens, além de callouts complexos/recolhíveis
 no próprio editor ainda pendem. A leitura separada mantém seu suporte existente.
 Detalhes na [ADR 0008](adr/0008-edicao-visual-inicial.md).
 
@@ -835,8 +844,22 @@ protegidas, idiomas, acessibilidade nos dois temas e exportação com bytes exat
 Os casos de exclusão foram conferidos novamente após restringir cabeçalhos de
 callout. O smoke completo Tauri Linux passou via WebKitGTK direto, incluindo
 wikilinks e links Markdown para blocos na mesma nota e em outra, com foco e
-arquivos originais preservados. A CI verificará os três navegadores e os builds
-nos três sistemas após publicar.
+arquivos originais preservados. A CI de `d551d2f` passou nos três sistemas com 165
+testes Web após repetir o job Linux: a primeira execução teve timeout em
+`setInputFiles` no cenário de pasta do WebKit, embora a nota já aparecesse no cofre.
+Os novos cenários de links passaram nas duas execuções, sem mudança no commit.
+
+Validação de PDFs no editor visual (2026-10-30): `pnpm check` passou com 47 testes
+unitários, tipos, lint e schemas; builds Web/Desktop e Tauri debug passaram.
+Passaram 14 cenários Chromium de edição visual/PDF, incluindo abertura por
+teclado, página inicial, retorno de foco, cancelamento de leituras tardias e
+encerramento do worker, rascunho/histórico, identidade do editor, notas protegidas,
+pt/en, acessibilidade nos dois temas e exportação com bytes exatos. O cenário
+visual foi repetido após restringir a transformação ao embed PDF completo;
+links dentro de rótulos de imagens continuam literais. O smoke Tauri Linux via
+WebKitGTK direto passou com PDF aberto pelo editor visual, embed na página 2,
+foco restaurado e bytes preservados, além dos fluxos anteriores. A CI verificará
+os três navegadores e os builds nos três sistemas após publicar.
 
 ## Fechamento ainda necessário
 

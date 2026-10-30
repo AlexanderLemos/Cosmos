@@ -255,6 +255,8 @@ def main():
             pdf_note = blocks + b'\r\n[Manual PDF](../assets/manual.pdf)\r\n\r\n![[manual.pdf#page=2|Second PDF page]]\r\n'
             (vault / 'Folder/Moved.md').write_bytes(pdf_note)
             wait('return document.body.innerText.includes("Open PDF: Manual PDF")')
+            click('Visual editing')
+            wait('return [...document.querySelectorAll(".cm-live-link-open")].some(b => b.textContent === "Open PDF: Manual PDF")')
             click('Open PDF: Manual PDF')
             wait("""return !!document.querySelector('dialog[open] canvas:not([hidden])')""")
             assert execute("""return document.querySelector('dialog').textContent.includes('Page 1 of 2')""")
@@ -262,12 +264,14 @@ def main():
             wait("""return document.querySelector('dialog').textContent.includes('COSMOS PDF second page')""")
             click('Close PDF')
             wait("return !document.querySelector('dialog')")
+            wait('return document.activeElement?.textContent === "Open PDF: Manual PDF"')
             click('Open PDF: Second PDF page')
             wait("""return !!document.querySelector('dialog canvas:not([hidden])') && document.querySelector('dialog').textContent.includes('Page 2 of 2')""")
             click('Close PDF')
             assert (vault / 'Folder/Moved.md').read_bytes() == pdf_note
             assert (vault / 'assets/manual.pdf').read_bytes() == pdf_bytes
-            checks += ['PDF pages render through daemon IPC with local worker, page links and original bytes preserved']
+            checks += ['PDF links and Obsidian embeds open from visual editing through daemon IPC with local worker, page links, restored focus and original bytes preserved']
+            click('Edit and read')
             callouts = blocks + b'\r\n> [!note]- Native callout\r\n>\r\n> > [!tip]- Nested callout\r\n> > Hidden native body. ^hidden\r\n\r\n[[#^hidden|Reveal callout]]\r\n'
             (vault / 'Folder/Moved.md').write_bytes(callouts)
             wait("""return document.querySelector('summary')?.textContent === 'Native callout'""")

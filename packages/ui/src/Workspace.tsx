@@ -1,4 +1,9 @@
-import { noteLinks, previewLink, resolveNoteLink } from '@cosmos/core';
+import {
+  noteLinks,
+  pdfTarget,
+  previewLink,
+  resolveNoteLink,
+} from '@cosmos/core';
 import { LIVE_PREVIEW_LIMIT, MarkdownEditor } from '@cosmos/editor';
 import { ImportConflict, type ImportResult } from '@cosmos/fs';
 import { type DraftHeader, draftStore } from '@cosmos/fs/drafts';
@@ -8,6 +13,7 @@ import { Foundation } from './Foundation';
 import { ImportRecovery } from './ImportRecovery';
 import { MarkdownPreview, type PreviewLocation } from './MarkdownPreview';
 import { type DocumentState, observeVault, reconcileDocument } from './monitor';
+import { PdfDialog } from './PdfDialog';
 import { useLocalDrafts } from './use-local-drafts';
 import type { OpenVault, TrashItem, VaultPlatform } from './vault';
 import styles from './Workspace.module.css';
@@ -48,6 +54,24 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
     useState<PreviewLocation | null>(null);
   const navigationRequest = useRef(0);
   const [busy, setBusy] = useState(false);
+  const [visualPdf, setVisualPdf] = useState<{
+    src: string;
+    path: string;
+    generation: number;
+    vault: OpenVault;
+    restoreFocus: () => void;
+  } | null>(null);
+  useEffect(() => {
+    setVisualPdf((current) =>
+      current &&
+      (current.vault !== vault ||
+        current.path !== doc?.path ||
+        current.generation !== doc?.generation ||
+        viewMode !== 'live')
+        ? null
+        : current,
+    );
+  }, [vault, doc?.path, doc?.generation, viewMode]);
   const editorLinks = useMemo(
     () => ({
       path: doc?.path ?? '',
@@ -55,8 +79,10 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
       busy,
       sourceLabel: t('linkSource'),
       unresolvedLabel: t('unresolved'),
+      pdfLabel: t('openPdf'),
+      pdfAvailable: !!vault?.readPdf && !!vault?.pdfPaths,
     }),
-    [doc?.path, paths, busy, t],
+    [doc?.path, paths, busy, t, vault],
   );
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
@@ -1051,7 +1077,19 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
                         tableLabel={t('tableSource')}
                         calloutLabels={calloutLabels}
                         links={editorLinks}
-                        onOpenLink={(url) => {
+                        onOpenLink={(url, restoreFocus) => {
+                          if (pending.current) return;
+                          if (pdfTarget(url)) {
+                            if (vault.readPdf && vault.pdfPaths)
+                              setVisualPdf({
+                                src: url,
+                                path: doc.path,
+                                generation: doc.generation,
+                                vault,
+                                restoreFocus,
+                              });
+                            return;
+                          }
                           const target = previewLink(url, doc.path, paths);
                           if (target.kind === 'note')
                             navigate(target.path, target.fragment);
@@ -1068,6 +1106,23 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
                           setStatus('');
                         }}
                       />
+                      {visualPdf &&
+                        visualPdf.path === doc.path &&
+                        visualPdf.generation === doc.generation &&
+                        visualPdf.vault === vault &&
+                        viewMode === 'live' && (
+                          <PdfDialog
+                            key={`${visualPdf.path}:${visualPdf.src}`}
+                            src={visualPdf.src}
+                            from={visualPdf.path}
+                            vault={vault}
+                            onClose={() => {
+                              const restore = visualPdf.restoreFocus;
+                              setVisualPdf(null);
+                              requestAnimationFrame(restore);
+                            }}
+                          />
+                        )}
                     </div>
                     {(viewMode === 'read' || viewMode === 'split') && (
                       <MarkdownPreview

@@ -162,3 +162,27 @@ Links externos/protocolos, anexos, tabelas e cabeçalhos de callouts mantêm a f
 Não são carregados recursos por estes widgets. O limite geral de 262.144 unidades
 UTF-16, suspensão durante composição e exclusões de código/HTML permanecem.
 Não há dependências externas novas nem alterações de daemon, IPC ou persistência.
+
+## Evolução — PDFs sob demanda no editor, 2026-10-30
+
+Links Markdown com destino inline e referências Obsidian simples para PDFs
+locais usam `pdfTarget`, compartilhado com a leitura, incluindo `#page=N`.
+Embeds `![[arquivo.pdf|alias]]` usam o nó Image/Link do Lezer e conferem a fonte;
+viram um botão **Abrir PDF**, sem carregar o documento antes da ativação.
+O botão de fonte revela a sintaxe inteira, incluindo `!`. Imagens Markdown,
+links por referência, tabelas, cabeçalhos de callout, código, YAML, escapes e
+destinos remotos continuam nas exclusões existentes. Outros embeds não viram
+links de notas por esta extensão.
+
+O widget informa a ação PDF e verifica a disponibilidade do leitor no cofre.
+Ausência/ambiguidade do arquivo e problemas de página são informados pelo leitor
+após a abertura, com a resolução de anexos já existente. O Workspace revalida o
+destino e abre o mesmo `PdfDialog` da leitura, fora do DOM gerenciado pelo
+CodeMirror. A nota, o rascunho, o histórico e o modo visual são preservados,
+inclusive em notas protegidas. Fechar por botão ou Escape restaura o foco no
+botão original, se ainda existir, ou no editor ainda montado.
+
+A visualização é vinculada ao cofre, caminho e geração da nota. Trocar esses
+valores ou sair do modo visual desmonta o leitor, encerrando o worker e
+descartando resultados tardios conforme a ADR 0007. Não há novos formatos,
+dependências, permissões, contratos IPC ou gravações no cofre.

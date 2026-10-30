@@ -20,6 +20,7 @@ import {
   type LinkContext,
   linkDecoration,
   linkTheme,
+  type OpenVisualLink,
   visualLink,
 } from './link-preview';
 
@@ -99,7 +100,7 @@ function decorate(
   taskLabel: string,
   calloutLabels: CalloutLabels,
   links: LinkContext,
-  openLink: (url: string) => void,
+  openLink: OpenVisualLink,
 ): DecorationSet {
   const { state } = view;
   if (state.doc.length > LIVE_PREVIEW_LIMIT || view.composing)
@@ -127,12 +128,10 @@ function decorate(
       enter(node) {
         if (node.to <= excluded) return false;
         if (
-          ['FencedCode', 'CodeBlock', 'HTMLBlock', 'Table', 'Image'].includes(
-            node.name,
-          )
+          ['FencedCode', 'CodeBlock', 'HTMLBlock', 'Table'].includes(node.name)
         )
           return false;
-        if (node.name === 'Link') {
+        if (node.name === 'Link' || node.name === 'Image') {
           if (active(node.from, node.to)) return false;
           references ??= calloutReferences(state, excluded);
           const link = visualLink(state, node.node, references);
@@ -268,7 +267,7 @@ export const livePreview = (
   taskLabel: string,
   calloutLabels: CalloutLabels,
   links: LinkContext,
-  openLink: (url: string) => void,
+  openLink: OpenVisualLink,
 ) => [
   calloutTheme,
   linkTheme,

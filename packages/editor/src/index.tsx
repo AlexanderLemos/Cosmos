@@ -8,7 +8,7 @@ import { tags } from '@lezer/highlight';
 import { Strikethrough, Table, TaskList } from '@lezer/markdown';
 import { useEffect, useRef } from 'react';
 import type { CalloutLabels } from './callout-preview';
-import type { LinkContext } from './link-preview';
+import type { LinkContext, OpenVisualLink } from './link-preview';
 import { livePreview } from './live-preview';
 import { tablePreview } from './table-preview';
 
@@ -36,14 +36,16 @@ export function MarkdownEditor({
   tableLabel: string;
   calloutLabels: CalloutLabels;
   links: LinkContext;
-  onOpenLink: (url: string) => void;
+  onOpenLink: OpenVisualLink;
   visual?: boolean;
 }) {
   const parent = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
   const callbacks = useRef({ onChange, onSave, onOpenLink });
   callbacks.current = { onChange, onSave, onOpenLink };
-  const openLink = useRef((url: string) => callbacks.current.onOpenLink(url));
+  const openLink = useRef<OpenVisualLink>((url, restoreFocus) =>
+    callbacks.current.onOpenLink(url, restoreFocus),
+  );
   const access = useRef(new Compartment());
   const initial = useRef(initialValue);
   const raw = useRef(initialValue);

@@ -45,3 +45,10 @@ ao link; não há escrita no cofre, journal ou índice. Uma visualização é um
 fechar e reabrir relê o arquivo. Falhas informam ausência/ambiguidade, tamanho,
 página inválida, senha ou erro de leitura/renderização. Não abrimos aplicativos
 externos nem copiamos o PDF para pastas temporárias persistentes.
+
+Desde 2026-10-30, o mesmo diálogo pode ser aberto por links/embeds na edição
+visual. O Workspace mantém a nota e o modo visual; fechar restaura foco no
+controle de origem quando ele ainda existe. A troca de nota, revisão recarregada,
+cofre ou modo encerra essa visualização e descarta leituras tardias. Não há
+mudança no parser PDF, nos limites ou no contrato nativo. As exclusões sintáticas
+do editor estão na [ADR 0008](0008-edicao-visual-inicial.md).

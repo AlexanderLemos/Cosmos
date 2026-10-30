@@ -786,6 +786,7 @@ test('visual links keep excluded syntax literal and allow navigation from protec
   await expect(editor.locator('.cm-live-link-open')).toHaveText([
     'Local',
     'Alias',
+    'Abrir PDF: PDF',
     'No callout',
   ]);
   for (const literal of [
@@ -797,7 +798,6 @@ test('visual links keep excluded syntax literal and allow navigation from protec
     '[Web](https://example.com)',
     '[Protocolo](javascript:alert)',
     '![Imagem](imagem.png)',
-    '[[arquivo.pdf|PDF]]',
     '[Título do callout](Destino.md)',
   ])
     await expect(editor).toContainText(literal);
