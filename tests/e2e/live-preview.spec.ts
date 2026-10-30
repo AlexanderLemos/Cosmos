@@ -651,3 +651,175 @@ test('visual Setext headings reveal complete source and keep YAML, rules and cod
   );
   expect(errors).toEqual([]);
 });
+
+test('visual note links navigate with draft protection, source editing and exact bytes', async ({
+  page,
+}) => {
+  const source =
+    '\ufeff# Origem\r\n\n[[Destino|Wiki]]\r\n\n[**Markdown**](Destino.md)\n\n[[Destino#Seção|Seção]]\n\n[[#^local|Bloco local]]\r\n\nTexto local. ^local\n\n[[Ausente|Ausente]] [[Duplicada|Ambígua]]\n\nFinal';
+  const target = '# Destino\n\n## Seção\n\nTexto de destino.';
+  await importNotes(page, {
+    'Origem.md': Buffer.from(source),
+    'Destino.md': Buffer.from(target),
+    'A/Duplicada.md': Buffer.from('A'),
+    'B/Duplicada.md': Buffer.from('B'),
+  });
+  const notes = page.getByRole('navigation', { name: 'Notas' });
+  const editor = page.locator('.cm-content');
+  const visual = page.getByRole('button', {
+    name: 'Edição visual',
+    exact: true,
+  });
+  await notes.getByRole('button', { name: 'Origem.md', exact: true }).click();
+  await editor.press('ControlOrMeta+End');
+  await visual.click();
+  await expect(
+    editor.getByRole('button', { name: 'Wiki', exact: true }),
+  ).toBeEnabled();
+  await expect(
+    editor.getByRole('button', { name: 'Markdown', exact: true }),
+  ).toBeEnabled();
+  await expect(
+    editor.getByRole('button', {
+      name: 'Ausente · não resolvido',
+      exact: true,
+    }),
+  ).toBeDisabled();
+  await expect(
+    editor.getByRole('button', {
+      name: 'Ambígua · não resolvido',
+      exact: true,
+    }),
+  ).toBeDisabled();
+  await editor
+    .getByRole('button', {
+      name: 'Mostrar Markdown do link: Wiki',
+      exact: true,
+    })
+    .click();
+  await expect(editor).toBeFocused();
+  await expect(editor).toContainText('[[Destino|Wiki]]');
+  await editor.press('Home');
+  await editor.press('Shift+End');
+  await editor.pressSequentially('[[Destino|Alias editado]]');
+  await editor.press('ControlOrMeta+End');
+  await expect(
+    editor.getByRole('button', { name: 'Alias editado', exact: true }),
+  ).toBeEnabled();
+  await editor.press('ControlOrMeta+z');
+  await editor.press('ControlOrMeta+End');
+  for (const theme of ['nyx', 'hemera']) {
+    await page.getByLabel('Tema').selectOption(theme);
+    expect(
+      (
+        await new AxeBuilder({ page })
+          .withTags(['wcag2a', 'wcag2aa', 'wcag21aa'])
+          .analyze()
+      ).violations,
+    ).toEqual([]);
+  }
+  await editor
+    .getByRole('button', { name: 'Wiki', exact: true })
+    .press('Enter');
+  await expect(editor).toContainText('Texto de destino.');
+  await expect(visual).toHaveAttribute('aria-pressed', 'true');
+  await notes.getByRole('button', { name: 'Origem.md', exact: true }).click();
+  await expect(editor).toHaveAttribute('contenteditable', 'true');
+  await expect(editor).toContainText('Final');
+  await editor.press('ControlOrMeta+End');
+  await editor.pressSequentially(' rascunho');
+  await expect(
+    page.getByText('Rascunho protegido neste dispositivo.'),
+  ).toBeVisible();
+  page.once('dialog', (dialog) => dialog.dismiss());
+  await editor.getByRole('button', { name: 'Markdown', exact: true }).click();
+  await expect(editor).toContainText('Final rascunho');
+  // Same-note anchors preserve the draft and the mounted editor, without a leave prompt.
+  await editor.evaluate((element) =>
+    Reflect.set(window, 'linkedEditor', element),
+  );
+  await editor
+    .getByRole('button', { name: 'Bloco local', exact: true })
+    .click();
+  await expect(page.locator('#cosmos-block-local')).toBeFocused();
+  expect(
+    await editor.evaluate(
+      (element) => element === Reflect.get(window, 'linkedEditor'),
+    ),
+  ).toBe(true);
+  await visual.click();
+  await editor.press('ControlOrMeta+End');
+  await editor
+    .getByRole('button', { name: 'Markdown', exact: true })
+    .press('ControlOrMeta+s');
+  await expect(
+    page.getByText('Salvo no cofre.', { exact: true }),
+  ).toBeVisible();
+  await editor.getByRole('button', { name: 'Seção', exact: true }).click();
+  await expect(page.locator('#cosmos-heading-seção')).toBeFocused();
+  const files = await exported(page);
+  expect(Buffer.from(files['Origem.md'] ?? [])).toEqual(
+    Buffer.from(`${source} rascunho`),
+  );
+  expect(Buffer.from(files['Destino.md'] ?? [])).toEqual(Buffer.from(target));
+});
+
+test('visual links keep excluded syntax literal and allow navigation from protected notes', async ({
+  page,
+}) => {
+  const source =
+    '---\nlink: [[Destino|YAML]]\n---\n\n[Local](<Destino.md> "Título")\n\n[[Destino|Alias]]\n\n[[Referência]]\n\n[Referência]: Destino.md\n\n[Por referência][ref]\n\n[ref]: Destino.md\n\n\\[[Destino|Escapado]] ![[Destino|Embed]]\n\n`[[Destino|Código inline]]`\n\n```md\n[[Destino|Código]]\n```\n\n[Web](https://example.com) [Protocolo](javascript:alert)\n\n![Imagem](imagem.png) [[arquivo.pdf|PDF]]\n\n> [!note] [Título do callout](Destino.md)\n> [[Destino|No callout]]\n\nFinal';
+  await importNotes(page, {
+    'Projeto/project.cosmos.json': Buffer.from('{}'),
+    'Projeto/Origem.md': Buffer.from(source),
+    'Destino.md': Buffer.from('Destino final'),
+  });
+  await page
+    .getByRole('navigation', { name: 'Notas' })
+    .getByRole('button', { name: 'Projeto/Origem.md', exact: true })
+    .click();
+  const editor = page.locator('.cm-content');
+  await page
+    .getByRole('button', { name: 'Edição visual', exact: true })
+    .click();
+  await expect(editor).toHaveAttribute('contenteditable', 'false');
+  await expect(editor.locator('.cm-live-link-open')).toHaveText([
+    'Local',
+    'Alias',
+    'No callout',
+  ]);
+  for (const literal of [
+    '[[Referência]]',
+    '[Por referência][ref]',
+    '\\[[Destino|Escapado]]',
+    '![[Destino|Embed]]',
+    '[[Destino|Código]]',
+    '[Web](https://example.com)',
+    '[Protocolo](javascript:alert)',
+    '![Imagem](imagem.png)',
+    '[[arquivo.pdf|PDF]]',
+    '[Título do callout](Destino.md)',
+  ])
+    await expect(editor).toContainText(literal);
+  await page.getByLabel('Idioma').selectOption('en');
+  await editor
+    .getByRole('button', { name: 'Show link Markdown: Alias', exact: true })
+    .click();
+  await expect(editor).toContainText('[[Destino|Alias]]');
+  await expect(editor).toHaveAttribute('contenteditable', 'false');
+  await expect(
+    page.getByRole('button', { name: 'Save', exact: true }),
+  ).toBeDisabled();
+  await editor
+    .getByRole('button', { name: 'Local', exact: true })
+    .press('Enter');
+  await expect(editor).toContainText('Destino final');
+  const downloading = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export vault (.zip)' }).click();
+  const files = unzipSync(
+    await readFile((await (await downloading).path()) as string),
+  );
+  expect(Buffer.from(files['Projeto/Origem.md'] ?? [])).toEqual(
+    Buffer.from(source),
+  );
+});

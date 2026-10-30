@@ -35,7 +35,7 @@ foram aprovadas implicitamente pelo avanço da implementação.
   formatados no CodeMirror, no Web/Desktop. Linhas em edição/selecionadas revelam
   os marcadores; alternar modos mantém texto, histórico e rascunhos. É a primeira
   etapa de live preview, agora com caixas de tarefas editáveis por mouse/teclado,
-  tabelas e callouts simples com retorno ao Markdown para editar, com os limites
+  links locais/wikilinks simples navegáveis, tabelas e callouts simples com retorno ao Markdown para editar, com os limites
   descritos abaixo.
 - **Leitura:** modos Editar, Ler e Edição e leitura no Web e Desktop, com Markdown/GFM,
   tabelas, listas de tarefas, citações e blocos de código. A leitura acompanha o
@@ -366,7 +366,7 @@ marcador de citação explícito. Callouts aninhados, dentro de listas, com tabe
 código/HTML em bloco, continuação sem `>` ou cabeçalhos multilinha ambíguos
 permanecem na apresentação Markdown. YAML, escapes e marcadores definidos como
 referências de links não viram controles de callout. O botão de fonte não grava
-nem libera notas protegidas. HTML inline, links e anexos seguem literais no editor.
+nem libera notas protegidas. HTML inline e anexos seguem literais no editor.
 
 Títulos Setext recebem nível 1 (`=`) ou 2 (`-`), inclusive com várias linhas e
 em listas/citações. A seleção de qualquer linha do título ou de seu sublinhado
@@ -377,7 +377,20 @@ conforme a árvore sintática. A transformação cobre somente as linhas visíve
 respeita o limite geral da edição visual; contextos já excluídos, como código e
 tabelas na fonte, mantêm essas exclusões.
 
-Links, transclusões e anexos, além de callouts complexos/recolhíveis
+Links Markdown com destino inline e wikilinks simples com aliases agora oferecem
+navegação por botão no Web/Desktop. O botão adjacente **Mostrar Markdown do link**
+posiciona o cursor na fonte; selecionar a linha também revela sua sintaxe. Rótulos
+Markdown são apresentados como texto simples. A resolução é a mesma da leitura;
+destinos ausentes/ambíguos ficam desabilitados e nunca são criados automaticamente.
+Trocar de nota respeita a confirmação de rascunho. Links para títulos/blocos abrem
+**Edição e leitura** e focam o destino no painel de leitura, inclusive com os avisos
+existentes de seção/bloco ausente; um destino na mesma nota mantém o editor e seu
+rascunho. Navegação e acesso à fonte continuam disponíveis em notas protegidas.
+
+Links por referência, wikilinks com formatação interna, links em tabelas e
+cabeçalhos de callouts, embeds, anexos e links externos/protocolos permanecem
+literais neste incremento. YAML, código e escapes mantêm suas exclusões. Não há
+carregamento de recursos pelos novos controles. Transclusões e anexos, além de callouts complexos/recolhíveis
 no próprio editor ainda pendem. A leitura separada mantém seu suporte existente.
 Detalhes na [ADR 0008](adr/0008-edicao-visual-inicial.md).
 
@@ -811,11 +824,23 @@ O smoke completo do Tauri Linux passou via WebKitGTK direto, incluindo títulos
 Setext e os fluxos anteriores de cofre, anexos, projetos e recuperação após
 reiniciar. Tentativas via `tauri-driver` tiveram desconexões em etapas diferentes;
 a opção direta e as limitações observadas estão em [Ambiente](ambiente.md).
-A CI verificará os três navegadores e os builds nos três sistemas após publicar.
+A CI de `199df11` passou nos três sistemas, incluindo 159 testes Web.
+
+Validação de links no editor (2026-10-29): `pnpm check` passou com 47 testes
+unitários, tipos, lint e schemas; builds Web/Desktop e Tauri debug passaram.
+Passaram dez cenários Chromium da edição visual, incluindo os dois novos de
+links: aliases, fonte editável com desfazer, teclado, salvamento pelo widget,
+destinos ambíguos/ausentes, cancelamento com rascunho, títulos/blocos, notas
+protegidas, idiomas, acessibilidade nos dois temas e exportação com bytes exatos.
+Os casos de exclusão foram conferidos novamente após restringir cabeçalhos de
+callout. O smoke completo Tauri Linux passou via WebKitGTK direto, incluindo
+wikilinks e links Markdown para blocos na mesma nota e em outra, com foco e
+arquivos originais preservados. A CI verificará os três navegadores e os builds
+nos três sistemas após publicar.
 
 ## Fechamento ainda necessário
 
-- Ampliar a edição visual inicial do CodeMirror para links e anexos; callouts complexos/recolhíveis; tabelas aninhadas e conteúdo avançado nas células; tarefas com estados personalizados; formatos de anexos além das imagens
+- Ampliar a edição visual inicial do CodeMirror para links por referência, wikilinks complexos e anexos; callouts complexos/recolhíveis; tabelas aninhadas e conteúdo avançado nas células; tarefas com estados personalizados; formatos de anexos além das imagens
   raster e PDFs sob demanda,
   recursos avançados do leitor PDF,
   transclusão/autocompletar de blocos, compatibilidade avançada de títulos/wikilinks, títulos formatados e

@@ -212,15 +212,20 @@ def main():
             (vault / 'Blocks.md').write_bytes(block_target)
             (vault / 'Folder/Moved.md').write_bytes(blocks)
             wait('return !!document.getElementById("cosmos-block-native")')
+            click('Visual editing')
+            wait('return [...document.querySelectorAll(".cm-live-link-open")].some(b => b.textContent === "Local block")')
             click('Local block')
             wait('return document.activeElement?.id === "cosmos-block-native"')
             wait("""return [...document.querySelectorAll('nav[aria-label="Notes"] button')].some(b => b.textContent === "Blocks.md")""")
             click('Other block')
             wait('return document.activeElement?.id === "cosmos-block-target"')
+            click('Visual editing')
+            wait('return [...document.querySelectorAll(".cm-live-link-open")].some(b => b.textContent === "Return to block")')
             click('Return to block')
             wait('return document.activeElement?.id === "cosmos-block-native"')
             assert (vault / 'Folder/Moved.md').read_bytes() == blocks
             assert (vault / 'Blocks.md').read_bytes() == block_target
+            checks += ['visual wiki and Markdown links navigate through native note/block resolution without changing source bytes']
             image_bytes = (Path(__file__).resolve().parents[1] / 'tests/fixtures/images/pixels.png').read_bytes()
             (vault / 'assets').mkdir()
             (vault / 'assets/pixels.png').write_bytes(image_bytes)

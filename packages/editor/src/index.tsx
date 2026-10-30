@@ -8,6 +8,7 @@ import { tags } from '@lezer/highlight';
 import { Strikethrough, Table, TaskList } from '@lezer/markdown';
 import { useEffect, useRef } from 'react';
 import type { CalloutLabels } from './callout-preview';
+import type { LinkContext } from './link-preview';
 import { livePreview } from './live-preview';
 import { tablePreview } from './table-preview';
 
@@ -22,6 +23,8 @@ export function MarkdownEditor({
   taskLabel,
   tableLabel,
   calloutLabels,
+  links,
+  onOpenLink,
   visual = false,
 }: {
   initialValue: string;
@@ -32,12 +35,15 @@ export function MarkdownEditor({
   taskLabel: string;
   tableLabel: string;
   calloutLabels: CalloutLabels;
+  links: LinkContext;
+  onOpenLink: (url: string) => void;
   visual?: boolean;
 }) {
   const parent = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
-  const callbacks = useRef({ onChange, onSave });
-  callbacks.current = { onChange, onSave };
+  const callbacks = useRef({ onChange, onSave, onOpenLink });
+  callbacks.current = { onChange, onSave, onOpenLink };
+  const openLink = useRef((url: string) => callbacks.current.onOpenLink(url));
   const access = useRef(new Compartment());
   const initial = useRef(initialValue);
   const raw = useRef(initialValue);
@@ -57,7 +63,12 @@ export function MarkdownEditor({
           presentation.current.of(
             visual
               ? [
-                  livePreview(taskLabel, calloutLabels),
+                  livePreview(
+                    taskLabel,
+                    calloutLabels,
+                    links,
+                    openLink.current,
+                  ),
                   tablePreview(tableLabel),
                 ]
               : [],
@@ -181,10 +192,13 @@ export function MarkdownEditor({
     view.current?.dispatch({
       effects: presentation.current.reconfigure(
         visual
-          ? [livePreview(taskLabel, calloutLabels), tablePreview(tableLabel)]
+          ? [
+              livePreview(taskLabel, calloutLabels, links, openLink.current),
+              tablePreview(tableLabel),
+            ]
           : [],
       ),
     });
-  }, [visual, taskLabel, tableLabel, calloutLabels]);
+  }, [visual, taskLabel, tableLabel, calloutLabels, links]);
   return <div ref={parent} />;
 }

@@ -16,6 +16,12 @@ import {
   calloutTheme,
   decorateCallout,
 } from './callout-preview';
+import {
+  type LinkContext,
+  linkDecoration,
+  linkTheme,
+  visualLink,
+} from './link-preview';
 
 import {
   frontmatterEnd,
@@ -92,6 +98,8 @@ function decorate(
   view: EditorView,
   taskLabel: string,
   calloutLabels: CalloutLabels,
+  links: LinkContext,
+  openLink: (url: string) => void,
 ): DecorationSet {
   const { state } = view;
   if (state.doc.length > LIVE_PREVIEW_LIMIT || view.composing)
@@ -119,9 +127,21 @@ function decorate(
       enter(node) {
         if (node.to <= excluded) return false;
         if (
-          ['FencedCode', 'CodeBlock', 'HTMLBlock', 'Table'].includes(node.name)
+          ['FencedCode', 'CodeBlock', 'HTMLBlock', 'Table', 'Image'].includes(
+            node.name,
+          )
         )
           return false;
+        if (node.name === 'Link') {
+          if (active(node.from, node.to)) return false;
+          references ??= calloutReferences(state, excluded);
+          const link = visualLink(state, node.node, references);
+          if (link && !active(link.from, link.to)) {
+            const decoration = linkDecoration(state, link, links, openLink);
+            if (decoration) add(link.from, link.to, 'note-link', decoration);
+          }
+          return false;
+        }
         if (node.name === 'Blockquote') {
           references ??= calloutReferences(state, excluded);
           if (
@@ -247,13 +267,22 @@ function decorate(
 export const livePreview = (
   taskLabel: string,
   calloutLabels: CalloutLabels,
+  links: LinkContext,
+  openLink: (url: string) => void,
 ) => [
   calloutTheme,
+  linkTheme,
   ViewPlugin.fromClass(
     class {
       decorations: DecorationSet;
       constructor(view: EditorView) {
-        this.decorations = decorate(view, taskLabel, calloutLabels);
+        this.decorations = decorate(
+          view,
+          taskLabel,
+          calloutLabels,
+          links,
+          openLink,
+        );
       }
       update(update: ViewUpdate) {
         if (
@@ -266,7 +295,13 @@ export const livePreview = (
             update.state.facet(EditorView.editable) ||
           syntaxTree(update.startState) !== syntaxTree(update.state)
         )
-          this.decorations = decorate(update.view, taskLabel, calloutLabels);
+          this.decorations = decorate(
+            update.view,
+            taskLabel,
+            calloutLabels,
+            links,
+            openLink,
+          );
       }
     },
     { decorations: (plugin) => plugin.decorations },

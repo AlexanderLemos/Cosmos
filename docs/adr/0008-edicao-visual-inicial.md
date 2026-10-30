@@ -133,3 +133,32 @@ para `---` usa a edição normal e pode ser desfeita; não existe conversão ou
 serialização da fonte. Separadores horizontais têm outro nó sintático; YAML e
 blocos de código continuam nas exclusões existentes. Não foram adicionadas
 bibliotecas, widgets, contratos ou mudanças na persistência.
+
+## Evolução — links locais na edição visual, 2026-10-29
+
+Nós `Link` na região visível oferecem navegação para notas com destino inline e
+wikilinks simples, fora das linhas selecionadas e do frontmatter. A inspeção
+Markdown existente decodifica o destino e extrai o texto do rótulo de cada link
+inline; não serializa a nota. Wikilinks são reconhecidos pela fonte ao redor do nó
+Lezer, com exclusão de escapes, embeds, referências definidas, formatação interna
+e destinos adjacentes ambíguos. Links por referência continuam literais.
+
+Um widget inline contém dois botões nativos: abrir o destino e revelar sua fonte.
+O DOM usa texto, sem HTML da nota. O botão de fonte confere o trecho atual e muda
+apenas seleção/foco. A linha em edição volta ao Markdown, usando o mesmo histórico
+e rascunho. Atualizações reaproveitam o DOM do widget, incluindo foco, e atalhos
+de salvar/desfazer continuam chegando ao editor. Rótulos são traduzidos e notas
+protegidas permitem navegar sem liberar edição.
+
+A resolução usa `previewLink`, compartilhado com a leitura, e é refeita ao ativar
+o controle. Destinos ausentes ou ambíguos ficam desabilitados; operações em curso
+impedem navegação. O Workspace compartilha o mesmo fluxo de confirmação de
+rascunho e carregamento entre leitura e editor visual. Destinos sem fragmento
+mantêm o modo visual; títulos/blocos abrem a visão dividida e reutilizam foco,
+abertura de callouts ancestrais e avisos de destino ausente do painel de leitura.
+Na mesma nota, a instância do editor, seu histórico e o rascunho são preservados.
+
+Links externos/protocolos, anexos, tabelas e cabeçalhos de callouts mantêm a fonte.
+Não são carregados recursos por estes widgets. O limite geral de 262.144 unidades
+UTF-16, suspensão durante composição e exclusões de código/HTML permanecem.
+Não há dependências externas novas nem alterações de daemon, IPC ou persistência.

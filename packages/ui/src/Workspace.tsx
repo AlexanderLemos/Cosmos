@@ -1,4 +1,4 @@
-import { noteLinks, resolveNoteLink } from '@cosmos/core';
+import { noteLinks, previewLink, resolveNoteLink } from '@cosmos/core';
 import { LIVE_PREVIEW_LIMIT, MarkdownEditor } from '@cosmos/editor';
 import { ImportConflict, type ImportResult } from '@cosmos/fs';
 import { type DraftHeader, draftStore } from '@cosmos/fs/drafts';
@@ -48,6 +48,16 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
     useState<PreviewLocation | null>(null);
   const navigationRequest = useRef(0);
   const [busy, setBusy] = useState(false);
+  const editorLinks = useMemo(
+    () => ({
+      path: doc?.path ?? '',
+      paths,
+      busy,
+      sourceLabel: t('linkSource'),
+      unresolvedLabel: t('unresolved'),
+    }),
+    [doc?.path, paths, busy, t],
+  );
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
   const [resumeImport, setResumeImport] = useState(false);
@@ -186,6 +196,24 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
         back.push(candidate);
     }
     setBacklinks(back);
+  };
+  const navigate = (path: string, fragment: string) => {
+    if (!doc || pending.current) return;
+    const locate = () => {
+      setPreviewLocation({
+        path,
+        fragment,
+        request: ++navigationRequest.current,
+      });
+      if (viewMode === 'live' && fragment) setViewMode('split');
+    };
+    if (path === doc.path) locate();
+    else
+      void run(async () => {
+        if (!mayLeave()) return;
+        await load(path);
+        locate();
+      });
   };
   const save = () =>
     void run(async () => {
@@ -1022,6 +1050,12 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
                         taskLabel={t('taskCheckbox')}
                         tableLabel={t('tableSource')}
                         calloutLabels={calloutLabels}
+                        links={editorLinks}
+                        onOpenLink={(url) => {
+                          const target = previewLink(url, doc.path, paths);
+                          if (target.kind === 'note')
+                            navigate(target.path, target.fragment);
+                        }}
                         visual={
                           viewMode === 'live' &&
                           doc.content.length <= LIVE_PREVIEW_LIMIT
@@ -1044,24 +1078,7 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
                         busy={busy}
                         externalLinks={platform.kind === 'web'}
                         location={previewLocation}
-                        onNavigate={(path, fragment) => {
-                          if (path === doc.path) {
-                            setPreviewLocation({
-                              path,
-                              fragment,
-                              request: ++navigationRequest.current,
-                            });
-                          } else
-                            void run(async () => {
-                              if (!mayLeave()) return;
-                              await load(path);
-                              setPreviewLocation({
-                                path,
-                                fragment,
-                                request: ++navigationRequest.current,
-                              });
-                            });
-                        }}
+                        onNavigate={navigate}
                       />
                     )}
                   </div>
