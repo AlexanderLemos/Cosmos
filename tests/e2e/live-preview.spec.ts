@@ -797,7 +797,6 @@ test('visual links keep excluded syntax literal and allow navigation from protec
     '[[Destino|Código]]',
     '[Web](https://example.com)',
     '[Protocolo](javascript:alert)',
-    '![Imagem](imagem.png)',
     '[Título do callout](Destino.md)',
   ])
     await expect(editor).toContainText(literal);

@@ -35,7 +35,7 @@ foram aprovadas implicitamente pelo avanço da implementação.
   formatados no CodeMirror, no Web/Desktop. Linhas em edição/selecionadas revelam
   os marcadores; alternar modos mantém texto, histórico e rascunhos. É a primeira
   etapa de live preview, agora com caixas de tarefas editáveis por mouse/teclado,
-  links locais/wikilinks simples navegáveis, PDFs sob demanda, tabelas e callouts simples com retorno ao Markdown para editar, com os limites
+  links locais/wikilinks simples navegáveis, imagens e PDFs sob demanda, tabelas e callouts simples com retorno ao Markdown para editar, com os limites
   descritos abaixo.
 - **Leitura:** modos Editar, Ler e Edição e leitura no Web e Desktop, com Markdown/GFM,
   tabelas, listas de tarefas, citações e blocos de código. A leitura acompanha o
@@ -50,10 +50,10 @@ foram aprovadas implicitamente pelo avanço da implementação.
 - **Callouts Obsidian:** blocos `> [!note]`, títulos personalizados, tipos/aliases
   padrão e recolhimento com `+`/`-`, inclusive aninhados. Links para títulos/blocos
   abrem os callouts ancestrais antes de focar o destino. Ver limites abaixo.
-- **Imagens locais:** na leitura Web/Desktop, PNG, JPEG, GIF e WebP do cofre podem
+- **Imagens locais:** na leitura e edição visual Web/Desktop, PNG, JPEG, GIF e WebP do cofre podem
   ser exibidos pelo botão **Mostrar imagem**, em sintaxe Markdown ou `![[imagem]]`.
   Dimensões Obsidian são aceitas nos embeds e no texto alternativo de imagens
-  Markdown, inclusive por referência. Limite de 8 MiB por arquivo, com validação
+  Markdown, inclusive por referência na leitura. Limite de 8 MiB por arquivo, com validação
   da extensão e assinatura; imagens remotas não são carregadas.
   Ver detalhes e limites abaixo.
 - **Rascunhos locais:** cópias automáticas no perfil do navegador/WebView, com
@@ -366,7 +366,7 @@ marcador de citação explícito. Callouts aninhados, dentro de listas, com tabe
 código/HTML em bloco, continuação sem `>` ou cabeçalhos multilinha ambíguos
 permanecem na apresentação Markdown. YAML, escapes e marcadores definidos como
 referências de links não viram controles de callout. O botão de fonte não grava
-nem libera notas protegidas. HTML inline e imagens seguem literais no editor.
+nem libera notas protegidas. HTML inline segue literal no editor.
 
 Títulos Setext recebem nível 1 (`=`) ou 2 (`-`), inclusive com várias linhas e
 em listas/citações. A seleção de qualquer linha do título ou de seu sublinhado
@@ -396,10 +396,20 @@ avisos de ausência/ambiguidade e recursos não suportados permanecem os do leit
 existente. Notas protegidas também permitem abrir PDFs. Trocar nota, cofre, versão
 recarregada ou modo encerra a visualização, cancela o worker e descarta leituras tardias.
 
-Links por referência, wikilinks com formatação interna, links em tabelas e
+Imagens locais com destino Markdown inline (`![Descrição|120](imagem.png)`) ou
+embed Obsidian simples (`![[imagem.png|120x80]]`) agora oferecem **Mostrar imagem**
+dentro do editor. Os mesmos formatos, dimensões e limites da leitura são usados.
+Há controles de ocultar/cancelar e **Mostrar Markdown da imagem**; entrar na linha
+também revela a fonte. Tema/idioma preservam a imagem quando o controle permanece
+montado. Ocultar, selecionar sua fonte, trocar de nota/modo ou remover o widget
+pela virtualização libera a URL e descarta leituras tardias. Ao voltar à região,
+pode ser necessário solicitar novamente a imagem. Notas protegidas permitem
+visualizar sem liberar edição, e salvar/desfazer continuam no editor original.
+
+Links e imagens por referência, wikilinks com formatação interna, links em tabelas e
 cabeçalhos de callouts, outros embeds/anexos e links externos/protocolos permanecem
 literais neste incremento. YAML, código e escapes mantêm suas exclusões. Não há
-carregamento automático de anexos. Transclusões e imagens, além de callouts complexos/recolhíveis
+carregamento automático de anexos. Transclusões, imagens em contextos complexos e outros formatos de anexos, além de callouts complexos/recolhíveis
 no próprio editor ainda pendem. A leitura separada mantém seu suporte existente.
 Detalhes na [ADR 0008](adr/0008-edicao-visual-inicial.md).
 
@@ -864,11 +874,24 @@ de cancelamento visual no WebKit falhou antes de iniciar o aplicativo: o nome
 acentuado do teste gerou um caminho de perfil recusado pelo navegador
 (`Invalid byte sequence in conversion input`). O identificador do teste foi
 ajustado para ASCII, preservando o rótulo português da interface e as asserções.
-A próxima CI verificará novamente a matriz completa.
+A CI de `1374c4c` passou nos três sistemas, incluindo 171 testes Web e o cenário
+de cancelamento visual no WebKit.
+
+Validação de imagens no editor (2026-10-30): `pnpm check` passou com 47 testes
+unitários, tipos, lint e schemas; builds Web/Desktop e Tauri debug passaram.
+Os 19 cenários Chromium de imagens, edição visual e PDFs passaram, com os dois
+novos cenários de imagem visual confirmados após ajustar seus seletores para
+distinguir imagens do usuário dos elementos internos de cursor do CodeMirror.
+Cobrem dimensões, carregamento por teclado, liberação de URLs, leituras tardias,
+fonte/foco, rascunhos, salvamento, notas protegidas, tema/idioma, acessibilidade e
+bytes exatos na exportação. O smoke completo Tauri Linux via WebKitGTK direto
+passou com imagem Markdown e embed Obsidian no editor, dimensões, retorno à fonte
+e nota/anexo preservados. A CI verificará os três navegadores e os builds nos três
+sistemas após publicar.
 
 ## Fechamento ainda necessário
 
-- Ampliar a edição visual inicial do CodeMirror para links por referência, wikilinks complexos e anexos; callouts complexos/recolhíveis; tabelas aninhadas e conteúdo avançado nas células; tarefas com estados personalizados; formatos de anexos além das imagens
+- Ampliar a edição visual inicial do CodeMirror para links/imagens por referência, wikilinks complexos e outros anexos; callouts complexos/recolhíveis; tabelas aninhadas e conteúdo avançado nas células; tarefas com estados personalizados; formatos de anexos além das imagens
   raster e PDFs sob demanda,
   recursos avançados do leitor PDF,
   transclusão/autocompletar de blocos, compatibilidade avançada de títulos/wikilinks, títulos formatados e

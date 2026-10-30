@@ -42,6 +42,20 @@ export function inspectMarkdown(source: string) {
   return { headings, links };
 }
 
+/** Decode one inline image for display, excluding references and linked images. */
+export function inspectInlineImage(source: string) {
+  const tree = unified().use(remarkParse).parse(source);
+  const paragraph = tree.children[0];
+  if (
+    tree.children.length !== 1 ||
+    paragraph?.type !== 'paragraph' ||
+    paragraph.children.length !== 1
+  )
+    return;
+  const image = paragraph.children[0];
+  if (image?.type === 'image') return { src: image.url, alt: image.alt ?? '' };
+}
+
 /** Ignore code/frontmatter; keep link targets separate from their display aliases. */
 export function noteLinks(source: string): string[] {
   const tree = unified()

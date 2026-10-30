@@ -7,13 +7,14 @@ import {
 import { LIVE_PREVIEW_LIMIT, MarkdownEditor } from '@cosmos/editor';
 import { ImportConflict, type ImportResult } from '@cosmos/fs';
 import { type DraftHeader, draftStore } from '@cosmos/fs/drafts';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Foundation } from './Foundation';
 import { ImportRecovery } from './ImportRecovery';
 import { MarkdownPreview, type PreviewLocation } from './MarkdownPreview';
 import { type DocumentState, observeVault, reconcileDocument } from './monitor';
 import { PdfDialog } from './PdfDialog';
+import { readLocalImage } from './read-local-image';
 import { useLocalDrafts } from './use-local-drafts';
 import type { OpenVault, TrashItem, VaultPlatform } from './vault';
 import styles from './Workspace.module.css';
@@ -54,6 +55,20 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
     useState<PreviewLocation | null>(null);
   const navigationRequest = useRef(0);
   const [busy, setBusy] = useState(false);
+  const loadVisualImage = useCallback(
+    (src: string, current: () => boolean) =>
+      readLocalImage(src, doc?.path ?? '', vault, current),
+    [doc?.path, vault],
+  );
+  const editorImages = useMemo(
+    () => ({
+      load: loadVisualImage,
+      available: !!vault?.readImage && !!vault?.imagePaths,
+      busy,
+      label: (key: string, name: string) => t(key, { name }),
+    }),
+    [loadVisualImage, vault, busy, t],
+  );
   const [visualPdf, setVisualPdf] = useState<{
     src: string;
     path: string;
@@ -1077,6 +1092,7 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
                         tableLabel={t('tableSource')}
                         calloutLabels={calloutLabels}
                         links={editorLinks}
+                        images={editorImages}
                         onOpenLink={(url, restoreFocus) => {
                           if (pending.current) return;
                           if (pdfTarget(url)) {

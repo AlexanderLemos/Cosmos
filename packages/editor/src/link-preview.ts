@@ -19,6 +19,21 @@ type ParsedLink = { from: number; to: number; url: string; text: string };
 const referenceKey = (value: string) =>
   value.replace(/\s+/g, ' ').toLowerCase();
 
+export function inCalloutTitle(state: EditorState, node: Node): boolean {
+  for (let ancestor = node.parent; ancestor; ancestor = ancestor.parent) {
+    if (ancestor.name !== 'Blockquote') continue;
+    const paragraph = ancestor.getChild('Paragraph');
+    if (!paragraph) continue;
+    const header = state.doc.lineAt(paragraph.from);
+    if (
+      node.from <= header.to &&
+      calloutMarker.test(state.sliceDoc(paragraph.from, header.to))
+    )
+      return true;
+  }
+  return false;
+}
+
 /** Inline destinations and simple wiki aliases only; all other syntax stays raw. */
 export function visualLink(
   state: EditorState,
@@ -39,17 +54,7 @@ export function visualLink(
   let from = node.from;
   let to = node.to;
   if (state.doc.lineAt(from).number !== state.doc.lineAt(to).number) return;
-  for (let ancestor = node.parent; ancestor; ancestor = ancestor.parent) {
-    if (ancestor.name !== 'Blockquote') continue;
-    const paragraph = ancestor.getChild('Paragraph');
-    if (!paragraph) continue;
-    const header = state.doc.lineAt(paragraph.from);
-    if (
-      from <= header.to &&
-      calloutMarker.test(state.sliceDoc(paragraph.from, header.to))
-    )
-      return;
-  }
+  if (inCalloutTitle(state, node)) return;
   if (node.getChild('URL')) {
     const parsed = inspectMarkdown(state.sliceDoc(from, to)).links[0];
     if (parsed?.text)

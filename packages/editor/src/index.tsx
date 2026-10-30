@@ -8,6 +8,7 @@ import { tags } from '@lezer/highlight';
 import { Strikethrough, Table, TaskList } from '@lezer/markdown';
 import { useEffect, useRef } from 'react';
 import type { CalloutLabels } from './callout-preview';
+import type { ImageContext } from './image-preview';
 import type { LinkContext, OpenVisualLink } from './link-preview';
 import { livePreview } from './live-preview';
 import { tablePreview } from './table-preview';
@@ -25,6 +26,7 @@ export function MarkdownEditor({
   calloutLabels,
   links,
   onOpenLink,
+  images,
   visual = false,
 }: {
   initialValue: string;
@@ -37,6 +39,7 @@ export function MarkdownEditor({
   calloutLabels: CalloutLabels;
   links: LinkContext;
   onOpenLink: OpenVisualLink;
+  images: ImageContext;
   visual?: boolean;
 }) {
   const parent = useRef<HTMLDivElement>(null);
@@ -70,6 +73,7 @@ export function MarkdownEditor({
                     calloutLabels,
                     links,
                     openLink.current,
+                    images,
                   ),
                   tablePreview(tableLabel),
                 ]
@@ -195,12 +199,18 @@ export function MarkdownEditor({
       effects: presentation.current.reconfigure(
         visual
           ? [
-              livePreview(taskLabel, calloutLabels, links, openLink.current),
+              livePreview(
+                taskLabel,
+                calloutLabels,
+                links,
+                openLink.current,
+                images,
+              ),
               tablePreview(tableLabel),
             ]
           : [],
       ),
     });
-  }, [visual, taskLabel, tableLabel, calloutLabels, links]);
+  }, [visual, taskLabel, tableLabel, calloutLabels, links, images]);
   return <div ref={parent} />;
 }

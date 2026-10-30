@@ -281,81 +281,252 @@ test('local image attachments load only on request, preserve vault bytes and rel
   expect(Buffer.from(archive['Folder/assets/pixels.png'] ?? [])).toEqual(png);
 });
 
-test('late image reads are discarded after cancellation or changing the note', async ({
+for (const [mode, label] of [
+  ['reading', 'Ler'],
+  ['visual', 'Edição visual'],
+]) {
+  test(`late image reads in ${mode} are discarded after cancellation or changing the note`, async ({
+    page,
+  }) => {
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Usar cofre no navegador' }).click();
+    await page.getByLabel('Importar ZIP', { exact: true }).setInputFiles({
+      name: 'late.zip',
+      mimeType: 'application/zip',
+      buffer: Buffer.from(
+        zipSync({
+          'A.md': Buffer.from('![Lenta](delayed.png)\n\nFinal'),
+          'B.md': Buffer.from('# Destino'),
+          'delayed.png': png,
+        }),
+      ),
+    });
+    await expect(
+      page.getByText('Importação concluída sem alterar os originais.'),
+    ).toBeVisible();
+    await page
+      .getByRole('navigation', { name: 'Notas' })
+      .getByRole('button', { name: 'A.md' })
+      .click();
+    await expect(page.locator('.cm-content')).toHaveAttribute(
+      'contenteditable',
+      'true',
+    );
+    await page.locator('.cm-content').press('ControlOrMeta+End');
+    await page.getByRole('button', { name: label, exact: true }).click();
+    await page.evaluate(() => {
+      const read = File.prototype.arrayBuffer;
+      File.prototype.arrayBuffer = async function () {
+        const bytes = await read.call(this);
+        if (this.name === 'delayed.png')
+          await new Promise<void>((resolve) =>
+            Reflect.set(window, 'releaseImage', resolve),
+          );
+        return bytes;
+      };
+      const create = URL.createObjectURL.bind(URL);
+      Reflect.set(window, 'imageURLsCreated', 0);
+      URL.createObjectURL = (blob) => {
+        Reflect.set(
+          window,
+          'imageURLsCreated',
+          Reflect.get(window, 'imageURLsCreated') + 1,
+        );
+        return create(blob);
+      };
+    });
+    const preview =
+      mode === 'reading'
+        ? page.getByRole('region', { name: 'Leitura Markdown' })
+        : page.locator('.cm-content');
+    for (const action of ['cancel', 'navigate']) {
+      await preview
+        .getByRole('button', { name: 'Mostrar imagem: Lenta', exact: true })
+        .click();
+      await expect
+        .poll(() =>
+          page.evaluate(() => typeof Reflect.get(window, 'releaseImage')),
+        )
+        .toBe('function');
+      if (action === 'cancel')
+        await preview
+          .getByRole('button', { name: 'Cancelar imagem: Lenta', exact: true })
+          .click();
+      else {
+        await page
+          .getByRole('navigation', { name: 'Notas' })
+          .getByRole('button', { name: 'B.md' })
+          .click();
+        await expect(page.locator('.cm-content')).toContainText('Destino');
+      }
+      await page.evaluate(() => {
+        Reflect.get(window, 'releaseImage')();
+        Reflect.deleteProperty(window, 'releaseImage');
+      });
+      await expect(
+        preview.locator(
+          mode === 'visual' ? '.cm-live-image img:not([hidden])' : 'img',
+        ),
+      ).toHaveCount(0);
+      expect(
+        await page.evaluate(() => Reflect.get(window, 'imageURLsCreated')),
+      ).toBe(0);
+    }
+  });
+}
+
+test('visual images load on demand, reveal source and preserve drafts, focus and exact bytes', async ({
   page,
 }) => {
+  const source =
+    '\ufeff---\r\nimage: ![[pixels.png|20]]\n---\r\n\n![Descrição|120x80](assets/pixels.png)\n\n![[pixels.png|96]]\r\n\n![Ausente](missing.png)\n\n![Inválida](bad.png)\n\n![Remota](https://example.com/image.png)\n\n![SVG](image.svg)\n\n`![[pixels.png]]`\n\n![Referência][ref]\n\n[ref]: assets/pixels.png\n\nFinal';
+  const protectedSource = '# Protegida\n\n![[pixels.png|60x40]]\n\nFinal';
+  const remote: string[] = [];
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('request', (request) => {
+    if (!/^(http:\/\/127\.0\.0\.1:5173|blob:|data:)/.test(request.url()))
+      remote.push(request.url());
+  });
   await page.goto('/');
   await page.getByRole('button', { name: 'Usar cofre no navegador' }).click();
   await page.getByLabel('Importar ZIP', { exact: true }).setInputFiles({
-    name: 'late.zip',
+    name: 'visual-images.zip',
     mimeType: 'application/zip',
     buffer: Buffer.from(
       zipSync({
-        'A.md': Buffer.from('![Lenta](delayed.png)'),
-        'B.md': Buffer.from('# Destino'),
-        'delayed.png': png,
+        'Nota.md': Buffer.from(source),
+        'assets/pixels.png': png,
+        'bad.png': Buffer.from('invalid'),
+        'Projeto/project.cosmos.json': Buffer.from('{}'),
+        'Projeto/Nota.md': Buffer.from(protectedSource),
       }),
     ),
   });
   await expect(
     page.getByText('Importação concluída sem alterar os originais.'),
   ).toBeVisible();
+  const notes = page.getByRole('navigation', { name: 'Notas' });
+  await notes.getByRole('button', { name: 'Nota.md', exact: true }).click();
+  const editor = page.locator('.cm-content');
+  await expect(editor).toHaveAttribute('contenteditable', 'true');
+  await editor.evaluate((element) =>
+    Reflect.set(window, 'imageEditor', element),
+  );
+  await editor.press('ControlOrMeta+End');
+  await editor.pressSequentially(' rascunho');
   await page
-    .getByRole('navigation', { name: 'Notas' })
-    .getByRole('button', { name: 'A.md' })
+    .getByRole('button', { name: 'Edição visual', exact: true })
     .click();
-  await page.getByRole('button', { name: 'Ler', exact: true }).click();
-  await page.evaluate(() => {
-    const read = File.prototype.arrayBuffer;
-    File.prototype.arrayBuffer = async function () {
-      const bytes = await read.call(this);
-      if (this.name === 'delayed.png')
-        await new Promise<void>((resolve) =>
-          Reflect.set(window, 'releaseImage', resolve),
-        );
-      return bytes;
-    };
-    const create = URL.createObjectURL.bind(URL);
-    Reflect.set(window, 'imageURLsCreated', 0);
-    URL.createObjectURL = (blob) => {
-      Reflect.set(
-        window,
-        'imageURLsCreated',
-        Reflect.get(window, 'imageURLsCreated') + 1,
-      );
-      return create(blob);
-    };
-  });
-  const preview = page.getByRole('region', { name: 'Leitura Markdown' });
-  for (const action of ['cancel', 'navigate']) {
-    await preview
-      .getByRole('button', { name: 'Mostrar imagem: Lenta', exact: true })
-      .click();
-    await expect
-      .poll(() =>
-        page.evaluate(() => typeof Reflect.get(window, 'releaseImage')),
-      )
-      .toBe('function');
-    if (action === 'cancel')
-      await preview
-        .getByRole('button', { name: 'Cancelar imagem: Lenta', exact: true })
-        .click();
-    else {
-      await page
-        .getByRole('navigation', { name: 'Notas' })
-        .getByRole('button', { name: 'B.md' })
-        .click();
-      await expect(
-        preview.getByRole('heading', { name: 'Destino' }),
-      ).toBeVisible();
-    }
-    await page.evaluate(() => {
-      Reflect.get(window, 'releaseImage')();
-      Reflect.deleteProperty(window, 'releaseImage');
-    });
-    await expect(preview.locator('img')).toHaveCount(0);
+  await expect(
+    editor.getByRole('button', { name: /^Mostrar imagem:/ }),
+  ).toHaveCount(4);
+  await expect(editor.locator('.cm-live-image img:not([hidden])')).toHaveCount(
+    0,
+  );
+  await editor
+    .getByRole('button', { name: 'Mostrar imagem: Descrição', exact: true })
+    .press('Enter');
+  const image = editor.getByRole('img', { name: 'Descrição', exact: true });
+  await expect(image).toBeVisible();
+  await expect
+    .poll(() => image.evaluate((img: HTMLImageElement) => img.naturalWidth))
+    .toBe(2);
+  await expect(image).toHaveAttribute('width', '120');
+  await expect(image).toHaveAttribute('height', '80');
+  const url = await image.getAttribute('src');
+  expect(url).toMatch(/^blob:/);
+  for (const theme of ['nyx', 'hemera']) {
+    await page.getByLabel('Tema').selectOption(theme);
     expect(
-      await page.evaluate(() => Reflect.get(window, 'imageURLsCreated')),
-    ).toBe(0);
+      (
+        await new AxeBuilder({ page })
+          .withTags(['wcag2a', 'wcag2aa', 'wcag21aa'])
+          .analyze()
+      ).violations,
+    ).toEqual([]);
+    await expect(image).toHaveAttribute('src', url as string);
   }
+  await page.getByLabel('Idioma').selectOption('en');
+  await expect(
+    editor.getByRole('button', { name: 'Hide image: Descrição', exact: true }),
+  ).toBeVisible();
+  await expect(image).toHaveAttribute('src', url as string);
+  await page.getByLabel('Language').selectOption('pt-BR');
+  await editor
+    .getByRole('button', {
+      name: 'Mostrar Markdown da imagem: Descrição',
+      exact: true,
+    })
+    .click();
+  await expect(editor).toBeFocused();
+  await expect(editor).toContainText('![Descrição|120x80](assets/pixels.png)');
+  expect(
+    await page.evaluate(async (url) => {
+      try {
+        await fetch(url as string);
+        return true;
+      } catch {
+        return false;
+      }
+    }, url),
+  ).toBe(false);
+  await editor.press('ControlOrMeta+End');
+  await editor
+    .getByRole('button', { name: 'Mostrar imagem: pixels.png', exact: true })
+    .click();
+  await expect(
+    editor.getByRole('img', { name: 'pixels.png', exact: true }),
+  ).toHaveAttribute('width', '96');
+  await editor
+    .getByRole('button', { name: 'Ocultar imagem: pixels.png', exact: true })
+    .click();
+  for (const [name, message] of [
+    ['Ausente', 'não foi encontrada'],
+    ['Inválida', 'Não foi possível exibir'],
+  ]) {
+    await editor
+      .getByRole('button', { name: `Mostrar imagem: ${name}`, exact: true })
+      .click();
+    await expect(
+      editor.getByRole('status').filter({ hasText: message }),
+    ).toBeVisible();
+  }
+  expect(
+    await editor.evaluate(
+      (element) => element === Reflect.get(window, 'imageEditor'),
+    ),
+  ).toBe(true);
+  await expect(editor).toContainText('Final rascunho');
+  await editor
+    .getByRole('button', { name: 'Mostrar imagem: Descrição', exact: true })
+    .press('ControlOrMeta+s');
+  await expect(
+    page.getByText('Salvo no cofre.', { exact: true }),
+  ).toBeVisible();
+  await notes
+    .getByRole('button', { name: 'Projeto/Nota.md', exact: true })
+    .click();
+  await expect(editor).toHaveAttribute('contenteditable', 'false');
+  await editor
+    .getByRole('button', { name: 'Mostrar imagem: pixels.png', exact: true })
+    .click();
+  await expect(
+    editor.getByRole('img', { name: 'pixels.png', exact: true }),
+  ).toBeVisible();
+  await expect(editor).toHaveAttribute('contenteditable', 'false');
+  const downloading = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Exportar cofre (.zip)' }).click();
+  const files = unzipSync(
+    await readFile((await (await downloading).path()) as string),
+  );
+  expect(Buffer.from(files['Nota.md'] ?? [])).toEqual(
+    Buffer.from(`${source} rascunho`),
+  );
+  expect(Buffer.from(files['Projeto/Nota.md'] ?? [])).toEqual(
+    Buffer.from(protectedSource),
+  );
+  expect(Buffer.from(files['assets/pixels.png'] ?? [])).toEqual(png);
+  expect(remote).toEqual([]);
+  expect(errors).toEqual([]);
 });

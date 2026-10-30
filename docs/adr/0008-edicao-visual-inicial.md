@@ -186,3 +186,28 @@ A visualização é vinculada ao cofre, caminho e geração da nota. Trocar esse
 valores ou sair do modo visual desmonta o leitor, encerrando o worker e
 descartando resultados tardios conforme a ADR 0007. Não há novos formatos,
 dependências, permissões, contratos IPC ou gravações no cofre.
+
+## Evolução — imagens locais no editor, 2026-10-30
+
+Nós Image de uma linha, fora da seleção, são reconhecidos pela árvore Lezer.
+Imagens Markdown com URL inline usam inspeção remark do trecho para decodificar
+destino/descrição; embeds `![[imagem.png|larguraxaltura]]` exigem sintaxe simples,
+sem referência definida concorrente. Ambos usam `imageTarget`/`imageSize` da
+leitura. Imagens por referência, multilinha, dentro de links/tabelas/cabeçalhos
+de callout, escapes, código e YAML mantêm a fonte. SVG, URLs remotas e outros
+formatos continuam excluídos. Não há serialização reversa do Markdown.
+
+O widget oferece Mostrar/Ocultar/Cancelar imagem e um botão traduzido para
+revelar a fonte. A imagem fica no fluxo do editor, limitada pelo painel e por
+70vh; largura/altura seguem os limites existentes. Carregamento e mudanças de
+altura solicitam nova medição ao CodeMirror. A transformação não substitui
+quebras de linha nem cria widgets de bloco. O limite geral de 262.144 unidades
+UTF-16 e a suspensão durante composição permanecem.
+
+O carregador compartilhado com a leitura continua passando pelo daemon no
+Desktop. Cada controle rastreia sua solicitação e revoga sua URL ao ocultar ou
+desmontar; uma resposta tardia não cria URL. O DOM é reaproveitado em atualizações
+compatíveis, mantendo imagem e foco em mudanças de preferências. Alterar destino
+ou cofre/carregador descarta a imagem anterior. O botão de fonte confere o trecho
+atual antes de mudar a seleção, sem gravar ou liberar notas protegidas. Salvar e
+desfazer permanecem no editor original. Nenhuma dependência ou contrato foi ampliado.

@@ -250,6 +250,19 @@ def main():
             click('Hide image: Native reference')
             assert (vault / 'Folder/Moved.md').read_bytes() == image_note
             checks += ['local PNG attachment crosses daemon IPC and renders on demand under the native CSP without changing vault bytes']
+            click('Visual editing')
+            wait('return [...document.querySelectorAll(".cm-live-image button")].some(b => b.textContent === "Show image: Native image")')
+            click('Show image: Native image')
+            wait('const img = document.querySelector(".cm-live-image img:not([hidden])"); return img?.complete && img.naturalWidth === 2 && img.getAttribute("width") === "120"')
+            click('Hide image: Native image')
+            click('Show image: pixels.png')
+            wait('const img = document.querySelector(".cm-live-image img:not([hidden])"); return img?.complete && img.getAttribute("width") === "96" && img.getAttribute("height") === "48"')
+            execute('document.querySelector(\'button[aria-label="Show image Markdown: pixels.png"]\').click()')
+            wait('return document.activeElement === document.querySelector(".cm-content") && document.querySelector(".cm-content").textContent.includes("![[pixels.png|96x48]]")')
+            assert (vault / 'Folder/Moved.md').read_bytes() == image_note
+            assert (vault / 'assets/pixels.png').read_bytes() == image_bytes
+            click('Edit and read')
+            checks += ['visual Markdown and Obsidian images load through daemon IPC, preserve dimensions, reveal source and leave vault bytes unchanged']
             pdf_bytes = (Path(__file__).resolve().parents[1] / 'tests/fixtures/pdfs/two-pages.pdf').read_bytes()
             (vault / 'assets/manual.pdf').write_bytes(pdf_bytes)
             pdf_note = blocks + b'\r\n[Manual PDF](../assets/manual.pdf)\r\n\r\n![[manual.pdf#page=2|Second PDF page]]\r\n'

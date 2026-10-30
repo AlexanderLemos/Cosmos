@@ -17,6 +17,11 @@ import {
   decorateCallout,
 } from './callout-preview';
 import {
+  type ImageContext,
+  imageDecoration,
+  imageTheme,
+} from './image-preview';
+import {
   type LinkContext,
   linkDecoration,
   linkTheme,
@@ -101,6 +106,7 @@ function decorate(
   calloutLabels: CalloutLabels,
   links: LinkContext,
   openLink: OpenVisualLink,
+  images: ImageContext,
 ): DecorationSet {
   const { state } = view;
   if (state.doc.length > LIVE_PREVIEW_LIMIT || view.composing)
@@ -134,6 +140,18 @@ function decorate(
         if (node.name === 'Link' || node.name === 'Image') {
           if (active(node.from, node.to)) return false;
           references ??= calloutReferences(state, excluded);
+          if (node.name === 'Image') {
+            const decoration = imageDecoration(
+              state,
+              node.node,
+              references,
+              images,
+            );
+            if (decoration) {
+              add(node.from, node.to, 'image', decoration);
+              return false;
+            }
+          }
           const link = visualLink(state, node.node, references);
           if (link && !active(link.from, link.to)) {
             const decoration = linkDecoration(state, link, links, openLink);
@@ -268,9 +286,11 @@ export const livePreview = (
   calloutLabels: CalloutLabels,
   links: LinkContext,
   openLink: OpenVisualLink,
+  images: ImageContext,
 ) => [
   calloutTheme,
   linkTheme,
+  imageTheme,
   ViewPlugin.fromClass(
     class {
       decorations: DecorationSet;
@@ -281,6 +301,7 @@ export const livePreview = (
           calloutLabels,
           links,
           openLink,
+          images,
         );
       }
       update(update: ViewUpdate) {
@@ -300,6 +321,7 @@ export const livePreview = (
             calloutLabels,
             links,
             openLink,
+            images,
           );
       }
     },

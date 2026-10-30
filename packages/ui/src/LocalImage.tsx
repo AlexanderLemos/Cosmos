@@ -1,8 +1,8 @@
-import { type ImageSize, imageTarget, resolveImageTarget } from '@cosmos/core';
-import { imageMediaType } from '@cosmos/fs/images';
+import { type ImageSize, imageTarget } from '@cosmos/core';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import styles from './MarkdownPreview.module.css';
+import { readLocalImage } from './read-local-image';
 import type { OpenVault } from './vault';
 
 export function LocalImage({
@@ -49,14 +49,14 @@ export function LocalImage({
     setError('');
     setLoading(true);
     try {
-      const paths = await vault.imagePaths();
-      if (request !== generation.current) return;
-      const path = resolveImageTarget(target, from, paths);
-      if (!path) throw new Error('IMAGE_UNRESOLVED');
-      const bytes = await vault.readImage(path);
-      if (request !== generation.current) return;
-      const type = imageMediaType(path, bytes);
-      const next = URL.createObjectURL(new Blob([bytes], { type }));
+      const blob = await readLocalImage(
+        src,
+        from,
+        vault,
+        () => request === generation.current,
+      );
+      if (!blob || request !== generation.current) return;
+      const next = URL.createObjectURL(blob);
       release();
       resource.current = next;
       setUrl(next);

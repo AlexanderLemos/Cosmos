@@ -54,3 +54,19 @@ definições de referência não são alterados. A transformação ocorre apenas
 árvore de leitura compartilhada entre Web e Desktop, mantendo carregamento sob
 demanda e as restrições de formato/origem existentes. Não há alteração no IPC,
 no armazenamento ou nos bytes do Markdown/anexo.
+
+## Imagens na edição visual — 2026-10-30
+
+O editor passa a oferecer os mesmos formatos e dimensões em imagens Markdown
+com destino inline e embeds Obsidian simples. Leitura e edição visual compartilham
+`readLocalImage`, que resolve o caminho, lê pelo adaptador do cofre e valida
+extensão/assinatura/tamanho antes de produzir um Blob. Um predicado de validade
+evita iniciar a leitura após cancelamento da listagem e descarta resultados tardios.
+
+O editor usa widgets DOM do CodeMirror, sem montar outra árvore React. URLs de
+objeto são revogadas ao ocultar ou remover o widget. Remover por seleção da fonte,
+troca de nota/modo ou virtualização também cancela a solicitação. Não há cache
+de imagens entre widgets: ao voltar a uma região removida da tela, pode ser
+necessário solicitar a imagem novamente. Preferências de tema/idioma e mudanças
+de posição mantêm a imagem enquanto seu widget for reaproveitado e o destino e
+carregador permanecerem os mesmos. Ver exclusões na ADR 0008.
