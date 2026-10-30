@@ -31,7 +31,7 @@ foram aprovadas implicitamente pelo avanço da implementação.
   recarga explícita. Alterar idioma ou tema preserva a edição. Texto não é
   serializado de volta de uma AST. Links de notas e backlinks ignoram código e
   frontmatter; alvos ambíguos não são escolhidos automaticamente.
-- **Edição visual inicial:** títulos ATX, negrito, itálico, código em linha e tachado
+- **Edição visual inicial:** títulos ATX/Setext, negrito, itálico, código em linha e tachado
   formatados no CodeMirror, no Web/Desktop. Linhas em edição/selecionadas revelam
   os marcadores; alternar modos mantém texto, histórico e rascunhos. É a primeira
   etapa de live preview, agora com caixas de tarefas editáveis por mouse/teclado,
@@ -308,7 +308,8 @@ inicial dentro do CodeMirror está descrita a seguir.
 
 ### Edição visual inicial — atualizada em 2026-10-29
 
-O botão **Edição visual** formata títulos `#` a `######`, `**negrito**`,
+O botão **Edição visual** formata títulos `#` a `######`, títulos Setext
+(sublinhados com `===` ou `---`), `**negrito**`,
 `*itálico*`, código entre crases e `~~tachado~~` diretamente no editor. Fora das linhas do cursor
 ou seleção, os marcadores ficam ocultos; ao entrar na linha, a sintaxe reaparece.
 Selecionar tudo revela o texto Markdown. Alternar para Editar, Ler ou Edição e
@@ -367,7 +368,16 @@ permanecem na apresentação Markdown. YAML, escapes e marcadores definidos como
 referências de links não viram controles de callout. O botão de fonte não grava
 nem libera notas protegidas. HTML inline, links e anexos seguem literais no editor.
 
-Títulos Setext, links, transclusões e anexos, além de callouts complexos/recolhíveis
+Títulos Setext recebem nível 1 (`=`) ou 2 (`-`), inclusive com várias linhas e
+em listas/citações. A seleção de qualquer linha do título ou de seu sublinhado
+revela todos os marcadores do título. Fora da seleção, somente os caracteres do
+sublinhado são ocultados; sua linha continua como espaçamento, sem remover quebras
+do documento. Separadores horizontais e delimitadores de YAML continuam distintos,
+conforme a árvore sintática. A transformação cobre somente as linhas visíveis e
+respeita o limite geral da edição visual; contextos já excluídos, como código e
+tabelas na fonte, mantêm essas exclusões.
+
+Links, transclusões e anexos, além de callouts complexos/recolhíveis
 no próprio editor ainda pendem. A leitura separada mantém seu suporte existente.
 Detalhes na [ADR 0008](adr/0008-edicao-visual-inicial.md).
 
@@ -790,12 +800,22 @@ rascunhos, notas protegidas, idiomas, acessibilidade nos dois temas e bytes
 originais antes/depois de salvar. Casos complexos, escapados e definidos como
 referências continuam na fonte. O smoke Tauri Linux passou com callout simples,
 retorno ao Markdown, foco e bytes preservados, além dos fluxos nativos anteriores.
+A CI de `a0f8fda` passou nos três sistemas, incluindo 156 testes Web.
+
+Validação dos títulos Setext: `pnpm check` (47 testes unitários, tipos, lint e
+schemas), builds Web/Desktop e oito cenários Chromium da edição visual passaram.
+O novo cenário cobre títulos multilinha e em listas/citações, distinção de
+YAML/separadores/código, mudança de nível com desfazer/refazer, acessibilidade
+nos dois temas, rascunhos e preservação de BOM e quebras mistas na exportação.
+O smoke completo do Tauri Linux passou via WebKitGTK direto, incluindo títulos
+Setext e os fluxos anteriores de cofre, anexos, projetos e recuperação após
+reiniciar. Tentativas via `tauri-driver` tiveram desconexões em etapas diferentes;
+a opção direta e as limitações observadas estão em [Ambiente](ambiente.md).
 A CI verificará os três navegadores e os builds nos três sistemas após publicar.
 
 ## Fechamento ainda necessário
 
-- Ampliar a edição visual inicial do CodeMirror para títulos
-  Setext, links e anexos; callouts complexos/recolhíveis; tabelas aninhadas e conteúdo avançado nas células; tarefas com estados personalizados; formatos de anexos além das imagens
+- Ampliar a edição visual inicial do CodeMirror para links e anexos; callouts complexos/recolhíveis; tabelas aninhadas e conteúdo avançado nas células; tarefas com estados personalizados; formatos de anexos além das imagens
   raster e PDFs sob demanda,
   recursos avançados do leitor PDF,
   transclusão/autocompletar de blocos, compatibilidade avançada de títulos/wikilinks, títulos formatados e

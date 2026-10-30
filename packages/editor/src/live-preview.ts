@@ -154,6 +154,35 @@ function decorate(
           );
           return false;
         }
+        const setext = /^SetextHeading([12])$/.exec(node.name);
+        if (setext) {
+          const marker = node.node.getChild('HeaderMark');
+          if (!marker) return;
+          const first = state.doc.lineAt(node.from).number;
+          const underline = state.doc.lineAt(marker.from);
+          // A multiline heading can be much larger than the viewport. Only
+          // decorate visible title lines, preserving every document newline.
+          const start = Math.max(first, state.doc.lineAt(visible.from).number);
+          const end = Math.min(
+            underline.number - 1,
+            state.doc.lineAt(visible.to).number,
+          );
+          for (let number = start; number <= end; number++) {
+            const line = state.doc.line(number);
+            add(
+              line.from,
+              line.from,
+              'setext-heading',
+              Decoration.line({
+                class: `cm-live-setext cm-live-heading-${setext[1]}`,
+              }),
+            );
+          }
+          // Selecting the underline reveals inline markers in the whole title too.
+          if (active(node.from, node.to)) return false;
+          add(marker.from, marker.to, 'setext-marker', Decoration.replace({}));
+          return;
+        }
         const heading = /^ATXHeading([1-6])$/.exec(node.name);
         const kind = heading
           ? `heading-${heading[1]}`

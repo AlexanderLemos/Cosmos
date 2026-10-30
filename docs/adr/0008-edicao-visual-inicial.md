@@ -118,3 +118,18 @@ inicial no modo Ler. Recolhimento no editor, blocos aninhados e renderização d
 links/anexos continuam pendentes. Temas e rótulos são reconfigurados sem recriar
 o editor. O botão funciona em notas protegidas apenas para navegar na fonte.
 Não há alteração de daemon, IPC, schemas ou armazenamento.
+
+## Evolução — títulos Setext, 2026-10-29
+
+Nós `SetextHeading1`/`SetextHeading2` recebem o mesmo estilo de nível dos títulos
+ATX, incluindo títulos multilinha e em listas/citações. Somente as linhas de
+texto na região visível recebem decorações, para não criar uma decoração por
+linha de um título maior que a tela. O `HeaderMark` é ocultado fora da seleção,
+sem substituir sua quebra de linha; a linha do sublinhado mantém o espaçamento.
+
+Selecionar qualquer linha do nó, inclusive o sublinhado, revela a fonte inteira
+do título e suspende a ocultação de marcadores inline nele. A mudança de `===`
+para `---` usa a edição normal e pode ser desfeita; não existe conversão ou
+serialização da fonte. Separadores horizontais têm outro nó sintático; YAML e
+blocos de código continuam nas exclusões existentes. Não foram adicionadas
+bibliotecas, widgets, contratos ou mudanças na persistência.

@@ -1,4 +1,4 @@
-"""Exercise the real Tauri window through an already-running tauri-driver.
+"""Exercise the real Tauri window through an already-running tauri-driver or native WebKitGTK driver.
 
 Uses only Python's standard library. Never changes the user's vault or integrations.
 """
@@ -17,10 +17,15 @@ import urllib.request
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--driver-url', default='http://127.0.0.1:4444')
+    parser.add_argument('--native-webkit', action='store_true', help='Linux: connect directly to WebKitWebDriver launched with TAURI_WEBVIEW_AUTOMATION=true')
     parser.add_argument('--application', default=str(Path(__file__).resolve().parents[1] / 'target/debug/cosmos-desktop'))
     parser.add_argument('--evidence-dir', type=Path)
     parser.add_argument('--exercise-vault', action='store_true', help='Linux/X11: choose a temporary vault with xdotool and test the editor')
     args = parser.parse_args()
+    capabilities = {'capabilities': {'alwaysMatch': (
+        {'webkitgtk:browserOptions': {'binary': args.application, 'args': []}}
+        if args.native_webkit else {'tauri:options': {'application': args.application}}
+    )}}
     if args.evidence_dir:
         (args.evidence_dir / 'desktop-smoke.json').unlink(missing_ok=True)
 
@@ -43,7 +48,7 @@ def main():
                 pass
         return found
     previous_pids = application_pids() if args.exercise_vault else set()
-    response = request('POST', '/session', {'capabilities': {'alwaysMatch': {'tauri:options': {'application': args.application}}}})
+    response = request('POST', '/session', capabilities)
     session = '/session/' + response['sessionId']
     try:
         def execute(script):
@@ -119,7 +124,7 @@ def main():
             except urllib.error.HTTPError as error:
                 if error.code != 404:
                     raise
-            reopened = request('POST', '/session', {'capabilities': {'alwaysMatch': {'tauri:options': {'application': args.application}}}})
+            reopened = request('POST', '/session', capabilities)
             session = '/session/' + reopened['sessionId']
             wait('return !!document.querySelector("select")')
             execute('const select = document.querySelector("select"); select.value = "en"; select.dispatchEvent(new Event("change", {bubbles:true}));')
@@ -164,7 +169,7 @@ def main():
             (vault / 'Folder/Moved.md').write_bytes(external)
             wait('return document.querySelector(".cm-content")?.textContent.includes("Updated outside COSMOS.")')
             wait("""return document.querySelector('section[aria-label="Markdown preview"] h1')?.textContent === 'External note'""")
-            visual_note = b'# Native heading\r\n\r\n**Native bold** and *native emphasis* and `native code`.\n\n- [ ] Native task\r\n\n~~Old~~\n\n| Column | Value |\r\n| :--- | ---: |\n| **Cell** | 42 |\n\n> [!hint]- Native advice\n> **Native callout body**\r\n\nFinal'
+            visual_note = b'# Native heading\r\n\r\n**Native bold** and *native emphasis* and `native code`.\n\n- [ ] Native task\r\n\n~~Old~~\n\n| Column | Value |\r\n| :--- | ---: |\n| **Cell** | 42 |\n\n> [!hint]- Native advice\n> **Native callout body**\r\n\nNative Setext\r\n===\n\nNative subtitle\n---\r\n\nFinal'
             (vault / 'Folder/Moved.md').write_bytes(visual_note)
             wait('return document.querySelector(".cm-content")?.textContent.includes("Native bold")')
             execute('window.nativeEditor = document.querySelector(".cm-content")')
@@ -193,12 +198,14 @@ def main():
             assert execute('return document.querySelector(".cm-content")?.textContent.includes("> [!hint]- Native advice")')
             assert execute('return document.querySelector(".cm-content")?.textContent.includes("> **Native callout body**")')
             assert execute('return document.activeElement === document.querySelector(".cm-content")')
+            wait('return document.querySelector(".cm-live-setext.cm-live-heading-1")?.textContent === "Native Setext"')
+            assert execute('return document.querySelector(".cm-live-setext.cm-live-heading-2")?.textContent === "Native subtitle"')
             click('Edit')
             wait('return document.querySelector(".cm-content")?.textContent.includes("**Native bold**")')
             assert execute('return document.querySelector(".cm-content") === window.nativeEditor')
             assert (vault / 'Folder/Moved.md').read_bytes() == visual_note
             click('Edit and read')
-            checks += ['visual editing renders tables and simple callouts with source reveal and toggles tasks through drafts and explicit save, preserving other bytes and editor identity']
+            checks += ['visual editing renders Setext headings, tables and simple callouts with source reveal and toggles tasks through drafts and explicit save, preserving other bytes and editor identity']
             # Obsidian anchors use the same display parser in the real native WebView.
             blocks = b'# External note\r\n\r\nUpdated outside COSMOS. ^native\r\n\r\n[[#^native|Local block]]\r\n\r\n[[Blocks#^target|Other block]]\r\n'
             block_target = b'Target block. ^target\n\n[Return to block](Folder/Moved.md#%5Enative)'

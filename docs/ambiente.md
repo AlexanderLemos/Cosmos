@@ -100,3 +100,30 @@ forçada do daemon. O download de Firefox/WebKit pelo Playwright recebeu HTTP 40
 `Domain forbidden` para `cdn.playwright.dev` e
 `playwright.download.prss.microsoft.com`; a matriz completa está na CI.
 Nenhuma política de rede foi ampliada automaticamente.
+
+## WebKitGTK direto para o smoke Linux (2026-10-29)
+
+O smoke também aceita `--native-webkit` para uma instância já iniciada de
+`WebKitWebDriver`, com `TAURI_WEBVIEW_AUTOMATION=true` e `TAURI_AUTOMATION=true`.
+Nesse modo, as capabilities usam `webkitgtk:browserOptions` diretamente, com o
+mesmo executável e argumentos que o `tauri-driver` encaminha no Linux. A opção
+funciona tanto na abertura inicial quanto na reabertura usada para recuperar
+rascunhos; a modalidade padrão via `tauri-driver` permanece disponível.
+
+Exemplo dentro do mesmo Xvfb/namespace do wrapper cloud:
+
+```bash
+TAURI_WEBVIEW_AUTOMATION=true TAURI_AUTOMATION=true \
+  /workspace/.cosmos-tools/sysroot/usr/bin/WebKitWebDriver \
+  --port=4444 --host=127.0.0.1 &
+python3 scripts/smoke-desktop.py --native-webkit --exercise-vault \
+  --evidence-dir /workspace/.cosmos-tools/evidence/f1
+```
+
+Espere o endpoint `/status` antes do smoke e encerre esse driver ao terminar.
+O modo direto foi acrescentado após desconexões intermitentes entre
+`tauri-driver` 2.0.5 e o WebKit (`Connection reset by peer`), em etapas diferentes
+do roteiro. A falha também ocorreu com sessão D-Bus, sem eventos de OOM.
+Não há repetição automática de comandos potencialmente mutáveis: uma falha de
+transporte encerra o teste. O mesmo aplicativo Tauri, diálogo de pasta e cofre
+temporário continuam sendo exercitados.

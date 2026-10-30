@@ -558,3 +558,96 @@ test('visual callouts leave complex, escaped and reference-defined blocks litera
     page.getByRole('button', { name: 'Salvar', exact: true }),
   ).toBeDisabled();
 });
+
+test('visual Setext headings reveal complete source and keep YAML, rules and code distinct', async ({
+  page,
+}) => {
+  const source =
+    '\ufeff---\r\ntitle: YAML\n---\r\n\nTítulo **forte**\r\n===\n\nSubtítulo *suave*\n---\r\n\nTítulo longo\nsegunda linha\r\n---\n\n---\n\n> Citação\n> ===\n\n- Item\n  ---\n\n```md\nCódigo\n===\n```\n\nFinal';
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await importNotes(page, { 'Setext.md': Buffer.from(source) });
+  await page
+    .getByRole('navigation', { name: 'Notas' })
+    .getByRole('button', { name: 'Setext.md', exact: true })
+    .click();
+  const editor = page.locator('.cm-content');
+  await expect(editor).toHaveAttribute('contenteditable', 'true');
+  await editor.press('ControlOrMeta+End');
+  await page
+    .getByRole('button', { name: 'Edição visual', exact: true })
+    .click();
+  await expect(editor.locator('.cm-live-setext.cm-live-heading-1')).toHaveText([
+    'Título forte',
+    '> Citação',
+  ]);
+  await expect(editor.locator('.cm-live-setext.cm-live-heading-2')).toHaveText([
+    'Subtítulo suave',
+    'Título longo',
+    'segunda linha',
+    '- Item',
+  ]);
+  await expect(editor).toContainText('title: YAML');
+  // YAML closing delimiter and the standalone horizontal rule remain literal.
+  await expect(
+    editor.locator('.cm-line').filter({ hasText: /^---$/ }),
+  ).toHaveCount(2);
+  await expect(
+    editor.locator('.cm-line').filter({ hasText: /^===$/ }),
+  ).toHaveCount(1);
+  expect(Buffer.from((await exported(page))['Setext.md'] ?? [])).toEqual(
+    Buffer.from(source),
+  );
+  const title = editor.locator('.cm-live-setext').first();
+  await title.click();
+  await editor.press('End');
+  await editor.press('ArrowDown');
+  await editor.press('Home');
+  await expect(editor).toContainText('Título **forte**');
+  // Changing only the underline changes the heading level; undo restores it.
+  await editor.press('Shift+End');
+  await editor.pressSequentially('---');
+  await editor.press('ControlOrMeta+End');
+  await expect(editor.locator('.cm-live-setext').first()).toHaveClass(
+    /cm-live-heading-2/,
+  );
+  await editor.press('ControlOrMeta+z');
+  await editor.press('ControlOrMeta+End');
+  await expect(editor.locator('.cm-live-setext').first()).toHaveClass(
+    /cm-live-heading-1/,
+  );
+  await editor.press('ControlOrMeta+Shift+z');
+  await editor.press('ControlOrMeta+End');
+  await expect(editor.locator('.cm-live-setext').first()).toHaveClass(
+    /cm-live-heading-2/,
+  );
+  await expect(
+    page.getByText('Rascunho protegido neste dispositivo.'),
+  ).toBeVisible();
+  for (const theme of ['nyx', 'hemera']) {
+    await page.getByLabel('Tema').selectOption(theme);
+    expect(
+      (
+        await new AxeBuilder({ page })
+          .withTags(['wcag2a', 'wcag2aa', 'wcag21aa'])
+          .analyze()
+      ).violations,
+    ).toEqual([]);
+  }
+  await editor.press('ControlOrMeta+a');
+  await expect(editor).toContainText('Subtítulo *suave*');
+  await expect(
+    editor.locator('.cm-line').filter({ hasText: /^---$/ }),
+  ).toHaveCount(5);
+  await editor.press('ControlOrMeta+End');
+  for (const name of ['Editar', 'Ler', 'Edição e leitura', 'Edição visual'])
+    await page.getByRole('button', { name, exact: true }).click();
+  await editor.press('ControlOrMeta+s');
+  await expect(
+    page.getByText('Salvo no cofre.', { exact: true }),
+  ).toBeVisible();
+  expect(Buffer.from((await exported(page))['Setext.md'] ?? [])).toEqual(
+    Buffer.from(source.replace('===', '---')),
+  );
+  expect(errors).toEqual([]);
+});
