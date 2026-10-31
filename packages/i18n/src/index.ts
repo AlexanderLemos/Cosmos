@@ -221,6 +221,40 @@ export const resources = {
       confirmTrash: 'Confirmar envio à lixeira',
       trashPrompt:
         'Enviar “{{path}}” à lixeira? Você poderá restaurar a nota depois.',
+      moveRecovery: 'Cópias de movimentação',
+      moveRecoveryHint:
+        'Confira os arquivos antes de restaurar. A restauração cria uma nota em um caminho livre e mantém a cópia, o registro e a nota aberta. Os estados abaixo representam o momento da conferência.',
+      reviewMoves: 'Revisar movimentações',
+      noMoveCopies: 'Nenhuma cópia de movimentação registrada.',
+      moreMoveCopies: 'Carregar mais cópias',
+      moveInvalidEntry: 'Registro indisponível',
+      moveRecordId: 'Registro: {{id}}',
+      moveRecordedDestination: 'Destino registrado: {{path}}',
+      inspectMove: 'Conferir movimentação',
+      moveCheckedAt: 'Conferido em {{time}}',
+      moveSource: 'Origem',
+      moveDestination: 'Destino',
+      moveBackup: 'Cópia de recuperação',
+      moveState_matching: 'Igual à versão registrada',
+      moveState_different: 'Diferente da versão registrada',
+      moveState_missing: 'Ausente',
+      moveState_incompatible: 'Caminho ocupado por pasta ou tipo incompatível',
+      moveState_unreadable: 'Não foi possível ler',
+      'moveState_too-large': 'Acima do limite de leitura de 8 MiB',
+      restoreMovePath: 'Restaurar cópia para',
+      restoreMoveCopy: 'Restaurar cópia',
+      moveCopyRestored:
+        'Cópia restaurada em {{path}}. A nota aberta foi mantida.',
+      moveRecordChanged:
+        'O registro mudou desde a listagem. Revise as movimentações novamente antes de continuar.',
+      moveRecordInvalid:
+        'Registro inválido ou incompleto. Nenhum arquivo foi alterado; confira o conteúdo pela exportação do cofre.',
+      moveRecordUnreadable:
+        'Não foi possível ler este registro. Tente revisar novamente ou exporte o cofre.',
+      moveBackupUnavailable:
+        'A cópia está ausente, alterada ou não pode ser lida. A restauração está bloqueada; confira o conteúdo pela exportação do cofre.',
+      moveRestoreIncomplete:
+        'A restauração não foi confirmada. A cópia de recuperação foi mantida. Atualize a lista e confira o destino antes de tentar novamente.',
       moved: 'Nota movida.',
       webMoveRecovery:
         'Uma cópia de recuperação será mantida no cofre e incluída ao exportar o ZIP. Links relativos a notas e anexos podem precisar de ajuste após mover.',
@@ -471,6 +505,39 @@ export const resources = {
       confirmMove: 'Confirm move',
       confirmTrash: 'Confirm move to trash',
       trashPrompt: 'Move “{{path}}” to the trash? You can restore it later.',
+      moveRecovery: 'Move recovery copies',
+      moveRecoveryHint:
+        'Check the files before restoring. Restore creates a note at a free path and keeps the copy, record and open note. The states below reflect the time of inspection.',
+      reviewMoves: 'Review moves',
+      noMoveCopies: 'No move recovery copies recorded.',
+      moreMoveCopies: 'Load more copies',
+      moveInvalidEntry: 'Unavailable record',
+      moveRecordId: 'Record: {{id}}',
+      moveRecordedDestination: 'Recorded destination: {{path}}',
+      inspectMove: 'Inspect move',
+      moveCheckedAt: 'Checked at {{time}}',
+      moveSource: 'Source',
+      moveDestination: 'Destination',
+      moveBackup: 'Recovery copy',
+      moveState_matching: 'Matches the recorded version',
+      moveState_different: 'Differs from the recorded version',
+      moveState_missing: 'Missing',
+      moveState_incompatible: 'Path occupied by a folder or incompatible type',
+      moveState_unreadable: 'Could not read',
+      'moveState_too-large': 'Exceeds the 8 MiB read limit',
+      restoreMovePath: 'Restore copy to',
+      restoreMoveCopy: 'Restore copy',
+      moveCopyRestored: 'Copy restored at {{path}}. The open note was kept.',
+      moveRecordChanged:
+        'The record changed since it was listed. Review moves again before continuing.',
+      moveRecordInvalid:
+        'Invalid or incomplete record. No files were changed; check the contents in a vault export.',
+      moveRecordUnreadable:
+        'Could not read this record. Try reviewing again or export the vault.',
+      moveBackupUnavailable:
+        'The copy is missing, changed or unreadable. Restore is blocked; check the contents in a vault export.',
+      moveRestoreIncomplete:
+        'Restore was not confirmed. The recovery copy was kept. Refresh the list and check the destination before trying again.',
       moved: 'Note moved.',
       webMoveRecovery:
         'A recovery copy will remain in the vault and be included in ZIP exports. Relative links to notes and attachments may need adjustment after moving.',

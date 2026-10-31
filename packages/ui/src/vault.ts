@@ -1,4 +1,9 @@
-import type { ImportHistory, ImportOptions, ImportResult } from '@cosmos/fs';
+import type {
+  ImportHistory,
+  ImportOptions,
+  ImportResult,
+  MoveHistory,
+} from '@cosmos/fs';
 
 export interface TrashItem {
   id: string;
@@ -35,6 +40,7 @@ export interface OpenVault {
   importZip?(file: File, options?: ImportOptions): Promise<ImportResult>;
   exportZip?(): Promise<Uint8Array>;
   importHistory?: ImportHistory;
+  moveHistory?: MoveHistory;
 }
 export interface VaultPlatform {
   open(): Promise<OpenVault | null>;

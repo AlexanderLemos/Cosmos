@@ -22,6 +22,12 @@ function adapt(fs: BrowserVaultFS): OpenVault {
     ...(!fs.realFolder && {
       move: (from: string, to: string, expectedRev: string) =>
         fs.move(from, to, expectedRev),
+      moveHistory: {
+        list: (after?: string) => fs.listMoves(after),
+        inspect: (id: string, version: string) => fs.inspectMove(id, version),
+        restore: (id: string, version: string, to: string) =>
+          fs.restoreMove(id, version, to),
+      },
     }),
     write: (path, content, opts) => fs.write(path, content, opts),
     isReadOnly: (path) => fs.isReadOnly(path),

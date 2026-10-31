@@ -16,7 +16,11 @@ import {
   type ImportInspection,
   type ImportOptions,
   type ImportResult,
+  type MoveFileState,
   MoveIncomplete,
+  type MoveInspection,
+  type MovePage,
+  type MoveRecord,
   RevisionConflict,
   type VaultFS,
 } from './index';
@@ -43,6 +47,41 @@ export function validatePath(path: string) {
     throw new Error('INVALID_PATH');
   }
   return path.split('/');
+}
+function movePath(path: string) {
+  if (
+    !/\.md$/i.test(path) ||
+    validatePath(path).some((part) =>
+      ['.cosmos', '.git', '.obsidian'].includes(part.toLowerCase()),
+    )
+  )
+    throw new Error('INVALID_PATH');
+}
+
+/** Validate imported metadata before trusting any recorded path. */
+export function decodeMoveRecord(content: string) {
+  try {
+    const value = JSON.parse(content);
+    if (
+      value?.format !== 1 ||
+      value.backup !== 'note.md' ||
+      typeof value.from !== 'string' ||
+      typeof value.to !== 'string' ||
+      typeof value.rev !== 'string' ||
+      !/^sha256:[a-f0-9]{64}$/.test(value.rev) ||
+      value.from.toLowerCase() === value.to.toLowerCase()
+    )
+      throw new Error();
+    movePath(value.from);
+    movePath(value.to);
+    return {
+      from: value.from as string,
+      to: value.to as string,
+      rev: value.rev as string,
+    };
+  } catch (cause) {
+    throw new Error('MOVE_RECORD_INVALID', { cause });
+  }
 }
 const MAX_ARCHIVE_BYTES = 256 * 1024 * 1024;
 export function decodeVaultZip(bytes: Uint8Array) {
@@ -301,14 +340,7 @@ export class BrowserVaultFS implements VaultFS {
     // External editors cannot join Web Locks or an atomic compare-and-delete.
     if (this.realFolder) throw new Error('FOLDER_MOVE_UNAVAILABLE');
     if (!expectedRev) throw new Error('EXPECTED_REV_REQUIRED');
-    for (const path of [from, to]) {
-      if (
-        validatePath(path).some((part) =>
-          ['.cosmos', '.git', '.obsidian'].includes(part.toLowerCase()),
-        )
-      )
-        throw new Error('INVALID_PATH');
-    }
+    for (const path of [from, to]) movePath(path);
     return this.lock(async () => {
       await this.writable(from);
       const note = await this.atRevision(from, expectedRev);
@@ -346,6 +378,116 @@ export class BrowserVaultFS implements VaultFS {
         throw new MoveIncomplete(backupPath, error);
       }
       this.emit({ path: to, kind: 'moved' });
+    });
+  }
+  private async moveRecord(id: string, version?: string): Promise<MoveRecord> {
+    if (this.realFolder) throw new Error('FOLDER_MOVE_UNAVAILABLE');
+    if (
+      !/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(
+        id,
+      )
+    )
+      throw new Error('MOVE_RECORD_INVALID');
+    const file = await this.file(`.cosmos/moves/${id}/operation.json`);
+    if (file.size > 64 * 1024) throw new Error('MOVE_RECORD_INVALID');
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const actual = await rev(bytes);
+    if (version !== undefined && actual !== version)
+      throw new Error('MOVE_RECORD_CHANGED');
+    let content: string;
+    try {
+      content = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+    } catch (cause) {
+      throw new Error('MOVE_RECORD_INVALID', { cause });
+    }
+    return { id, version: actual, ...decodeMoveRecord(content) };
+  }
+  listMoves(after = ''): Promise<MovePage> {
+    return this.lock(async () => {
+      if (this.realFolder) throw new Error('FOLDER_MOVE_UNAVAILABLE');
+      let files: Entry[];
+      try {
+        files = await this.list('.cosmos/moves');
+      } catch (error) {
+        if (missing(error)) return { entries: [] };
+        throw error;
+      }
+      const ids = files
+        .map((entry) => entry.path.split('/').at(-1) as string)
+        .filter((id) => id > after)
+        .sort();
+      const entries: MovePage['entries'] = [];
+      for (const id of ids.slice(0, 50)) {
+        try {
+          entries.push({ id, record: await this.moveRecord(id) });
+        } catch (error) {
+          entries.push({
+            id,
+            issue:
+              (error instanceof Error &&
+                error.message === 'MOVE_RECORD_INVALID') ||
+              missing(error) ||
+              (error instanceof DOMException &&
+                error.name === 'TypeMismatchError')
+                ? 'invalid'
+                : 'unreadable',
+          });
+        }
+      }
+      return { entries, next: ids.length > 50 ? ids[49] : undefined };
+    });
+  }
+  private async moveFileState(
+    path: string,
+    expectedRev: string,
+  ): Promise<MoveFileState> {
+    try {
+      const file = await this.file(path);
+      if (file.size > MAX_NOTE_BYTES) return 'too-large';
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      return (await rev(bytes)) === expectedRev ? 'matching' : 'different';
+    } catch (error) {
+      return missing(error)
+        ? 'missing'
+        : error instanceof DOMException && error.name === 'TypeMismatchError'
+          ? 'incompatible'
+          : 'unreadable';
+    }
+  }
+  inspectMove(id: string, version: string): Promise<MoveInspection> {
+    return this.lock(async () => {
+      if (!version) throw new Error('MOVE_RECORD_CHANGED');
+      const record = await this.moveRecord(id, version);
+      const source = await this.moveFileState(record.from, record.rev);
+      const destination = await this.moveFileState(record.to, record.rev);
+      const backup = await this.moveFileState(
+        `.cosmos/moves/${id}/note.md`,
+        record.rev,
+      );
+      return { record, checkedAt: Date.now(), source, destination, backup };
+    });
+  }
+  restoreMove(id: string, version: string, to: string): Promise<void> {
+    return this.lock(async () => {
+      if (!version) throw new Error('MOVE_RECORD_CHANGED');
+      movePath(to);
+      const record = await this.moveRecord(id, version);
+      let note: Awaited<ReturnType<BrowserVaultFS['read']>>;
+      try {
+        note = await this.atRevision(`.cosmos/moves/${id}/note.md`, record.rev);
+      } catch (cause) {
+        throw new Error('MOVE_BACKUP_UNAVAILABLE', { cause });
+      }
+      await this.vacantDestination(to);
+      await this.writable(to);
+      // Restore a new note only. Keep the record, backup and current files intact.
+      try {
+        await this.put(to, new TextEncoder().encode(note.content));
+        await this.atRevision(to, record.rev);
+      } catch (cause) {
+        throw new Error('MOVE_RESTORE_INCOMPLETE', { cause });
+      }
+      this.emit({ path: to, kind: 'created' });
     });
   }
   async remove(path: string) {

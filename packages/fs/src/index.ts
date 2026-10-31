@@ -47,6 +47,34 @@ export class MoveIncomplete extends Error {
   }
 }
 
+export interface MoveRecord {
+  id: string;
+  version: string;
+  from: string;
+  to: string;
+  rev: string;
+}
+export type MoveEntry =
+  | { id: string; record: MoveRecord }
+  | { id: string; issue: 'invalid' | 'unreadable' };
+export interface MovePage {
+  entries: MoveEntry[];
+  next?: string;
+}
+export type MoveFileState = ImportFileState | 'too-large';
+export interface MoveInspection {
+  record: MoveRecord;
+  checkedAt: number;
+  source: MoveFileState;
+  destination: MoveFileState;
+  backup: MoveFileState;
+}
+export interface MoveHistory {
+  list(after?: string): Promise<MovePage>;
+  inspect(id: string, version: string): Promise<MoveInspection>;
+  restore(id: string, version: string, to: string): Promise<void>;
+}
+
 /** Explicit retry: existing files may only be kept when their bytes match. */
 export interface ImportOptions {
   resume?: boolean;

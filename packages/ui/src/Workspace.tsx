@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 import { Foundation } from './Foundation';
 import { ImportRecovery } from './ImportRecovery';
 import { MarkdownPreview, type PreviewLocation } from './MarkdownPreview';
+import { MoveRecovery } from './MoveRecovery';
 import { type DocumentState, observeVault, reconcileDocument } from './monitor';
 import { PdfDialog } from './PdfDialog';
 import { readLocalImage } from './read-local-image';
@@ -155,6 +156,20 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
       const message = error instanceof Error ? error.message : String(error);
       if (error instanceof MoveIncomplete) {
         setError(t('moveIncomplete', { path: error.backupPath }));
+        return;
+      }
+      const moveErrors: Record<string, string> = {
+        INVALID_PATH: 'copyInvalidPath',
+        MOVE_RECORD_CHANGED: 'moveRecordChanged',
+        MOVE_RECORD_INVALID: 'moveRecordInvalid',
+        MOVE_BACKUP_UNAVAILABLE: 'moveBackupUnavailable',
+        MOVE_RESTORE_INCOMPLETE: 'moveRestoreIncomplete',
+      };
+      const moveError = Object.hasOwn(moveErrors, message)
+        ? moveErrors[message]
+        : undefined;
+      if (moveError) {
+        setError(t(moveError));
         return;
       }
       setError(
@@ -818,6 +833,14 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
                     busy={busy}
                     run={run}
                     download={download}
+                  />
+                )}
+                {vault.moveHistory && (
+                  <MoveRecovery
+                    history={vault.moveHistory}
+                    busy={busy}
+                    run={run}
+                    onRestored={() => refresh(vault)}
                   />
                 )}
                 {importResult && (

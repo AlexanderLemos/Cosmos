@@ -112,7 +112,9 @@ test('move and rename preserve bytes, attachments and recovery copies with prote
   await expect(page.getByRole('alert')).toContainText('somente leitura na Web');
   for (const target of ['../escape.md', '.COSMOS/new.md', 'image.png']) {
     await moveTo(page, target);
-    await expect(page.getByRole('alert')).toContainText('INVALID_PATH');
+    await expect(page.getByRole('alert')).toContainText(
+      'Use um caminho .md válido',
+    );
   }
   // Validation failures do not create backups or destinations.
   expect(

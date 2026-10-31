@@ -10,7 +10,9 @@ foram aprovadas implicitamente pelo avanço da implementação.
   Access. Criar notas e pastas pelo caminho, editar com CodeMirror 6, salvar,
   reabrir, buscar e exportar ZIP. **Mover nota** renomeia ou muda o caminho de notas
   salvas no cofre do navegador (OPFS), com revisão obrigatória, destino livre e
-  cópia de recuperação incluída no ZIP. Pastas reais ainda não oferecem essa ação.
+  cópia de recuperação incluída no ZIP. **Cópias de movimentação** permite conferir
+  origem/destino/cópia e restaurar a cópia verificada em caminho livre, preservando
+  a nota aberta. Pastas reais ainda não oferecem essas ações.
   Importar uma pasta ou ZIP do Obsidian sem modificar a
   origem nem sobrescrever arquivos existentes. Anexos, `.canvas`, frontmatter,
   BOM e terminações de linha são preservados. Notas têm limite de 8 MiB; exportação
@@ -86,8 +88,14 @@ Salve antes de organizar: rascunhos em edição e notas de projetos bloqueiam a 
 Cada movimentação mantém uma cópia verificada e a intenção em
 `.cosmos/moves/<UUID>/`, incluídas na exportação ZIP e excluídas da navegação/busca.
 Falhas não apagam cópias nem retomam a operação automaticamente. A recuperação
-é manual pelo ZIP; inspeção/restauração pela interface e limpeza dessas cópias
-continuam pendentes. Elas consomem espaço e contam no limite de exportação.
+pode usar o ZIP ou **Cópias de movimentação**: revisar registros, conferir os três
+arquivos e restaurar uma cópia íntegra para um caminho livre. A listagem é paginada
+em 50 entradas e a conferência lê até 8 MiB por arquivo. Registros inválidos e
+cópias alteradas/incompletas não autorizam restauração. O registro e os bytes são
+revalidados ao restaurar, sem substituir destino nem alterar a nota aberta e seu
+rascunho. Uma falha de escrita pode deixar um destino parcial; não é substituído
+em nova tentativa. Limpeza dessas cópias continua pendente. Elas consomem espaço
+e contam no limite de exportação.
 
 Web Locks coordenam abas do adaptador atual. Uma aba com revisão antiga mantém seu
 texto e recebe conflito ao tentar salvar depois da movimentação. Links e rascunhos
@@ -917,8 +925,20 @@ alteração da origem e fechamento da aba antes de remover. Nove cenários exist
 de cópias, rascunhos e busca também passaram. A validação inicial identificou uma
 mensagem genérica quando um ancestral do destino era arquivo; a conferência de
 colisões agora ocorre antes da consulta de proteção do destino. O teste também
-passou a aguardar o término da troca de nota antes de digitar. A CI verificará os
-três navegadores e os builds nativos nos três sistemas após publicar.
+passou a aguardar o término da troca de nota antes de digitar. A CI de `ac87685`
+passou nos três sistemas, incluindo 201 testes Web.
+
+Validação de recuperação das movimentações OPFS (2026-10-30): `pnpm check`
+passou com 49 testes unitários, tipos, lint e schemas; builds Web/Desktop passaram.
+Passaram 15 cenários Chromium de movimentação, recuperação e salvar cópia. Os
+cinco novos cobrem cópia produzida pelo aplicativo e importada, restauração sem
+sobrescrita, bytes originais, nota/rascunho/instância do editor preservados, busca,
+pt/en e acessibilidade nos dois temas, registros/cópias alterados após inspeção,
+metadados inválidos, paginação sem ler as cópias, concorrência entre abas e falha
+de escrita com destino parcial seguida de recuperação em outro caminho. Os dois
+fluxos de caminho inválido foram repetidos após substituir o código técnico pela
+orientação traduzida. A CI verificará os três navegadores e os builds nativos nos
+três sistemas após publicar.
 
 ## Fechamento ainda necessário
 
@@ -933,7 +953,8 @@ três navegadores e os builds nativos nos três sistemas após publicar.
   ser unificada com a assinatura de callbacks `VaultFS.watch`. A UI Desktop já
   expõe mover, lixeira e restauração via IPC; a Web já move notas no OPFS com
   revisão e cópia de recuperação. Ainda faltam mover em pastas reais, lixeira e
-  restauração na Web, além de inspeção/restauração e limpeza das cópias de movimentação.
+  restauração de itens da lixeira na Web, além da limpeza das cópias de movimentação.
+  A inspeção/restauração dessas cópias no OPFS já está disponível.
   Os métodos internos ainda não expostos precisam da mesma proteção de revisão/recuperação. Atualização automática
   de links após mover notas e revisão de conflitos de movimentação também pendem.
 - Leitura incremental por eventos com reconciliação de segurança, cache de backlinks
