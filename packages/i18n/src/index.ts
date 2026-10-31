@@ -213,6 +213,15 @@ export const resources = {
       moveNote: 'Mover nota',
       trashNote: 'Enviar à lixeira',
       trashTitle: 'Lixeira',
+      reviewTrash: 'Revisar lixeira',
+      inspectTrash: 'Conferir item da lixeira',
+      webTrashHint:
+        'Confira a origem e a cópia antes de restaurar em um caminho livre. A restauração mantém a cópia na lixeira e preserva a nota aberta. Os estados refletem o momento da conferência.',
+      webTrashConfirmHint:
+        'A nota sairá da lista após verificar sua cópia na lixeira. Essa cópia será incluída na exportação ZIP e mantida mesmo depois de restaurar.',
+      trashIncomplete:
+        'O envio à lixeira não foi concluído. Uma cópia verificada foi preservada em {{path}}. Revise a lixeira e confira a origem antes de tentar novamente.',
+
       emptyTrash: 'A lixeira está vazia.',
       destinationPath: 'Caminho de destino',
       restorePath: 'Restaurar para',
@@ -246,7 +255,7 @@ export const resources = {
       moveCopyRestored:
         'Cópia restaurada em {{path}}. A nota aberta foi mantida.',
       moveRecordChanged:
-        'O registro mudou desde a listagem. Revise as movimentações novamente antes de continuar.',
+        'O registro mudou desde a listagem. Atualize a lista antes de continuar.',
       moveRecordInvalid:
         'Registro inválido ou incompleto. Nenhum arquivo foi alterado; confira o conteúdo pela exportação do cofre.',
       moveRecordUnreadable:
@@ -498,6 +507,15 @@ export const resources = {
       moveNote: 'Move note',
       trashNote: 'Move to trash',
       trashTitle: 'Trash',
+      reviewTrash: 'Review trash',
+      inspectTrash: 'Inspect trash item',
+      webTrashHint:
+        'Check the source and copy before restoring to a free path. Restore keeps the copy in the trash and preserves the open note. The states reflect the time of inspection.',
+      webTrashConfirmHint:
+        'The note will leave the list after its trash copy is verified. That copy will be included in ZIP exports and kept even after restoring.',
+      trashIncomplete:
+        'The move to trash did not complete. A verified copy was preserved at {{path}}. Review the trash and check the source before trying again.',
+
       emptyTrash: 'The trash is empty.',
       destinationPath: 'Destination path',
       restorePath: 'Restore to',
@@ -529,7 +547,7 @@ export const resources = {
       restoreMoveCopy: 'Restore copy',
       moveCopyRestored: 'Copy restored at {{path}}. The open note was kept.',
       moveRecordChanged:
-        'The record changed since it was listed. Review moves again before continuing.',
+        'The record changed since it was listed. Refresh the list before continuing.',
       moveRecordInvalid:
         'Invalid or incomplete record. No files were changed; check the contents in a vault export.',
       moveRecordUnreadable:

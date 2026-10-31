@@ -1,7 +1,8 @@
 # ADR 0009 — Mover notas no cofre do navegador
 
 Estado: implementado como incremento de F1, com inspeção e restauração das cópias
-no OPFS. Lixeira e sua restauração, limpeza de cópias e organização de pastas reais
+no OPFS. A lixeira e sua restauração no OPFS estão descritas na
+[ADR 0010](0010-lixeira-web.md). Limpeza de cópias e organização de pastas reais
 na Web continuam pendentes.
 
 ## Decisão
@@ -78,8 +79,9 @@ Pastas reais via File System Access não expõem a ação; o backend também a r
 Um editor nativo não participa de Web Locks e pode alterar um arquivo entre a
 última conferência e a remoção. Essa limitação exige outro fluxo antes de expor a
 movimentação de pastas reais. Escritas/importações existentes mantêm seus limites
-já documentados. O método interno legado `remove` continua sem interface Web e
-precisa de revisão/recuperação antes de suportar lixeira e restauração.
+já documentados. O método legado `remove` foi substituído por lixeira com revisão
+e cópia verificada no OPFS, conforme ADR 0010; os arquivos legados permanecem
+exportáveis e não são migrados automaticamente.
 
 Links escritos em outras notas não são reescritos. Links relativos dentro da nota
 movida podem exigir ajuste, inclusive imagens e PDFs. Outras abas não mudam sua

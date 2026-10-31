@@ -1,4 +1,4 @@
-/** Vault capabilities. move() requires a revision; remove() means trash (legacy Web implementation is not exposed). Native organization uses typed IPC; the full watch adapter remains pending. */
+/** Vault capabilities. move() requires a revision; remove() requires a revision and means recoverable trash. Native organization uses typed IPC; the full watch adapter remains pending. */
 export interface Entry {
   path: string;
   kind: 'file' | 'directory';
@@ -22,7 +22,7 @@ export interface VaultFS {
     opts?: { expectedRev?: string },
   ): Promise<{ rev: string }>;
   move(from: string, to: string, expectedRev: string): Promise<void>;
-  remove(path: string): Promise<void>;
+  remove(path: string, expectedRev: string): Promise<void>;
   watch(cb: (event: FsEvent) => void): Unsubscribe;
   capabilities(): FsCapabilities;
 }
@@ -47,20 +47,33 @@ export class MoveIncomplete extends Error {
   }
 }
 
-export interface MoveRecord {
+export class TrashIncomplete extends Error {
+  constructor(
+    readonly backupPath: string,
+    cause: unknown,
+  ) {
+    super('TRASH_INCOMPLETE', { cause });
+  }
+}
+
+export interface RecoveryRecord {
   id: string;
   version: string;
   from: string;
-  to: string;
   rev: string;
 }
-export type MoveEntry =
-  | { id: string; record: MoveRecord }
+export interface MoveRecord extends RecoveryRecord {
+  to: string;
+}
+export type RecoveryEntry<T extends RecoveryRecord> =
+  | { id: string; record: T }
   | { id: string; issue: 'invalid' | 'unreadable' };
-export interface MovePage {
-  entries: MoveEntry[];
+export interface RecoveryPage<T extends RecoveryRecord> {
+  entries: RecoveryEntry<T>[];
   next?: string;
 }
+export type MoveEntry = RecoveryEntry<MoveRecord>;
+export type MovePage = RecoveryPage<MoveRecord>;
 export type MoveFileState = ImportFileState | 'too-large';
 export interface MoveInspection {
   record: MoveRecord;
@@ -72,6 +85,17 @@ export interface MoveInspection {
 export interface MoveHistory {
   list(after?: string): Promise<MovePage>;
   inspect(id: string, version: string): Promise<MoveInspection>;
+  restore(id: string, version: string, to: string): Promise<void>;
+}
+export interface TrashInspection {
+  record: RecoveryRecord;
+  checkedAt: number;
+  source: MoveFileState;
+  backup: MoveFileState;
+}
+export interface TrashHistory {
+  list(after?: string): Promise<RecoveryPage<RecoveryRecord>>;
+  inspect(id: string, version: string): Promise<TrashInspection>;
   restore(id: string, version: string, to: string): Promise<void>;
 }
 

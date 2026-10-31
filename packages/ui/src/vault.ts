@@ -3,6 +3,7 @@ import type {
   ImportOptions,
   ImportResult,
   MoveHistory,
+  TrashHistory,
 } from '@cosmos/fs';
 
 export interface TrashItem {
@@ -41,6 +42,7 @@ export interface OpenVault {
   exportZip?(): Promise<Uint8Array>;
   importHistory?: ImportHistory;
   moveHistory?: MoveHistory;
+  trashHistory?: TrashHistory;
 }
 export interface VaultPlatform {
   open(): Promise<OpenVault | null>;

@@ -20,6 +20,14 @@ function adapt(fs: BrowserVaultFS): OpenVault {
       canOrganize: !fs.realFolder && !(await fs.isReadOnly(path)),
     }),
     ...(!fs.realFolder && {
+      trash: (path: string, expectedRev: string) =>
+        fs.remove(path, expectedRev),
+      trashHistory: {
+        list: (after?: string) => fs.listTrashCopies(after),
+        inspect: (id: string, version: string) => fs.inspectTrash(id, version),
+        restore: (id: string, version: string, to: string) =>
+          fs.restoreTrash(id, version, to),
+      },
       move: (from: string, to: string, expectedRev: string) =>
         fs.move(from, to, expectedRev),
       moveHistory: {

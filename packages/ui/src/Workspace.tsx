@@ -5,16 +5,21 @@ import {
   resolveNoteLink,
 } from '@cosmos/core';
 import { LIVE_PREVIEW_LIMIT, MarkdownEditor } from '@cosmos/editor';
-import { ImportConflict, type ImportResult, MoveIncomplete } from '@cosmos/fs';
+import {
+  ImportConflict,
+  type ImportResult,
+  MoveIncomplete,
+  TrashIncomplete,
+} from '@cosmos/fs';
 import { type DraftHeader, draftStore } from '@cosmos/fs/drafts';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Foundation } from './Foundation';
 import { ImportRecovery } from './ImportRecovery';
 import { MarkdownPreview, type PreviewLocation } from './MarkdownPreview';
-import { MoveRecovery } from './MoveRecovery';
 import { type DocumentState, observeVault, reconcileDocument } from './monitor';
 import { PdfDialog } from './PdfDialog';
+import { RecoveryPanel } from './RecoveryPanel';
 import { readLocalImage } from './read-local-image';
 import { useLocalDrafts } from './use-local-drafts';
 import type { OpenVault, TrashItem, VaultPlatform } from './vault';
@@ -120,6 +125,7 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
   const [copySaved, setCopySaved] = useState<string | null>(null);
   const [destination, setDestination] = useState('');
   const [trashItems, setTrashItems] = useState<TrashItem[] | null>(null);
+  const [trashRevision, setTrashRevision] = useState(0);
   const [restoreItem, setRestoreItem] = useState<TrashItem | null>(null);
   const [restorePath, setRestorePath] = useState('');
   const [universe, setUniverse] = useState('Pessoal');
@@ -154,16 +160,23 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
       await action();
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      if (error instanceof MoveIncomplete) {
-        setError(t('moveIncomplete', { path: error.backupPath }));
+      if (error instanceof MoveIncomplete || error instanceof TrashIncomplete) {
+        setError(
+          t(
+            error instanceof TrashIncomplete
+              ? 'trashIncomplete'
+              : 'moveIncomplete',
+            { path: error.backupPath },
+          ),
+        );
         return;
       }
       const moveErrors: Record<string, string> = {
         INVALID_PATH: 'copyInvalidPath',
-        MOVE_RECORD_CHANGED: 'moveRecordChanged',
-        MOVE_RECORD_INVALID: 'moveRecordInvalid',
-        MOVE_BACKUP_UNAVAILABLE: 'moveBackupUnavailable',
-        MOVE_RESTORE_INCOMPLETE: 'moveRestoreIncomplete',
+        RECOVERY_RECORD_CHANGED: 'moveRecordChanged',
+        RECOVERY_RECORD_INVALID: 'moveRecordInvalid',
+        RECOVERY_BACKUP_UNAVAILABLE: 'moveBackupUnavailable',
+        RECOVERY_RESTORE_INCOMPLETE: 'moveRestoreIncomplete',
       };
       const moveError = Object.hasOwn(moveErrors, message)
         ? moveErrors[message]
@@ -579,6 +592,16 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
                   {t(form === 'project' ? 'createProject' : 'createNote')}
                 </button>
               </form>
+              {vault.trashHistory && (
+                <RecoveryPanel
+                  key={trashRevision}
+                  kind="trash"
+                  history={vault.trashHistory}
+                  busy={busy}
+                  run={run}
+                  onRestored={() => refresh(vault)}
+                />
+              )}
               {vault.listTrash && (
                 <section aria-label={t('trashTitle')}>
                   <button
@@ -836,7 +859,7 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
                   />
                 )}
                 {vault.moveHistory && (
-                  <MoveRecovery
+                  <RecoveryPanel
                     history={vault.moveHistory}
                     busy={busy}
                     run={run}
@@ -1021,18 +1044,27 @@ export function Workspace({ platform }: { platform: VaultPlatform }) {
                         await load(target);
                         setStatus(t('moved'));
                       } else {
-                        await vault.trash?.(doc.path, doc.rev);
+                        try {
+                          await vault.trash?.(doc.path, doc.rev);
+                        } finally {
+                          setTrashRevision((value) => value + 1);
+                        }
                         setDoc(null);
                         setCopySaved(null);
                         setFileAction(null);
                         await refresh(vault);
-                        setTrashItems((await vault.listTrash?.()) ?? []);
+                        setTrashItems(
+                          vault.listTrash ? await vault.listTrash() : null,
+                        );
                         setStatus(t('trashed'));
                       }
                     });
                   }}
                 >
                   {fileAction === 'copy' && <p>{t('copyHint')}</p>}
+                  {fileAction === 'trash' && vault.trashHistory && (
+                    <p>{t('webTrashConfirmHint')}</p>
+                  )}
                   {fileAction === 'move' && platform.kind === 'web' && (
                     <p>{t('webMoveRecovery')}</p>
                   )}

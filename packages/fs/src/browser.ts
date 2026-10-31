@@ -21,7 +21,11 @@ import {
   type MoveInspection,
   type MovePage,
   type MoveRecord,
+  type RecoveryPage,
+  type RecoveryRecord,
   RevisionConflict,
+  TrashIncomplete,
+  type TrashInspection,
   type VaultFS,
 } from './index';
 import { MAX_PDF_BYTES, validatePdf } from './pdfs';
@@ -58,31 +62,44 @@ function movePath(path: string) {
     throw new Error('INVALID_PATH');
 }
 
-/** Validate imported metadata before trusting any recorded path. */
-export function decodeMoveRecord(content: string) {
+function decodeRecoveryRecord(content: string) {
   try {
     const value = JSON.parse(content);
     if (
       value?.format !== 1 ||
       value.backup !== 'note.md' ||
       typeof value.from !== 'string' ||
-      typeof value.to !== 'string' ||
       typeof value.rev !== 'string' ||
-      !/^sha256:[a-f0-9]{64}$/.test(value.rev) ||
-      value.from.toLowerCase() === value.to.toLowerCase()
+      !/^sha256:[a-f0-9]{64}$/.test(value.rev)
     )
       throw new Error();
     movePath(value.from);
-    movePath(value.to);
-    return {
-      from: value.from as string,
-      to: value.to as string,
-      rev: value.rev as string,
-    };
+    return value as { from: string; rev: string; to?: unknown };
   } catch (cause) {
-    throw new Error('MOVE_RECORD_INVALID', { cause });
+    throw new Error('RECOVERY_RECORD_INVALID', { cause });
   }
 }
+/** Validate imported metadata before trusting any recorded path. */
+export function decodeMoveRecord(content: string) {
+  const value = decodeRecoveryRecord(content);
+  try {
+    if (
+      typeof value.to !== 'string' ||
+      value.from.toLowerCase() === value.to.toLowerCase()
+    )
+      throw new Error();
+    movePath(value.to);
+    return { from: value.from, to: value.to, rev: value.rev };
+  } catch (cause) {
+    throw new Error('RECOVERY_RECORD_INVALID', { cause });
+  }
+}
+export function decodeTrashRecord(content: string) {
+  const value = decodeRecoveryRecord(content);
+  if (value.to !== undefined) throw new Error('RECOVERY_RECORD_INVALID');
+  return { from: value.from, rev: value.rev };
+}
+const WEB_TRASH = 'trash/web-v1';
 const MAX_ARCHIVE_BYTES = 256 * 1024 * 1024;
 export function decodeVaultZip(bytes: Uint8Array) {
   if (bytes.length > MAX_ARCHIVE_BYTES) throw new Error('IMPORT_TOO_LARGE');
@@ -380,62 +397,85 @@ export class BrowserVaultFS implements VaultFS {
       this.emit({ path: to, kind: 'moved' });
     });
   }
-  private async moveRecord(id: string, version?: string): Promise<MoveRecord> {
+  private async recoveryRecord<T>(
+    area: string,
+    id: string,
+    decode: (content: string) => T,
+    version?: string,
+  ): Promise<T & { id: string; version: string }> {
     if (this.realFolder) throw new Error('FOLDER_MOVE_UNAVAILABLE');
     if (
       !/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(
         id,
       )
     )
-      throw new Error('MOVE_RECORD_INVALID');
-    const file = await this.file(`.cosmos/moves/${id}/operation.json`);
-    if (file.size > 64 * 1024) throw new Error('MOVE_RECORD_INVALID');
+      throw new Error('RECOVERY_RECORD_INVALID');
+    const file = await this.file(`.cosmos/${area}/${id}/operation.json`);
+    if (file.size > 64 * 1024) throw new Error('RECOVERY_RECORD_INVALID');
     const bytes = new Uint8Array(await file.arrayBuffer());
     const actual = await rev(bytes);
     if (version !== undefined && actual !== version)
-      throw new Error('MOVE_RECORD_CHANGED');
+      throw new Error('RECOVERY_RECORD_CHANGED');
     let content: string;
     try {
       content = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
     } catch (cause) {
-      throw new Error('MOVE_RECORD_INVALID', { cause });
+      throw new Error('RECOVERY_RECORD_INVALID', { cause });
     }
-    return { id, version: actual, ...decodeMoveRecord(content) };
+    return { ...decode(content), id, version: actual };
+  }
+  private moveRecord(id: string, version?: string): Promise<MoveRecord> {
+    return this.recoveryRecord('moves', id, decodeMoveRecord, version);
+  }
+  private trashRecord(id: string, version?: string): Promise<RecoveryRecord> {
+    return this.recoveryRecord(WEB_TRASH, id, decodeTrashRecord, version);
+  }
+  private async listRecovery<T extends RecoveryRecord>(
+    area: string,
+    read: (id: string) => Promise<T>,
+    after: string,
+  ): Promise<RecoveryPage<T>> {
+    if (this.realFolder) throw new Error('FOLDER_MOVE_UNAVAILABLE');
+    let files: Entry[];
+    try {
+      files = await this.list(`.cosmos/${area}`);
+    } catch (error) {
+      if (missing(error)) return { entries: [] };
+      throw error;
+    }
+    const ids = files
+      .map((entry) => entry.path.split('/').at(-1) as string)
+      .filter((id) => id > after)
+      .sort();
+    const entries: RecoveryPage<T>['entries'] = [];
+    for (const id of ids.slice(0, 50)) {
+      try {
+        entries.push({ id, record: await read(id) });
+      } catch (error) {
+        entries.push({
+          id,
+          issue:
+            (error instanceof Error &&
+              error.message === 'RECOVERY_RECORD_INVALID') ||
+            missing(error) ||
+            (error instanceof DOMException &&
+              error.name === 'TypeMismatchError')
+              ? 'invalid'
+              : 'unreadable',
+        });
+      }
+    }
+    return { entries, next: ids.length > 50 ? ids[49] : undefined };
   }
   listMoves(after = ''): Promise<MovePage> {
-    return this.lock(async () => {
-      if (this.realFolder) throw new Error('FOLDER_MOVE_UNAVAILABLE');
-      let files: Entry[];
-      try {
-        files = await this.list('.cosmos/moves');
-      } catch (error) {
-        if (missing(error)) return { entries: [] };
-        throw error;
-      }
-      const ids = files
-        .map((entry) => entry.path.split('/').at(-1) as string)
-        .filter((id) => id > after)
-        .sort();
-      const entries: MovePage['entries'] = [];
-      for (const id of ids.slice(0, 50)) {
-        try {
-          entries.push({ id, record: await this.moveRecord(id) });
-        } catch (error) {
-          entries.push({
-            id,
-            issue:
-              (error instanceof Error &&
-                error.message === 'MOVE_RECORD_INVALID') ||
-              missing(error) ||
-              (error instanceof DOMException &&
-                error.name === 'TypeMismatchError')
-                ? 'invalid'
-                : 'unreadable',
-          });
-        }
-      }
-      return { entries, next: ids.length > 50 ? ids[49] : undefined };
-    });
+    return this.lock(() =>
+      this.listRecovery('moves', (id) => this.moveRecord(id), after),
+    );
+  }
+  listTrashCopies(after = ''): Promise<RecoveryPage<RecoveryRecord>> {
+    return this.lock(() =>
+      this.listRecovery(WEB_TRASH, (id) => this.trashRecord(id), after),
+    );
   }
   private async moveFileState(
     path: string,
@@ -456,7 +496,7 @@ export class BrowserVaultFS implements VaultFS {
   }
   inspectMove(id: string, version: string): Promise<MoveInspection> {
     return this.lock(async () => {
-      if (!version) throw new Error('MOVE_RECORD_CHANGED');
+      if (!version) throw new Error('RECOVERY_RECORD_CHANGED');
       const record = await this.moveRecord(id, version);
       const source = await this.moveFileState(record.from, record.rev);
       const destination = await this.moveFileState(record.to, record.rev);
@@ -467,36 +507,94 @@ export class BrowserVaultFS implements VaultFS {
       return { record, checkedAt: Date.now(), source, destination, backup };
     });
   }
-  restoreMove(id: string, version: string, to: string): Promise<void> {
+  inspectTrash(id: string, version: string): Promise<TrashInspection> {
     return this.lock(async () => {
-      if (!version) throw new Error('MOVE_RECORD_CHANGED');
-      movePath(to);
-      const record = await this.moveRecord(id, version);
-      let note: Awaited<ReturnType<BrowserVaultFS['read']>>;
-      try {
-        note = await this.atRevision(`.cosmos/moves/${id}/note.md`, record.rev);
-      } catch (cause) {
-        throw new Error('MOVE_BACKUP_UNAVAILABLE', { cause });
-      }
-      await this.vacantDestination(to);
-      await this.writable(to);
-      // Restore a new note only. Keep the record, backup and current files intact.
-      try {
-        await this.put(to, new TextEncoder().encode(note.content));
-        await this.atRevision(to, record.rev);
-      } catch (cause) {
-        throw new Error('MOVE_RESTORE_INCOMPLETE', { cause });
-      }
-      this.emit({ path: to, kind: 'created' });
+      if (!version) throw new Error('RECOVERY_RECORD_CHANGED');
+      const record = await this.trashRecord(id, version);
+      const source = await this.moveFileState(record.from, record.rev);
+      const backup = await this.moveFileState(
+        `.cosmos/${WEB_TRASH}/${id}/note.md`,
+        record.rev,
+      );
+      return { record, checkedAt: Date.now(), source, backup };
     });
   }
-  async remove(path: string) {
+  private async restoreRecovery(
+    area: string,
+    record: RecoveryRecord,
+    to: string,
+  ) {
+    movePath(to);
+    let note: Awaited<ReturnType<BrowserVaultFS['read']>>;
+    try {
+      note = await this.atRevision(
+        `.cosmos/${area}/${record.id}/note.md`,
+        record.rev,
+      );
+    } catch (cause) {
+      throw new Error('RECOVERY_BACKUP_UNAVAILABLE', { cause });
+    }
+    await this.vacantDestination(to);
+    await this.writable(to);
+    // Create a new note only; all recovery evidence remains available.
+    try {
+      await this.put(to, new TextEncoder().encode(note.content));
+      await this.atRevision(to, record.rev);
+    } catch (cause) {
+      throw new Error('RECOVERY_RESTORE_INCOMPLETE', { cause });
+    }
+    this.emit({ path: to, kind: 'created' });
+  }
+  restoreMove(id: string, version: string, to: string): Promise<void> {
+    return this.lock(async () => {
+      if (!version) throw new Error('RECOVERY_RECORD_CHANGED');
+      await this.restoreRecovery(
+        'moves',
+        await this.moveRecord(id, version),
+        to,
+      );
+    });
+  }
+  restoreTrash(id: string, version: string, to: string): Promise<void> {
+    return this.lock(async () => {
+      if (!version) throw new Error('RECOVERY_RECORD_CHANGED');
+      await this.restoreRecovery(
+        WEB_TRASH,
+        await this.trashRecord(id, version),
+        to,
+      );
+    });
+  }
+  async remove(path: string, expectedRev: string) {
+    if (this.realFolder) throw new Error('FOLDER_MOVE_UNAVAILABLE');
+    if (!expectedRev) throw new Error('EXPECTED_REV_REQUIRED');
+    movePath(path);
     return this.lock(async () => {
       await this.writable(path);
-      const bytes = new Uint8Array(await (await this.file(path)).arrayBuffer());
-      await this.put(`.cosmos/trash/${crypto.randomUUID()}/${path}`, bytes);
-      const { dir, name } = await this.parent(path);
-      await dir.removeEntry(name);
+      const note = await this.atRevision(path, expectedRev);
+      const operation = `.cosmos/${WEB_TRASH}/${crypto.randomUUID()}`;
+      const backupPath = `${operation}/note.md`;
+      await this.put(
+        `${operation}/operation.json`,
+        new TextEncoder().encode(
+          JSON.stringify({
+            format: 1,
+            from: path,
+            rev: note.rev,
+            backup: 'note.md',
+          }),
+        ),
+      );
+      await this.put(backupPath, new TextEncoder().encode(note.content));
+      await this.atRevision(backupPath, expectedRev);
+      try {
+        await this.writable(path);
+        await this.atRevision(path, expectedRev);
+        const { dir, name } = await this.parent(path);
+        await dir.removeEntry(name);
+      } catch (cause) {
+        throw new TrashIncomplete(backupPath, cause);
+      }
       this.emit({ path, kind: 'trashed' });
     });
   }

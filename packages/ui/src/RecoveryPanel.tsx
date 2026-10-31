@@ -1,31 +1,41 @@
-import type { MoveHistory, MoveInspection, MovePage } from '@cosmos/fs';
+import type {
+  MoveHistory,
+  MoveInspection,
+  RecoveryPage,
+  RecoveryRecord,
+  TrashHistory,
+  TrashInspection,
+} from '@cosmos/fs';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import styles from './Workspace.module.css';
 
-export function MoveRecovery({
+export function RecoveryPanel({
+  kind = 'move',
   history,
   busy,
   run,
   onRestored,
 }: {
-  history: MoveHistory;
+  kind?: 'move' | 'trash';
+  history: MoveHistory | TrashHistory;
   busy: boolean;
   run: (action: () => Promise<void>) => Promise<void>;
   onRestored: () => Promise<void>;
 }) {
   const { t, i18n } = useTranslation();
+  const title = kind === 'trash' ? 'trashTitle' : 'moveRecovery';
   const [listing, setListing] = useState<{
-    owner: MoveHistory;
-    page: MovePage;
+    owner: MoveHistory | TrashHistory;
+    page: RecoveryPage<RecoveryRecord>;
   } | null>(null);
   const [inspection, setInspection] = useState<{
-    owner: MoveHistory;
-    result: MoveInspection;
+    owner: MoveHistory | TrashHistory;
+    result: MoveInspection | TrashInspection;
   } | null>(null);
   const [target, setTarget] = useState('');
   const [saved, setSaved] = useState<{
-    owner: MoveHistory;
+    owner: MoveHistory | TrashHistory;
     path: string;
   } | null>(null);
   const page = listing?.owner === history ? listing.page : null;
@@ -46,17 +56,21 @@ export function MoveRecovery({
     });
   };
   return (
-    <section className={styles.importRecovery} aria-label={t('moveRecovery')}>
-      <h2>{t('moveRecovery')}</h2>
-      <p>{t('moveRecoveryHint')}</p>
+    <section className={styles.importRecovery} aria-label={t(title)}>
+      <h2>{t(title)}</h2>
+      <p>{t(kind === 'trash' ? 'webTrashHint' : 'moveRecoveryHint')}</p>
       <button
         type="button"
         disabled={busy}
         onClick={() => void run(() => list())}
       >
-        {t('reviewMoves')}
+        {t(kind === 'trash' ? 'reviewTrash' : 'reviewMoves')}
       </button>
-      {page && !page.entries.length && <p role="status">{t('noMoveCopies')}</p>}
+      {page && !page.entries.length && (
+        <p role="status">
+          {t(kind === 'trash' ? 'emptyTrash' : 'noMoveCopies')}
+        </p>
+      )}
       {saved?.owner === history && (
         <p role="status">{t('moveCopyRestored', { path: saved.path })}</p>
       )}
@@ -68,7 +82,9 @@ export function MoveRecovery({
           <p>{t('moveRecordId', { id: entry.id })}</p>
           {'record' in entry ? (
             <>
-              <p>{t('moveRecordedDestination', { path: entry.record.to })}</p>
+              {'to' in entry.record && (
+                <p>{t('moveRecordedDestination', { path: entry.record.to })}</p>
+              )}
               <button
                 type="button"
                 disabled={busy}
@@ -85,7 +101,7 @@ export function MoveRecovery({
                   })
                 }
               >
-                {t('inspectMove')}
+                {t(kind === 'trash' ? 'inspectTrash' : 'inspectMove')}
               </button>
               {checked?.record.id === entry.id &&
                 checked.record.version === entry.record.version && (
@@ -101,8 +117,12 @@ export function MoveRecovery({
                     <dl>
                       <dt>{t('moveSource')}</dt>
                       <dd>{t(`moveState_${checked.source}`)}</dd>
-                      <dt>{t('moveDestination')}</dt>
-                      <dd>{t(`moveState_${checked.destination}`)}</dd>
+                      {'destination' in checked && (
+                        <>
+                          <dt>{t('moveDestination')}</dt>
+                          <dd>{t(`moveState_${checked.destination}`)}</dd>
+                        </>
+                      )}
                       <dt>{t('moveBackup')}</dt>
                       <dd>{t(`moveState_${checked.backup}`)}</dd>
                     </dl>

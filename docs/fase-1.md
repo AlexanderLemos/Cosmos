@@ -12,7 +12,9 @@ foram aprovadas implicitamente pelo avanço da implementação.
   salvas no cofre do navegador (OPFS), com revisão obrigatória, destino livre e
   cópia de recuperação incluída no ZIP. **Cópias de movimentação** permite conferir
   origem/destino/cópia e restaurar a cópia verificada em caminho livre, preservando
-  a nota aberta. Pastas reais ainda não oferecem essas ações.
+  a nota aberta. **Enviar à lixeira** e **Revisar lixeira** permitem remover notas
+  salvas da lista, conferir a cópia e restaurá-la em caminho livre; a cópia fica
+  retida após restaurar. Pastas reais ainda não oferecem essas ações.
   Importar uma pasta ou ZIP do Obsidian sem modificar a
   origem nem sobrescrever arquivos existentes. Anexos, `.canvas`, frontmatter,
   BOM e terminações de linha são preservados. Notas têm limite de 8 MiB; exportação
@@ -102,6 +104,22 @@ texto e recebe conflito ao tentar salvar depois da movimentação. Links e rascu
 não são reassociados automaticamente; referências relativas a notas e anexos
 podem precisar de ajuste. A ação não está disponível para pastas reais na Web,
 pois editores externos não participam do bloqueio. Ver [ADR 0009](adr/0009-mover-notas-web.md).
+
+## Lixeira na Web
+
+No OPFS, **Enviar à lixeira** exige nota salva, revisão atual e confirmação.
+Projetos continuam protegidos. O adaptador guarda e verifica os bytes antes de
+remover a origem, em `.cosmos/trash/web-v1/<UUID>/`. **Revisar lixeira** lista os
+registros em páginas de 50; **Conferir item da lixeira** informa o estado atual da
+origem e da cópia sem escrever. A existência de uma cópia não prova remoção da
+origem: interrupções podem deixar ambos os arquivos.
+
+A restauração revalida o registro e a cópia e cria uma nota em caminho livre,
+sem sobrescrever arquivos, alterar a nota aberta ou consumir o backup. Cópias e
+registros permanecem na lixeira mesmo após restaurar e acompanham a exportação
+ZIP. Limpeza/exclusão definitiva e lixeira em pastas reais ainda não estão
+implementadas. Arquivos da lixeira Web legada e registros nativos não são
+migrados nem removidos; permanecem exportáveis. Ver [ADR 0010](adr/0010-lixeira-web.md).
 
 ## Recuperação de rascunhos
 
@@ -630,7 +648,7 @@ no banco; a tela para revisá-las ainda está pendente. Falhas de acesso durante
 remoção têm retry limitado; se persistirem, novas mutações ficam bloqueadas até
 reiniciar o daemon e recuperar a intenção. Leituras continuam disponíveis.
 
-A lixeira básica usa `.cosmos/trash/<id>/<caminho-original>` no cofre; não é a
+A lixeira básica do Desktop usa `.cosmos/trash/<id>/<caminho-original>` no cofre; não é a
 lixeira do sistema operacional e não esvazia automaticamente. A lista e as
 revisões são reconstruídas dos registros do journal e dos arquivos existentes.
 Restaurar preserva bytes e exige um destino livre. Não implementa ainda a
@@ -937,8 +955,21 @@ pt/en e acessibilidade nos dois temas, registros/cópias alterados após inspeç
 metadados inválidos, paginação sem ler as cópias, concorrência entre abas e falha
 de escrita com destino parcial seguida de recuperação em outro caminho. Os dois
 fluxos de caminho inválido foram repetidos após substituir o código técnico pela
-orientação traduzida. A CI verificará os três navegadores e os builds nativos nos
-três sistemas após publicar.
+orientação traduzida. A CI de `d8cfa1c` passou nos três sistemas, incluindo
+216 testes Web.
+
+Validação de lixeira OPFS (2026-10-31): `pnpm check` passou com 50 testes
+unitários, tipos, lint e schemas; builds Web/Desktop passaram. Passaram 26 cenários
+Chromium de lixeira, movimentação, recuperação de cópias e rascunhos, com os oito
+cenários de lixeira confirmados após invalidar a listagem antiga em tentativas
+locais e ajustar o teste de rascunho para digitação parcial/desfazer. Substituir
+todo o documento também altera as quebras de linha editadas, portanto não era uma
+premissa válida para exigir que esse teste voltasse ao estado salvo em bytes.
+A cobertura inclui envio/inspeção/restauração, bytes exatos, busca, cancelamento,
+projetos, rascunho aberto, concorrência entre abas, quota, cópia divergente,
+origem alterada, falha de remoção, fechamento da aba, registros modificados,
+preservação de arquivos legados, pt/en e acessibilidade nos dois temas. A CI
+verificará os três navegadores e os builds nativos nos três sistemas após publicar.
 
 ## Fechamento ainda necessário
 
@@ -952,10 +983,10 @@ três sistemas após publicar.
   de diretórios. A observação nativa já chega à UI por token IPC, mas ainda precisa
   ser unificada com a assinatura de callbacks `VaultFS.watch`. A UI Desktop já
   expõe mover, lixeira e restauração via IPC; a Web já move notas no OPFS com
-  revisão e cópia de recuperação. Ainda faltam mover em pastas reais, lixeira e
-  restauração de itens da lixeira na Web, além da limpeza das cópias de movimentação.
-  A inspeção/restauração dessas cópias no OPFS já está disponível.
-  Os métodos internos ainda não expostos precisam da mesma proteção de revisão/recuperação. Atualização automática
+  revisão e cópia de recuperação, além de lixeira e restauração no OPFS. Ainda
+  faltam organização em pastas reais na Web e limpeza/exclusão definitiva de
+  cópias de movimentação/lixeira. A inspeção/restauração dessas cópias no OPFS já
+  está disponível. Atualização automática
   de links após mover notas e revisão de conflitos de movimentação também pendem.
 - Leitura incremental por eventos com reconciliação de segurança, cache de backlinks
   e ensaios de performance em cofres grandes. A atualização incremental do FTS por
