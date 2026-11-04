@@ -188,15 +188,20 @@ impl Client {
     }
 }
 
-#[cfg(all(test, unix))]
+#[cfg(test)]
 mod tests {
     use super::*;
     use crate::protocol::method;
 
     #[tokio::test]
     async fn client_server_roundtrip() {
-        let dir = std::env::temp_dir().join(format!("cosmos-ipc-{}", ulid::Ulid::new()));
-        let endpoint = Endpoint::UnixSocket(dir.join("run/test.sock"));
+        let id = ulid::Ulid::new();
+        let dir = std::env::temp_dir().join(format!("cosmos-ipc-{id}"));
+        let endpoint = if cfg!(windows) {
+            Endpoint::NamedPipe(format!("cosmos-test-{id}"))
+        } else {
+            Endpoint::UnixSocket(dir.join("run/test.sock"))
+        };
         let listener = bind(&endpoint).unwrap();
         let handler: Arc<dyn Handler> = Arc::new(|m: &str, p: Value| match m {
             method::PING => Ok(serde_json::json!({ "pong": p })),
@@ -219,12 +224,15 @@ mod tests {
             })
         ));
 
-        use std::os::unix::fs::PermissionsExt;
-        let mode = std::fs::metadata(dir.join("run"))
-            .unwrap()
-            .permissions()
-            .mode();
-        assert_eq!(mode & 0o777, 0o700);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mode = std::fs::metadata(dir.join("run"))
+                .unwrap()
+                .permissions()
+                .mode();
+            assert_eq!(mode & 0o777, 0o700);
+        }
         let _ = std::fs::remove_dir_all(dir);
     }
 }
