@@ -1,0 +1,20 @@
+{
+  "name": "cosmos",
+  "private": true,
+  "license": "MIT",
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "schemas": "pnpm --filter @cosmos-pkm/schemas gen",
+    "desktop": "pnpm --filter @cosmos-pkm/desktop tauri dev"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.0",
+    "typescript": "~5.9.0"
+  }
+}
