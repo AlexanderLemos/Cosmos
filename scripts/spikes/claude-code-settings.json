@@ -1,0 +1,28 @@
+{
+  "env": {
+    "COSMOS_SPIKE_DIR": "C:\\cosmos-spike-output"
+  },
+  "hooks": {
+    "SessionStart": [
+      { "hooks": [{ "type": "command", "command": "cosmos spike capture-hook --harness claude-code --event SessionStart" }] }
+    ],
+    "UserPromptSubmit": [
+      { "hooks": [{ "type": "command", "command": "cosmos spike capture-hook --harness claude-code --event UserPromptSubmit" }] }
+    ],
+    "PostToolUse": [
+      { "matcher": "*", "hooks": [{ "type": "command", "command": "cosmos spike capture-hook --harness claude-code --event PostToolUse" }] }
+    ],
+    "PreCompact": [
+      { "hooks": [{ "type": "command", "command": "cosmos spike capture-hook --harness claude-code --event PreCompact" }] }
+    ],
+    "Stop": [
+      { "hooks": [{ "type": "command", "command": "cosmos spike capture-hook --harness claude-code --event Stop" }] }
+    ],
+    "SubagentStop": [
+      { "hooks": [{ "type": "command", "command": "cosmos spike capture-hook --harness claude-code --event SubagentStop" }] }
+    ],
+    "SessionEnd": [
+      { "hooks": [{ "type": "command", "command": "cosmos spike capture-hook --harness claude-code --event SessionEnd" }] }
+    ]
+  }
+}

@@ -1,6 +1,9 @@
-//! Spike S2 (plan §25, F0): capture the real hook payloads of each harness before writing
-//! the adapters. Payloads may contain prompts, so they are written only to a local folder
-//! chosen by the user and never sent anywhere.
+//! Phase 0 spikes (plan §25), run on the user's machine. See `scripts/spikes/README.md`.
+//!
+//! - S2: capture the real hook payloads of each harness before writing the adapters.
+//!   Payloads may contain prompts, so they are written only to a local folder chosen by the
+//!   user and never sent anywhere.
+//! - S4: atomic write against a file locked by another program (Windows).
 
 use std::io::Read;
 use std::path::PathBuf;
@@ -24,6 +27,12 @@ pub enum SpikeAction {
         #[arg(long, env = "COSMOS_SPIKE_DIR", default_value = "spikes-output")]
         out: PathBuf,
     },
+    /// Write `--content` to `path` atomically, retrying while the file is locked (S4).
+    AtomicWrite {
+        path: PathBuf,
+        #[arg(long, default_value = "written by cosmos spike atomic-write\n")]
+        content: String,
+    },
 }
 
 pub fn run(action: SpikeAction) -> Result<ExitCode> {
@@ -38,6 +47,19 @@ pub fn run(action: SpikeAction) -> Result<ExitCode> {
             let path = capture(&harness, &event, &out, &raw)?;
             eprintln!("cosmos spike: saved {}", path.display());
             Ok(ExitCode::SUCCESS)
+        }
+        SpikeAction::AtomicWrite { path, content } => {
+            let started = std::time::Instant::now();
+            match cosmos_storage::write_atomic(&path, content.as_bytes()) {
+                Ok(rev) => {
+                    println!("ok in {:?} · {rev}", started.elapsed());
+                    Ok(ExitCode::SUCCESS)
+                }
+                Err(e) => {
+                    println!("failed after {:?}: {e}", started.elapsed());
+                    Ok(ExitCode::FAILURE)
+                }
+            }
         }
     }
 }
