@@ -1,0 +1,215 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Event",
+  "description": "A normalized event, as stored in the event log.",
+  "type": "object",
+  "required": [
+    "agent",
+    "created_at",
+    "id",
+    "idempotency_key",
+    "type"
+  ],
+  "properties": {
+    "agent": {
+      "$ref": "#/definitions/AgentInfo"
+    },
+    "base_rev": {
+      "description": "Document revision the producer saw (`b3:<hex>`), for optimistic concurrency.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "created_at": {
+      "description": "RFC 3339 timestamp.",
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T"
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Evidence"
+      }
+    },
+    "id": {
+      "description": "ULID of the event.",
+      "type": "string",
+      "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "idempotency_key": {
+      "description": "Deduplication key. Built from stable fields only (never wall-clock time), so a replay from the client spool is recognized as a duplicate.",
+      "type": "string"
+    },
+    "payload": {
+      "default": null
+    },
+    "project_id": {
+      "description": "Absent while the project is still being resolved (ambiguity, plan §15.2).",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/ProjectId"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "session_id": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/SessionId"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "type": {
+      "$ref": "#/definitions/EventType"
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "AgentInfo": {
+      "type": "object",
+      "required": [
+        "harness"
+      ],
+      "properties": {
+        "harness": {
+          "$ref": "#/definitions/Harness"
+        },
+        "model": {
+          "description": "Model name, optional and informational only.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "version": {
+          "description": "Harness version as reported by the harness, when available.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "EventType": {
+      "description": "Event types of contract v1.\n\nNote the difference between [`EventType::TurnCompleted`] and [`EventType::SessionEnded`] (requirement R16): finishing a turn never closes a session.",
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "session.started",
+            "prompt.submitted",
+            "requirement.added",
+            "requirement.changed",
+            "decision.recorded",
+            "decision.superseded",
+            "task.created",
+            "task.updated",
+            "task.claimed",
+            "task.released",
+            "test.run",
+            "commit.created",
+            "checkpoint",
+            "context.compacting",
+            "user.edited"
+          ]
+        },
+        {
+          "description": "Paths and counts only, never file contents.",
+          "type": "string",
+          "enum": [
+            "file.changed"
+          ]
+        },
+        {
+          "description": "End of a turn/response. Keeps the session active.",
+          "type": "string",
+          "enum": [
+            "turn.completed"
+          ]
+        },
+        {
+          "description": "Real end of session (harness confirmed or explicit `cosmos_close_session`).",
+          "type": "string",
+          "enum": [
+            "session.ended"
+          ]
+        },
+        {
+          "description": "Ended without summary; recorded deterministically, nothing invented.",
+          "type": "string",
+          "enum": [
+            "session.interrupted"
+          ]
+        }
+      ]
+    },
+    "Evidence": {
+      "type": "object",
+      "required": [
+        "kind",
+        "ref"
+      ],
+      "properties": {
+        "kind": {
+          "$ref": "#/definitions/EvidenceKind"
+        },
+        "ref": {
+          "description": "Relative path, commit hash, command line or URL.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "EvidenceKind": {
+      "type": "string",
+      "enum": [
+        "file",
+        "commit",
+        "command",
+        "url"
+      ]
+    },
+    "Harness": {
+      "description": "Agent harnesses known to COSMOS. New harnesses get a new variant and a new adapter.",
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "claude-code",
+            "codex",
+            "hermes-agent"
+          ]
+        },
+        {
+          "description": "Any client that only speaks MCP (assisted integration).",
+          "type": "string",
+          "enum": [
+            "generic-mcp"
+          ]
+        },
+        {
+          "description": "The COSMOS Desktop/Web UI itself (human edits).",
+          "type": "string",
+          "enum": [
+            "cosmos-ui"
+          ]
+        }
+      ]
+    },
+    "ProjectId": {
+      "type": "string",
+      "pattern": "^prj_[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "SessionId": {
+      "type": "string",
+      "pattern": "^ses_[0-9A-HJKMNP-TV-Z]{26}$"
+    }
+  }
+}

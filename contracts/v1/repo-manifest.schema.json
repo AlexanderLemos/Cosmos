@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RepoManifest",
+  "type": "object",
+  "required": [
+    "project_id",
+    "schema_version"
+  ],
+  "properties": {
+    "name": {
+      "description": "Informational only. COSMOS never identifies a project by name.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "project_id": {
+      "$ref": "#/definitions/ProjectId"
+    },
+    "schema_version": {
+      "type": "integer",
+      "format": "uint32",
+      "minimum": 0.0
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "ProjectId": {
+      "type": "string",
+      "pattern": "^prj_[0-9A-HJKMNP-TV-Z]{26}$"
+    }
+  }
+}

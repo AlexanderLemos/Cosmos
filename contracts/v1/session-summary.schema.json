@@ -1,0 +1,235 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SessionSummary",
+  "type": "object",
+  "required": [
+    "agent",
+    "objective",
+    "project_id",
+    "schema_version",
+    "session_id"
+  ],
+  "properties": {
+    "activities": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "agent": {
+      "$ref": "#/definitions/Harness"
+    },
+    "confidence_notes": {
+      "description": "Caveats the agent wants the next agent to know (\"fallback PIN not tested\").",
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "decisions": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/DecisionEntry"
+      }
+    },
+    "files": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "implemented": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/ImplementedItem"
+      }
+    },
+    "next_tasks": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "objective": {
+      "type": "string"
+    },
+    "pending": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "problems": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "project_id": {
+      "$ref": "#/definitions/ProjectId"
+    },
+    "requests": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "schema_version": {
+      "type": "integer",
+      "format": "uint32",
+      "minimum": 0.0
+    },
+    "session_id": {
+      "$ref": "#/definitions/SessionId"
+    },
+    "tests": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/TestClaim"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "ClaimedResult": {
+      "type": "string",
+      "enum": [
+        "passed",
+        "failed",
+        "skipped"
+      ]
+    },
+    "DecisionEntry": {
+      "type": "object",
+      "required": [
+        "rationale",
+        "title",
+        "topic"
+      ],
+      "properties": {
+        "rationale": {
+          "type": "string"
+        },
+        "supersedes": {
+          "description": "Decision id this one replaces (`N-003`), if any.",
+          "default": null,
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "title": {
+          "type": "string"
+        },
+        "topic": {
+          "description": "Stable topic used to detect conflicting decisions (plan §19.3), e.g. `persistence`.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Harness": {
+      "description": "Agent harnesses known to COSMOS. New harnesses get a new variant and a new adapter.",
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "claude-code",
+            "codex",
+            "hermes-agent"
+          ]
+        },
+        {
+          "description": "Any client that only speaks MCP (assisted integration).",
+          "type": "string",
+          "enum": [
+            "generic-mcp"
+          ]
+        },
+        {
+          "description": "The COSMOS Desktop/Web UI itself (human edits).",
+          "type": "string",
+          "enum": [
+            "cosmos-ui"
+          ]
+        }
+      ]
+    },
+    "ImplementedItem": {
+      "type": "object",
+      "required": [
+        "item",
+        "status"
+      ],
+      "properties": {
+        "evidence": {
+          "description": "`file:<path>`, `commit:<hash>`, `command:<cmd>`.",
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "item": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/definitions/ItemStatus"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ItemStatus": {
+      "description": "Planned ≠ implemented ≠ tested. `tested` is only accepted with a matching `test.run` event (exit 0); otherwise COSMOS downgrades it to `implemented` (unverified).",
+      "type": "string",
+      "enum": [
+        "planned",
+        "in_progress",
+        "implemented",
+        "tested",
+        "validated",
+        "blocked",
+        "failed"
+      ]
+    },
+    "ProjectId": {
+      "type": "string",
+      "pattern": "^prj_[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "SessionId": {
+      "type": "string",
+      "pattern": "^ses_[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "TestClaim": {
+      "type": "object",
+      "required": [
+        "claimed_result",
+        "command"
+      ],
+      "properties": {
+        "claimed_result": {
+          "description": "What the agent claims; verified against `test.run` events by COSMOS.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/ClaimedResult"
+            }
+          ]
+        },
+        "command": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
