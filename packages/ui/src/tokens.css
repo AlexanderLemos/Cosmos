@@ -1,0 +1,65 @@
+/*
+ * COSMOS · Espectral design tokens (plan §8.2–8.3).
+ * Colors come from real emission lines. Dark (Nyx) is the default; light is Hēmérā.
+ * Fonts are referenced by name only; self-hosted OFL files arrive with asset curation
+ * (plan §24) so the app never depends on the network.
+ */
+:root {
+  /* Palette */
+  --nyx: #07060b;          /* background */
+  --erebus: #121019;       /* surfaces */
+  --erebus-2: #1b1824;     /* raised surfaces */
+  --aether: #ede6d6;       /* text (parchment) */
+  --aether-dim: #a9a294;   /* secondary text */
+  --h-alpha: #e2483d;      /* alerts, memory conflicts */
+  --oiii: #3fc1b0;         /* links, focus, active agent */
+  --sii: #9b2335;          /* deep states, blocked */
+  --orichalcum: #b8864b;   /* accents, numerals, verified evidence */
+
+  /* Semantic */
+  --bg: var(--nyx);
+  --surface: var(--erebus);
+  --surface-raised: var(--erebus-2);
+  --text: var(--aether);
+  --text-muted: var(--aether-dim);
+  --accent: var(--orichalcum);
+  --focus: var(--oiii);
+  --danger: var(--h-alpha);
+  --border: color-mix(in srgb, var(--aether) 12%, transparent);
+
+  /* Typography */
+  --font-display: "Instrument Serif", "GFS Didot", Georgia, serif;
+  --font-label: "Unbounded", "Syne", system-ui, sans-serif;
+  --font-body: "Newsreader", "Literata", Georgia, serif;
+  --font-mono: "Commit Mono", "JetBrains Mono", ui-monospace, monospace;
+
+  /* Rhythm */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --radius: 2px; /* star charts are sharp, not bubbly */
+  --hairline: 1px solid var(--border);
+
+  color-scheme: dark;
+}
+
+/* Hēmérā: parchment and ink, like the Atlas Coelestis. */
+:root[data-theme="hemera"] {
+  --bg: #f4efe3;
+  --surface: #ebe4d3;
+  --surface-raised: #e2d9c4;
+  --text: #1d1a16;
+  --text-muted: #5c554a;
+  --focus: #1f7f73;
+  --border: color-mix(in srgb, #1d1a16 14%, transparent);
+  color-scheme: light;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion: 0;
+  }
+}
