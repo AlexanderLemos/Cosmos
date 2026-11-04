@@ -7,6 +7,7 @@ members = [
   "crates/cosmos-ipc",
   "crates/cosmos-cli",
   "services/cosmosd",
+  "apps/desktop/src-tauri",
 ]
 # The desktop app needs WebKitGTK/WebView2; keep plain `cargo build` focused on the core.
 default-members = [
