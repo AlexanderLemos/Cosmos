@@ -1,0 +1,23 @@
+[package]
+name = "cosmos-ipc"
+description = "COSMOS local IPC: versioned JSON-RPC 2.0 over named pipes / Unix sockets"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+schemars.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+interprocess.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true }
+ulid.workspace = true
+
+[lints]
+workspace = true
