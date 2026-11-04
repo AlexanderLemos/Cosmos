@@ -1,0 +1,21 @@
+[package]
+name = "cosmos-storage"
+description = "COSMOS storage: paths, atomic writes, revisions and SQLite schema"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+blake3.workspace = true
+dirs.workspace = true
+rusqlite.workspace = true
+tempfile.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints]
+workspace = true
