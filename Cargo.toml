@@ -1,0 +1,61 @@
+[workspace]
+resolver = "2"
+members = [
+  "crates/cosmos-core",
+  "crates/cosmos-storage",
+  "crates/cosmos-memory",
+  "crates/cosmos-ipc",
+  "crates/cosmos-cli",
+  "services/cosmosd",
+]
+# The desktop app needs WebKitGTK/WebView2; keep plain `cargo build` focused on the core.
+default-members = [
+  "crates/cosmos-core",
+  "crates/cosmos-storage",
+  "crates/cosmos-memory",
+  "crates/cosmos-ipc",
+  "crates/cosmos-cli",
+  "services/cosmosd",
+]
+
+[workspace.package]
+version = "0.0.1"
+edition = "2021"
+rust-version = "1.89"
+license = "MIT"
+repository = "https://github.com/AlexanderLemos/Cosmos"
+authors = ["AlexanderLemos", "COSMOS contributors"]
+
+[workspace.dependencies]
+cosmos-core = { path = "crates/cosmos-core" }
+cosmos-storage = { path = "crates/cosmos-storage" }
+cosmos-memory = { path = "crates/cosmos-memory" }
+cosmos-ipc = { path = "crates/cosmos-ipc" }
+
+anyhow = "1"
+thiserror = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+schemars = "0.8"
+ulid = "1"
+blake3 = "1"
+dirs = "6"
+tempfile = "3"
+rusqlite = { version = "0.37", features = ["bundled"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "io-util", "sync", "time", "signal"] }
+interprocess = { version = "2", features = ["tokio"] }
+clap = { version = "4", features = ["derive", "env"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+dbg_macro = "warn"
+todo = "warn"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true

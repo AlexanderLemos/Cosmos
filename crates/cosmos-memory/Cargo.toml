@@ -1,0 +1,15 @@
+[package]
+name = "cosmos-memory"
+description = "COSMOS Memory rules: the single implementation used by MCP, HTTP, IPC and the UI"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+cosmos-core.workspace = true
+thiserror.workspace = true
+
+[lints]
+workspace = true
