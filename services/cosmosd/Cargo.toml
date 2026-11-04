@@ -1,0 +1,22 @@
+[package]
+name = "cosmosd"
+description = "cosmosd, the COSMOS Daimon: per-user local memory service"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+cosmos-core.workspace = true
+cosmos-ipc.workspace = true
+cosmos-storage.workspace = true
+anyhow.workspace = true
+clap.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+[lints]
+workspace = true
